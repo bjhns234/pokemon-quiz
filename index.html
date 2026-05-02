@@ -1,0 +1,1297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pokemon Learning Adventure</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;min-height:100vh;display:flex;align-items:flex-start;justify-content:center;padding:20px 20px 80px}
+.wrap{width:100%;max-width:520px}
+.logo-ball{margin:0 auto 20px;width:72px;height:72px}
+.app-title{font-size:22px;font-weight:700;color:#1A1A2E;margin-bottom:6px}
+.app-sub{font-size:14px;color:#6B7280;margin-bottom:28px;line-height:1.5}
+#game{display:none}
+#pokedex-page{display:none}
+.hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+.app-name{font-size:15px;font-weight:600;color:#1A1A2E}
+.streak-badge{background:#FEF3C7;color:#B45309;font-size:13px;font-weight:600;padding:4px 12px;border-radius:20px}
+.card{background:#fff;border-radius:16px;padding:18px;margin-bottom:12px;box-shadow:0 2px 8px rgba(0,0,0,0.06)}
+.pcard{text-align:center}
+.pnum{font-size:11px;color:#9CA3AF;margin-bottom:2px;font-weight:500}
+.pname{font-size:22px;font-weight:700;color:#1A1A2E}
+.psvg{display:flex;justify-content:center;align-items:center;margin:8px 0;animation:float 3s ease-in-out infinite}
+.psvg img{display:block}
+.psvg.bk{animation:bounce 0.5s ease forwards}
+.psvg.sk{animation:shake 0.45s ease forwards}
+.psvg.fl{animation:flash 1.6s ease forwards}
+.xp-row{display:flex;justify-content:space-between;font-size:11px;color:#9CA3AF;margin-bottom:5px;font-weight:500}
+.xp-track{height:10px;background:#F3F4F6;border-radius:999px;overflow:hidden}
+.xp-fill{height:100%;border-radius:999px;background:linear-gradient(90deg,#FF5722,#FF8A65);transition:width 0.7s cubic-bezier(0.4,0,0.2,1)}
+.xp-max{background:linear-gradient(90deg,#F59E0B,#FCD34D)}
+.subj-tag{display:inline-block;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;margin-bottom:10px;letter-spacing:0.03em}
+.tagm{background:#DBEAFE;color:#1D4ED8}
+.tagr{background:#D1FAE5;color:#065F46}
+.tags{background:#FEF3C7;color:#92400E}
+.qtext{font-size:16px;color:#1A1A2E;line-height:1.6;margin-bottom:16px;font-weight:500}
+.ans-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+.ans-btn{background:#F9FAFB;border:2px solid #E5E7EB;border-radius:12px;padding:14px 10px;font-size:15px;font-weight:600;color:#374151;cursor:pointer;text-align:center;transition:all 0.15s;line-height:1.3;font-family:inherit;width:100%}
+.ans-btn:hover:not(:disabled){border-color:#FF5722;color:#FF5722;background:#FFF3E0}
+.ans-btn.cor{background:#ECFDF5;border-color:#10B981;color:#065F46}
+.ans-btn.wrg{background:#FEF2F2;border-color:#EF4444;color:#991B1B}
+.ans-btn:disabled{cursor:default}
+.result-msg{text-align:center;padding:11px 14px;border-radius:10px;font-size:14px;margin-bottom:8px;font-weight:500}
+.result-msg.ok{background:#ECFDF5;color:#065F46}
+.result-msg.no{background:#FEF2F2;color:#991B1B}
+.lvl-toast{background:#FEF3C7;color:#92400E;border-radius:10px;padding:8px 14px;font-size:13px;font-weight:600;margin-bottom:8px;text-align:center}
+.nxt-btn{width:100%;background:#1A1A2E;color:white;border:none;border-radius:12px;padding:13px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit}
+.nxt-btn:hover{opacity:0.85}
+.stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+.stat-card{background:#fff;border-radius:12px;padding:10px 8px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,0.06)}
+.stat-subj{font-size:11px;color:#6B7280;font-weight:600;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.04em}
+.stat-lvl{display:inline-block;font-size:11px;font-weight:700;padding:2px 9px;border-radius:20px;margin-bottom:5px}
+.lv1{background:#DBEAFE;color:#1D4ED8}
+.lv2{background:#FEF3C7;color:#92400E}
+.lv3{background:#D1FAE5;color:#065F46}
+.stat-acc{font-size:15px;font-weight:700;color:#1A1A2E}
+.stat-denom{font-size:11px;color:#9CA3AF;font-weight:400}
+.stat-bar{height:4px;background:#F3F4F6;border-radius:999px;margin-top:6px;overflow:hidden}
+.stat-fill{height:100%;border-radius:999px;background:#60A5FA;transition:width 0.5s ease}
+.pdx-gen-section{margin-bottom:16px}
+.pdx-gen-label{font-size:11px;font-weight:700;color:#9CA3AF;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:8px}
+.pdx-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.pdx-entry{background:#fff;border-radius:12px;padding:10px 8px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,0.06)}
+.pdx-entry.locked{opacity:0.25;filter:grayscale(1)}
+.pdx-num{font-size:10px;color:#9CA3AF;font-weight:500}
+.pdx-name{font-size:12px;font-weight:700;color:#1A1A2E;margin-top:2px}
+.pdx-fact{font-size:10px;color:#6B7280;margin-top:3px;line-height:1.4}
+.starter-card{background:#fff;border-radius:16px;padding:16px 14px 20px;margin-bottom:12px;box-shadow:0 2px 8px rgba(0,0,0,0.06)}
+.gen-section{margin-bottom:14px}
+.gen-label{font-size:11px;font-weight:700;color:#9CA3AF;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:6px;text-align:left}
+.starter-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.starter-opt{background:#F9FAFB;border:2px solid #E5E7EB;border-radius:12px;padding:8px 4px 10px;cursor:pointer;transition:all 0.18s;text-align:center;display:flex;flex-direction:column;align-items:center;font-family:inherit}
+.starter-opt:hover{transform:translateY(-3px);box-shadow:0 6px 16px rgba(0,0,0,0.1)}
+.fire-opt:hover{border-color:#FF5722;background:#FFF3E0}
+.water-opt:hover{border-color:#1976D2;background:#E3F2FD}
+.grass-opt:hover{border-color:#16A34A;background:#F0FDF4}
+.starter-opt-name{font-size:12px;font-weight:700;color:#1A1A2E;margin-top:5px;margin-bottom:3px}
+.starter-opt-type{font-size:10px;font-weight:600;padding:2px 7px;border-radius:20px;display:inline-block}
+.fire-type{background:#FEE2E2;color:#DC2626}
+.water-type{background:#DBEAFE;color:#1D4ED8}
+.grass-type{background:#DCFCE7;color:#16A34A}
+.electric-type{background:#FEF9C3;color:#A16207}
+.normal-type{background:#F3F4F6;color:#374151}
+.flying-type{background:#E0F2FE;color:#0369A1}
+.bug-type{background:#ECFCCB;color:#3F6212}
+.fairy-type{background:#FCE7F3;color:#9D174D}
+.lvl-badge{display:inline-block;background:#1A1A2E;color:white;font-size:11px;font-weight:700;padding:3px 9px;border-radius:10px;margin-left:6px;letter-spacing:0.04em;vertical-align:middle}
+.team-row{display:flex;gap:8px;background:#fff;border-radius:14px;padding:10px;margin-bottom:12px;box-shadow:0 2px 8px rgba(0,0,0,0.06);overflow-x:auto;align-items:center}
+.team-label{font-size:11px;font-weight:700;color:#9CA3AF;letter-spacing:0.06em;text-transform:uppercase;flex-shrink:0;padding:0 4px 0 2px}
+.team-slot{position:relative;flex:0 0 auto;width:54px;height:54px;border-radius:12px;border:2px solid #E5E7EB;background:#F9FAFB;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.15s;padding:0;font-family:inherit}
+.team-slot:hover{border-color:#FF5722}
+.team-slot.active{border-color:#FF5722;background:#FFF3E0;box-shadow:0 0 0 3px rgba(255,87,34,0.15)}
+.team-slot img{width:44px;height:44px;object-fit:contain;display:block;pointer-events:none}
+.team-slot-lvl{position:absolute;bottom:-4px;right:-5px;background:#1A1A2E;color:white;font-size:9px;font-weight:700;padding:1px 5px;border-radius:8px;line-height:1.4}
+.catch-pips{display:flex;justify-content:center;gap:8px;margin-top:10px}
+.catch-pip{width:14px;height:14px;border-radius:50%;background:rgba(255,255,255,0.18);border:1.5px solid rgba(255,255,255,0.4);transition:all 0.2s ease}
+.catch-pip.filled{background:#86efac;border-color:#86efac;box-shadow:0 0 8px rgba(134,239,172,0.6)}
+.lvl-up-toast{background:linear-gradient(90deg,#FCD34D,#F59E0B);color:#1A1A2E;border-radius:12px;padding:11px 16px;font-size:15px;font-weight:700;margin-bottom:12px;text-align:center;box-shadow:0 4px 14px rgba(245,158,11,0.35);animation:lvl-up-flash 0.55s cubic-bezier(0.34,1.56,0.64,1)}
+@keyframes lvl-up-flash{0%{opacity:0;transform:translateY(-10px) scale(0.92)}40%{opacity:1;transform:translateY(0) scale(1.06)}70%{transform:scale(0.98)}100%{opacity:1;transform:scale(1)}}
+.wild-card{background:linear-gradient(145deg,#0f2f0f,#1e4d1e);border-radius:16px;padding:16px 16px 12px;margin-bottom:12px;text-align:center;box-shadow:0 2px 16px rgba(0,0,0,0.25)}
+.wild-badge{font-size:11px;font-weight:700;color:#86efac;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:4px}
+.wild-name{font-size:18px;font-weight:700;color:white;margin-bottom:2px}
+.catch-counter{display:inline-block;background:rgba(255,255,255,0.15);color:white;font-size:12px;font-weight:600;padding:4px 14px;border-radius:20px;margin-top:8px}
+#bottom-nav{display:none;position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:520px;flex-direction:row;background:white;border-top:1px solid #E5E7EB;z-index:100}
+.nav-tab{flex:1;background:none;border:none;border-top:2px solid transparent;padding:12px 8px 10px;font-size:14px;font-weight:600;color:#9CA3AF;cursor:pointer;font-family:inherit;transition:color 0.15s}
+.nav-tab.nav-active{color:#1A1A2E;border-top-color:#1A1A2E}
+#catch-overlay{display:none;position:fixed;inset:0;background:linear-gradient(180deg,#0d2b0d,#1a4a1a 55%,#2a5e2a);z-index:999;flex-direction:column;align-items:center;justify-content:center}
+#catch-overlay.active{display:flex}
+#catch-pkm{position:relative;z-index:2;display:flex;align-items:center;justify-content:center;width:200px;height:200px}
+#catch-pkm img{display:block;object-fit:contain;width:180px;height:180px}
+#catch-ball{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);z-index:3;display:none}
+#catch-lbl{position:relative;z-index:2;color:white;font-size:18px;font-weight:700;margin-top:24px;text-align:center;padding:0 28px;text-shadow:0 0 20px rgba(255,255,255,0.4);animation:evo-label-in 0.3s ease}
+#evo-overlay{display:none;position:fixed;inset:0;background:#06061a;z-index:999;flex-direction:column;align-items:center;justify-content:center}
+#evo-overlay.active{display:flex}
+#evo-rays{position:absolute;width:160%;height:160%;top:-30%;left:-30%;background:repeating-conic-gradient(rgba(255,255,255,0.055) 0deg 5deg,transparent 5deg 10deg);animation:evo-spin 7s linear infinite;pointer-events:none}
+#evo-bg-white{position:absolute;inset:0;background:white;opacity:0;pointer-events:none}
+#evo-sprite-wrap{position:relative;z-index:2;display:flex;align-items:center;justify-content:center;width:220px;height:220px}
+#evo-sprite-wrap img{display:block;object-fit:contain;width:200px;height:200px}
+#evo-label{position:relative;z-index:2;color:white;font-size:17px;font-weight:700;margin-top:28px;text-align:center;letter-spacing:0.02em;padding:0 24px;text-shadow:0 0 24px rgba(255,255,255,0.6);animation:evo-label-in 0.3s ease}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+@keyframes bounce{0%,100%{transform:scale(1)}30%{transform:scale(1.18) rotate(-3deg)}65%{transform:scale(0.95)}}
+@keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-8px)}50%{transform:translateX(8px)}75%{transform:translateX(-5px)}}
+@keyframes flash{0%,100%{filter:brightness(1)}40%{filter:brightness(5) saturate(0)}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.5}}
+@keyframes pop{0%{opacity:0;transform:scale(0.85) translateY(8px)}100%{opacity:1;transform:scale(1) translateY(0)}}
+@keyframes lvlup{0%{opacity:0;transform:scale(0.7)}60%{transform:scale(1.06)}100%{opacity:1;transform:scale(1)}}
+@keyframes evo-spin{to{transform:rotate(360deg)}}
+@keyframes evo-label-in{0%{opacity:0;transform:translateY(10px)}100%{opacity:1;transform:translateY(0)}}
+@keyframes ball-fly{0%{transform:translateX(-50%) translateY(170px) scale(0.3) rotate(-540deg);opacity:0}65%{opacity:1}100%{transform:translateX(-50%) translateY(0) scale(1) rotate(0deg);opacity:1}}
+@keyframes ball-wobble{0%,100%{transform:translateX(-50%) rotate(0deg)}20%{transform:translateX(-50%) rotate(-22deg)}40%{transform:translateX(-50%) rotate(22deg)}60%{transform:translateX(-50%) rotate(-14deg)}80%{transform:translateX(-50%) rotate(14deg)}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+
+<div id="game"></div>
+<div id="pokedex-page"></div>
+
+<div id="bottom-nav">
+  <button class="nav-tab nav-active" id="nav-game">&#127918; Game</button>
+  <button class="nav-tab" id="nav-pdx">&#128218; Pokédex</button>
+</div>
+
+</div>
+
+<div id="catch-overlay">
+  <div id="catch-pkm"><img id="catch-pkm-img" src="" alt=""></div>
+  <div id="catch-ball"></div>
+  <div id="catch-lbl"></div>
+</div>
+
+<div id="evo-overlay">
+  <div id="evo-rays"></div>
+  <div id="evo-bg-white"></div>
+  <div id="evo-sprite-wrap"><img id="evo-img" src="" alt=""></div>
+  <div id="evo-label"></div>
+</div>
+
+<script>
+const BASE="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/";
+function pkImg(id,s){return`<img src="${BASE}${id}.png" width="${s}" height="${s}" alt="" style="object-fit:contain;display:block">`}
+
+const PKM=[
+// Gen 1 — Kanto
+{n:"Bulbasaur",num:"#001",type:["Grass","Poison"],evoAt:16,svg:s=>pkImg(1,s),fact:"Bulbasaur has a plant bulb on its back that grows bigger as it gets stronger!"},
+{n:"Ivysaur",num:"#002",type:["Grass","Poison"],evoAt:32,svg:s=>pkImg(2,s),fact:"The bulb on Ivysaur's back bloomed into a beautiful sweet-smelling flower!"},
+{n:"Venusaur",num:"#003",type:["Grass","Poison"],evoAt:null,svg:s=>pkImg(3,s),fact:"Venusaur's giant flower soaks up sunlight to power its amazing attacks!"},
+{n:"Charmander",num:"#004",type:"Fire",evoAt:16,svg:s=>pkImg(4,s),fact:"The flame on Charmander's tail shows how healthy and strong it is — it never goes out!"},
+{n:"Charmeleon",num:"#005",type:"Fire",evoAt:36,svg:s=>pkImg(5,s),fact:"When Charmeleon gets excited, its tail flame turns a blazing bright blue!"},
+{n:"Charizard",num:"#006",type:["Fire","Flying"],evoAt:null,svg:s=>pkImg(6,s),fact:"Charizard soars through the sky and breathes scorching hot orange fire!"},
+{n:"Squirtle",num:"#007",type:"Water",evoAt:16,svg:s=>pkImg(7,s),fact:"Squirtle's round shell is super tough and can bounce off attacks like a shield!"},
+{n:"Wartortle",num:"#008",type:"Water",evoAt:36,svg:s=>pkImg(8,s),fact:"Wartortle's fluffy tail helps it balance perfectly while swimming in water!"},
+{n:"Blastoise",num:"#009",type:"Water",evoAt:null,svg:s=>pkImg(9,s),fact:"Blastoise has powerful cannons built into its shell that shoot jet-streams of water!"},
+// Gen 2 — Johto
+{n:"Chikorita",num:"#152",type:"Grass",evoAt:16,svg:s=>pkImg(152,s),fact:"Chikorita uses the sweet-smelling leaf on its head to check the weather!"},
+{n:"Bayleef",num:"#153",type:"Grass",evoAt:32,svg:s=>pkImg(153,s),fact:"The ring of leaves around Bayleef's neck have a spicy, energizing smell!"},
+{n:"Meganium",num:"#154",type:"Grass",evoAt:null,svg:s=>pkImg(154,s),fact:"Meganium's flower breath has a soothing power that calms down angry Pokémon!"},
+{n:"Cyndaquil",num:"#155",type:"Fire",evoAt:14,svg:s=>pkImg(155,s),fact:"Cyndaquil is shy and protects itself with fire that flares up on its back!"},
+{n:"Quilava",num:"#156",type:"Fire",evoAt:36,svg:s=>pkImg(156,s),fact:"Quilava's head and tail flames can reach incredibly hot temperatures!"},
+{n:"Typhlosion",num:"#157",type:"Fire",evoAt:null,svg:s=>pkImg(157,s),fact:"Typhlosion creates heat shimmer waves to hide itself before unleashing fire!"},
+{n:"Totodile",num:"#158",type:"Water",evoAt:18,svg:s=>pkImg(158,s),fact:"Totodile's powerful jaws are so strong they can crush almost anything, even rocks!"},
+{n:"Croconaw",num:"#159",type:"Water",evoAt:30,svg:s=>pkImg(159,s),fact:"When Croconaw loses a tooth in battle, a brand new one grows right back!"},
+{n:"Feraligatr",num:"#160",type:"Water",evoAt:null,svg:s=>pkImg(160,s),fact:"Feraligatr runs incredibly fast on land despite having such a huge, powerful body!"},
+// Gen 3 — Hoenn
+{n:"Treecko",num:"#252",type:"Grass",evoAt:16,svg:s=>pkImg(252,s),fact:"Treecko can walk straight up walls and across ceilings using sticky pads on its feet!"},
+{n:"Grovyle",num:"#253",type:"Grass",evoAt:36,svg:s=>pkImg(253,s),fact:"Grovyle leaps between treetops so fast that it's almost impossible to see!"},
+{n:"Sceptile",num:"#254",type:"Grass",evoAt:null,svg:s=>pkImg(254,s),fact:"The seeds on Sceptile's back are packed with nutrients that help forests grow!"},
+{n:"Torchic",num:"#255",type:"Fire",evoAt:16,svg:s=>pkImg(255,s),fact:"Torchic breathes fire at 1,800 degrees from its tiny little beak!"},
+{n:"Combusken",num:"#256",type:["Fire","Fighting"],evoAt:36,svg:s=>pkImg(256,s),fact:"Combusken can deliver blazing kicks at the incredible rate of ten per second!"},
+{n:"Blaziken",num:"#257",type:["Fire","Fighting"],evoAt:null,svg:s=>pkImg(257,s),fact:"Blaziken can leap over tall skyscrapers with its powerful legs of fire!"},
+{n:"Mudkip",num:"#258",type:"Water",evoAt:16,svg:s=>pkImg(258,s),fact:"Mudkip uses the large fin on its head to sense changes in water currents!"},
+{n:"Marshtomp",num:"#259",type:["Water","Ground"],evoAt:36,svg:s=>pkImg(259,s),fact:"Marshtomp can walk on land and swim through water with equal speed!"},
+{n:"Swampert",num:"#260",type:["Water","Ground"],evoAt:null,svg:s=>pkImg(260,s),fact:"Swampert can drag a giant boulder weighing a ton with just one of its arms!"},
+// Gen 4 — Sinnoh
+{n:"Turtwig",num:"#387",type:"Grass",evoAt:18,svg:s=>pkImg(387,s),fact:"Turtwig's shell is made of hardened soil and grows stronger with each passing day!"},
+{n:"Grotle",num:"#388",type:"Grass",evoAt:32,svg:s=>pkImg(388,s),fact:"Grotle carries small bushes on its back and gives Pokémon a shady rest spot!"},
+{n:"Torterra",num:"#389",type:["Grass","Ground"],evoAt:null,svg:s=>pkImg(389,s),fact:"Small Pokémon make their homes on Torterra's enormous back — like a walking island!"},
+{n:"Chimchar",num:"#390",type:"Fire",evoAt:14,svg:s=>pkImg(390,s),fact:"Chimchar's belly flame never goes out — not even in a heavy rainstorm!"},
+{n:"Monferno",num:"#391",type:["Fire","Fighting"],evoAt:36,svg:s=>pkImg(391,s),fact:"Monferno combines fire and acrobatics to strike opponents from above!"},
+{n:"Infernape",num:"#392",type:["Fire","Fighting"],evoAt:null,svg:s=>pkImg(392,s),fact:"Infernape's crown of fire burns forever and never goes out — not ever!"},
+{n:"Piplup",num:"#393",type:"Water",evoAt:16,svg:s=>pkImg(393,s),fact:"Piplup is very proud of itself and its thick feathers keep it warm in icy water!"},
+{n:"Prinplup",num:"#394",type:"Water",evoAt:36,svg:s=>pkImg(394,s),fact:"Prinplup can shatter an iceberg with just a single flap of its powerful wings!"},
+{n:"Empoleon",num:"#395",type:["Water","Steel"],evoAt:null,svg:s=>pkImg(395,s),fact:"Empoleon glides through frozen oceans, slicing through ice with its sharp fins!"},
+// Gen 5 — Unova
+{n:"Snivy",num:"#495",type:"Grass",evoAt:17,svg:s=>pkImg(495,s),fact:"Snivy uses sunlight through its tail to become faster and stronger in battle!"},
+{n:"Servine",num:"#496",type:"Grass",evoAt:36,svg:s=>pkImg(496,s),fact:"Servine moves too fast for enemies to see — then suddenly strikes with vines!"},
+{n:"Serperior",num:"#497",type:"Grass",evoAt:null,svg:s=>pkImg(497,s),fact:"Serperior amplifies its inner energy to overpower opponents much bigger than itself!"},
+{n:"Tepig",num:"#498",type:"Fire",evoAt:17,svg:s=>pkImg(498,s),fact:"Tepig blows fire rings from its nose and can roast the berries it finds to eat!"},
+{n:"Pignite",num:"#499",type:["Fire","Fighting"],evoAt:36,svg:s=>pkImg(499,s),fact:"When Pignite eats more food, the fire inside its belly burns even hotter!"},
+{n:"Emboar",num:"#500",type:["Fire","Fighting"],evoAt:null,svg:s=>pkImg(500,s),fact:"Emboar throws powerful punches while its fists are completely engulfed in flames!"},
+{n:"Oshawott",num:"#501",type:"Water",evoAt:17,svg:s=>pkImg(501,s),fact:"Oshawott uses the shell on its belly like a blade to slice incoming attacks!"},
+{n:"Dewott",num:"#502",type:"Water",evoAt:36,svg:s=>pkImg(502,s),fact:"Dewott trains hard every single day to master its impressive double-shell technique!"},
+{n:"Samurott",num:"#503",type:"Water",evoAt:null,svg:s=>pkImg(503,s),fact:"Samurott can defeat an opponent with one mighty swing of its enormous sword!"},
+// Gen 6 — Kalos
+{n:"Chespin",num:"#650",type:"Grass",evoAt:16,svg:s=>pkImg(650,s),fact:"Chespin's spiky head is so hard that it can pierce right through solid steel!"},
+{n:"Quilladin",num:"#651",type:"Grass",evoAt:36,svg:s=>pkImg(651,s),fact:"Quilladin trains by charging headfirst into hard trees every single day!"},
+{n:"Chesnaught",num:"#652",type:["Grass","Fighting"],evoAt:null,svg:s=>pkImg(652,s),fact:"Chesnaught's thorny shell armor is so tough it can withstand a direct explosion!"},
+{n:"Fennekin",num:"#653",type:"Fire",evoAt:16,svg:s=>pkImg(653,s),fact:"Fennekin snacks on twigs and the heat that comes from its big ears is scorching!"},
+{n:"Braixen",num:"#654",type:"Fire",evoAt:36,svg:s=>pkImg(654,s),fact:"Braixen keeps a burning twig tucked in its tail and uses it like a magic wand!"},
+{n:"Delphox",num:"#655",type:["Fire","Psychic"],evoAt:null,svg:s=>pkImg(655,s),fact:"Delphox peers into its mystical flame to see magical visions of the future!"},
+{n:"Froakie",num:"#656",type:"Water",evoAt:16,svg:s=>pkImg(656,s),fact:"The frubble foam bubbles on Froakie's back are super sticky and incredibly tough!"},
+{n:"Frogadier",num:"#657",type:"Water",evoAt:36,svg:s=>pkImg(657,s),fact:"Frogadier can climb a very tall tower in under just one minute!"},
+{n:"Greninja",num:"#658",type:["Water","Dark"],evoAt:null,svg:s=>pkImg(658,s),fact:"Greninja compresses water into razor-sharp throwing stars at lightning speed!"},
+// Gen 7 — Alola
+{n:"Rowlet",num:"#722",type:["Grass","Flying"],evoAt:17,svg:s=>pkImg(722,s),fact:"Rowlet can spin its head all the way around and flies through the night in total silence!"},
+{n:"Dartrix",num:"#723",type:["Grass","Flying"],evoAt:34,svg:s=>pkImg(723,s),fact:"Dartrix is a total perfectionist — it gets very upset when its feathers get messy!"},
+{n:"Decidueye",num:"#724",type:["Grass","Ghost"],evoAt:null,svg:s=>pkImg(724,s),fact:"Decidueye can draw and fire an arrow-quill in just one-tenth of one second!"},
+{n:"Litten",num:"#725",type:"Fire",evoAt:17,svg:s=>pkImg(725,s),fact:"Litten looks cold and aloof on the outside but is deeply loyal to those it trusts!"},
+{n:"Torracat",num:"#726",type:"Fire",evoAt:34,svg:s=>pkImg(726,s),fact:"Torracat has a bell made of fire near its throat that rings whenever it attacks!"},
+{n:"Incineroar",num:"#727",type:["Fire","Dark"],evoAt:null,svg:s=>pkImg(727,s),fact:"Incineroar is a total showoff who loves performing for its crowd of adoring fans!"},
+{n:"Popplio",num:"#728",type:"Water",evoAt:17,svg:s=>pkImg(728,s),fact:"Popplio blows bouncy water balloons from its nose and leaps around on top of them!"},
+{n:"Brionne",num:"#729",type:"Water",evoAt:34,svg:s=>pkImg(729,s),fact:"Brionne never lets anyone see it cry — it always keeps dancing and smiling!"},
+{n:"Primarina",num:"#730",type:["Water","Fairy"],evoAt:null,svg:s=>pkImg(730,s),fact:"Primarina sings enchanting songs to control beautiful giant shimmering water balloons!"},
+// Gen 8 — Galar
+{n:"Grookey",num:"#810",type:"Grass",evoAt:16,svg:s=>pkImg(810,s),fact:"Grookey can make plants and flowers grow just by tapping them with its magic stick!"},
+{n:"Thwackey",num:"#811",type:"Grass",evoAt:35,svg:s=>pkImg(811,s),fact:"Thwackey beats two sticks in a fast rhythm to show off its incredible fighting spirit!"},
+{n:"Rillaboom",num:"#812",type:"Grass",evoAt:null,svg:s=>pkImg(812,s),fact:"Rillaboom's powerful drumming is so strong it can change the terrain around it!"},
+{n:"Scorbunny",num:"#813",type:"Fire",evoAt:16,svg:s=>pkImg(813,s),fact:"Scorbunny's body is always warm — it leaves tiny scorched footprints wherever it runs!"},
+{n:"Raboot",num:"#814",type:"Fire",evoAt:35,svg:s=>pkImg(814,s),fact:"Raboot stays cool and calm but burns with fire inside — its kicks are blazing fast!"},
+{n:"Cinderace",num:"#815",type:"Fire",evoAt:null,svg:s=>pkImg(815,s),fact:"Cinderace juggles a Pyro Ball and blasts it at lightning speed — the ultimate champion!"},
+{n:"Sobble",num:"#816",type:"Water",evoAt:16,svg:s=>pkImg(816,s),fact:"Sobble's tears are so powerful that one single drop could make an entire crowd cry!"},
+{n:"Drizzile",num:"#817",type:"Water",evoAt:35,svg:s=>pkImg(817,s),fact:"Drizzile shoots sticky water blobs with pinpoint accuracy using its incredibly long tongue!"},
+{n:"Inteleon",num:"#818",type:"Water",evoAt:null,svg:s=>pkImg(818,s),fact:"Inteleon is a master spy who fires water from its fingertips at nearly 100 miles per hour!"},
+// Gen 9 — Paldea
+{n:"Sprigatito",num:"#906",type:"Grass",evoAt:16,svg:s=>pkImg(906,s),fact:"Sprigatito's paws release a sweet floral aroma that makes opponents feel drowsy!"},
+{n:"Floragato",num:"#907",type:"Grass",evoAt:36,svg:s=>pkImg(907,s),fact:"Floragato moves with an unpredictable dancing rhythm that throws opponents off balance!"},
+{n:"Meowscarada",num:"#908",type:["Grass","Dark"],evoAt:null,svg:s=>pkImg(908,s),fact:"Meowscarada moves so fast that its hands become completely invisible during a performance!"},
+{n:"Fuecoco",num:"#909",type:"Fire",evoAt:16,svg:s=>pkImg(909,s),fact:"Fuecoco absorbs heat energy through the little squares on its back to power its fire!"},
+{n:"Crocalor",num:"#910",type:"Fire",evoAt:36,svg:s=>pkImg(910,s),fact:"A blazing flaming crown magically appears on Crocalor's head whenever it attacks!"},
+{n:"Skeledirge",num:"#911",type:["Fire","Ghost"],evoAt:null,svg:s=>pkImg(911,s),fact:"Skeledirge has a tiny fiery singing bird that lives inside its mouth to help it sing!"},
+{n:"Quaxly",num:"#912",type:"Water",evoAt:16,svg:s=>pkImg(912,s),fact:"Quaxly's perfectly styled hair stays completely clean even in the muddiest water!"},
+{n:"Quaxwell",num:"#913",type:"Water",evoAt:36,svg:s=>pkImg(913,s),fact:"Quaxwell trains so incredibly hard that it can kick opponents up into the air repeatedly!"},
+{n:"Quaquaval",num:"#914",type:["Water","Fighting"],evoAt:null,svg:s=>pkImg(914,s),fact:"Quaquaval's spectacular dance moves can create powerful spinning whirlwinds of water!"},
+];
+const STARTER_COUNT=PKM.length;
+// Wild (non-starter) Pokémon — 4 per region for random encounters
+const WILD_PKM=[
+// Gen 1 — Kanto
+{n:"Pikachu",num:"#025",type:"Electric",evoAt:16,svg:s=>pkImg(25,s),fact:"Pikachu zaps electricity from the red circles on its cute round cheeks!",gen:0},
+{n:"Raichu",num:"#026",type:"Electric",evoAt:null,isEvo:true,svg:s=>pkImg(26,s),fact:"Raichu's big tail works like a lightning rod to store up electric power!",gen:0},
+{n:"Eevee",num:"#133",type:"Normal",evoAt:16,svg:s=>pkImg(133,s),fact:"Eevee is full of magic and can evolve into many different cool types!",gen:0},
+{n:"Sylveon",num:"#700",type:"Fairy",evoAt:null,isEvo:true,svg:s=>pkImg(700,s),fact:"Sylveon wraps its feeler ribbons around friends to fill them with calm happy feelings!",gen:0},
+{n:"Pidgey",num:"#016",type:["Normal","Flying"],evoAt:18,svg:s=>pkImg(16,s),fact:"Pidgey is a tiny brown bird that flaps its wings to make whirlwinds!",gen:0},
+{n:"Pidgeotto",num:"#017",type:["Normal","Flying"],evoAt:36,isEvo:true,svg:s=>pkImg(17,s),fact:"Pidgeotto patrols its huge territory and swoops down on any intruder!",gen:0},
+{n:"Pidgeot",num:"#018",type:["Normal","Flying"],evoAt:null,isEvo:true,svg:s=>pkImg(18,s),fact:"Pidgeot can whip up a storm just by flapping its beautiful rainbow wings!",gen:0},
+{n:"Caterpie",num:"#010",type:"Bug",evoAt:7,svg:s=>pkImg(10,s),fact:"Caterpie loves munching on leaves and grows up into a butterfly Pokémon!",gen:0},
+{n:"Metapod",num:"#011",type:"Bug",evoAt:10,isEvo:true,svg:s=>pkImg(11,s),fact:"Metapod hides inside its hard shell and waits to emerge as a beautiful butterfly!",gen:0},
+{n:"Butterfree",num:"#012",type:["Bug","Flying"],evoAt:null,isEvo:true,svg:s=>pkImg(12,s),fact:"Butterfree sprinkles sparkling powder from its wings that can make you sleepy!",gen:0},
+// Gen 2 — Johto
+{n:"Pichu",num:"#172",type:"Electric",evoAt:null,svg:s=>pkImg(172,s),fact:"Pichu is the baby form of Pikachu and zaps itself when it laughs!",gen:1},
+{n:"Hoothoot",num:"#163",type:["Normal","Flying"],evoAt:20,svg:s=>pkImg(163,s),fact:"Hoothoot stands on one leg and hoots at the very same time every day!",gen:1},
+{n:"Noctowl",num:"#164",type:["Normal","Flying"],evoAt:null,isEvo:true,svg:s=>pkImg(164,s),fact:"Noctowl can turn its head almost all the way around to spot things in the dark!",gen:1},
+{n:"Marill",num:"#183",type:["Water","Fairy"],evoAt:18,svg:s=>pkImg(183,s),fact:"Marill's bouncy tail floats like a ball — it never sinks underwater!",gen:1},
+{n:"Azumarill",num:"#184",type:["Water","Fairy"],evoAt:null,isEvo:true,svg:s=>pkImg(184,s),fact:"Azumarill's big round ears can hear sounds coming from really far away underwater!",gen:1},
+{n:"Sentret",num:"#161",type:"Normal",evoAt:15,svg:s=>pkImg(161,s),fact:"Sentret stands on its tail to look out for danger from far away!",gen:1},
+{n:"Furret",num:"#162",type:"Normal",evoAt:null,isEvo:true,svg:s=>pkImg(162,s),fact:"Furret is so long and slippery it can squeeze through even the tiniest holes!",gen:1},
+// Gen 3 — Hoenn
+{n:"Zigzagoon",num:"#263",type:"Normal",evoAt:20,svg:s=>pkImg(263,s),fact:"Zigzagoon zigzags everywhere and is super curious about new things!",gen:2},
+{n:"Linoone",num:"#264",type:"Normal",evoAt:null,isEvo:true,svg:s=>pkImg(264,s),fact:"Linoone always dashes in straight lines and can reach speeds up to 60 miles per hour!",gen:2},
+{n:"Skitty",num:"#300",type:"Normal",evoAt:20,svg:s=>pkImg(300,s),fact:"Skitty loves to chase its own tail in cute little dizzy circles!",gen:2},
+{n:"Delcatty",num:"#301",type:"Normal",evoAt:null,isEvo:true,svg:s=>pkImg(301,s),fact:"Delcatty is graceful and stylish and only curls up to sleep in the comfiest spots!",gen:2},
+{n:"Whismur",num:"#293",type:"Normal",evoAt:20,svg:s=>pkImg(293,s),fact:"Whismur is shy but cries SUPER loudly when it gets scared!",gen:2},
+{n:"Loudred",num:"#294",type:"Normal",evoAt:40,isEvo:true,svg:s=>pkImg(294,s),fact:"Loudred stomps its big feet and roars so loud it knocks nearby things flying!",gen:2},
+{n:"Exploud",num:"#295",type:"Normal",evoAt:null,isEvo:true,svg:s=>pkImg(295,s),fact:"Exploud makes so much noise when it cries that it can be heard from miles away!",gen:2},
+{n:"Wurmple",num:"#265",type:"Bug",evoAt:7,svg:s=>pkImg(265,s),fact:"Wurmple's spikes shoot a sticky thread that can trip up bigger Pokémon!",gen:2},
+{n:"Silcoon",num:"#266",type:"Bug",evoAt:10,isEvo:true,svg:s=>pkImg(266,s),fact:"Silcoon wraps itself tightly in silk thread while it waits to transform!",gen:2},
+{n:"Beautifly",num:"#267",type:["Bug","Flying"],evoAt:null,isEvo:true,svg:s=>pkImg(267,s),fact:"Beautifly flutters through flower gardens collecting sweet pollen with its sharp mouth!",gen:2},
+// Gen 4 — Sinnoh
+{n:"Bidoof",num:"#399",type:"Normal",evoAt:15,svg:s=>pkImg(399,s),fact:"Bidoof has a chubby tummy and gnaws happily on logs all day!",gen:3},
+{n:"Bibarel",num:"#400",type:["Normal","Water"],evoAt:null,isEvo:true,svg:s=>pkImg(400,s),fact:"Bibarel is a great swimmer and builds cozy dams from sticks and logs in rivers!",gen:3},
+{n:"Starly",num:"#396",type:["Normal","Flying"],evoAt:14,svg:s=>pkImg(396,s),fact:"Starly travels in big flocks and sings cheerful songs together!",gen:3},
+{n:"Staravia",num:"#397",type:["Normal","Flying"],evoAt:34,isEvo:true,svg:s=>pkImg(397,s),fact:"Staravia is brave and territorial and calls out loudly to protect its space!",gen:3},
+{n:"Staraptor",num:"#398",type:["Normal","Flying"],evoAt:null,isEvo:true,svg:s=>pkImg(398,s),fact:"Staraptor swoops down at incredible speed and defeats opponents much bigger!",gen:3},
+{n:"Shinx",num:"#403",type:"Electric",evoAt:15,svg:s=>pkImg(403,s),fact:"Shinx's fur sparks with electricity when it gets really excited!",gen:3},
+{n:"Luxio",num:"#404",type:"Electric",evoAt:30,isEvo:true,svg:s=>pkImg(404,s),fact:"Luxio's claws glow with electricity powerful enough to stun a large opponent!",gen:3},
+{n:"Luxray",num:"#405",type:"Electric",evoAt:null,isEvo:true,svg:s=>pkImg(405,s),fact:"Luxray can see straight through walls and doors with its amazing X-ray vision!",gen:3},
+{n:"Buneary",num:"#427",type:"Normal",evoAt:20,svg:s=>pkImg(427,s),fact:"Buneary keeps its ears curled up and uncurls them when it jumps!",gen:3},
+{n:"Lopunny",num:"#428",type:"Normal",evoAt:null,isEvo:true,svg:s=>pkImg(428,s),fact:"Lopunny is very proud of its fluffy ears and always keeps them perfectly groomed!",gen:3},
+// Gen 5 — Unova
+{n:"Lillipup",num:"#506",type:"Normal",evoAt:16,svg:s=>pkImg(506,s),fact:"Lillipup's long furry face is super silky and makes a wonderful pet!",gen:4},
+{n:"Herdier",num:"#507",type:"Normal",evoAt:32,isEvo:true,svg:s=>pkImg(507,s),fact:"Herdier is a loyal helper that has been humans' best friend for a very long time!",gen:4},
+{n:"Stoutland",num:"#508",type:"Normal",evoAt:null,isEvo:true,svg:s=>pkImg(508,s),fact:"Stoutland is incredibly smart and can rescue people lost in deep snowstorms!",gen:4},
+{n:"Patrat",num:"#504",type:"Normal",evoAt:20,svg:s=>pkImg(504,s),fact:"Patrat has chubby cheeks full of food and never falls asleep on guard duty!",gen:4},
+{n:"Watchog",num:"#505",type:"Normal",evoAt:null,isEvo:true,svg:s=>pkImg(505,s),fact:"Watchog makes its stripes glow brightly when it spots danger to warn its friends!",gen:4},
+{n:"Pidove",num:"#519",type:["Normal","Flying"],evoAt:21,svg:s=>pkImg(519,s),fact:"Pidove is a friendly little dove that lives in busy parks and city squares!",gen:4},
+{n:"Tranquill",num:"#520",type:["Normal","Flying"],evoAt:32,isEvo:true,svg:s=>pkImg(520,s),fact:"Tranquill always finds its way back home no matter how far away it travels!",gen:4},
+{n:"Unfezant",num:"#521",type:["Normal","Flying"],evoAt:null,isEvo:true,svg:s=>pkImg(521,s),fact:"Unfezant is proud of its beautiful feathers and refuses to lose any battle!",gen:4},
+{n:"Audino",num:"#531",type:"Normal",evoAt:null,svg:s=>pkImg(531,s),fact:"Audino uses its big floppy ears to listen to other Pokémon's heartbeats!",gen:4},
+// Gen 6 — Kalos
+{n:"Bunnelby",num:"#659",type:"Normal",evoAt:20,svg:s=>pkImg(659,s),fact:"Bunnelby digs amazing tunnels using its huge floppy ears like shovels!",gen:5},
+{n:"Diggersby",num:"#660",type:"Normal",evoAt:null,isEvo:true,svg:s=>pkImg(660,s),fact:"Diggersby can carry boulders heavier than a car using its powerful ear-arms!",gen:5},
+{n:"Fletchling",num:"#661",type:["Normal","Flying"],evoAt:17,svg:s=>pkImg(661,s),fact:"Fletchling sings pretty little songs and is very friendly to people!",gen:5},
+{n:"Fletchinder",num:"#662",type:["Fire","Flying"],evoAt:35,isEvo:true,svg:s=>pkImg(662,s),fact:"Fletchinder flies so fast it creates sparks from the heat glowing on its belly!",gen:5},
+{n:"Talonflame",num:"#663",type:["Fire","Flying"],evoAt:null,isEvo:true,svg:s=>pkImg(663,s),fact:"Talonflame dives at 300 miles per hour shooting cinders from its wings!",gen:5},
+{n:"Litleo",num:"#667",type:["Fire","Normal"],evoAt:35,svg:s=>pkImg(667,s),fact:"Litleo's fluffy mane gets warmer and brighter when it's full of energy!",gen:5},
+{n:"Pyroar",num:"#668",type:["Fire","Normal"],evoAt:null,isEvo:true,svg:s=>pkImg(668,s),fact:"Pyroar leads its pride with a huge flame mane that burns bright orange!",gen:5},
+{n:"Skiddo",num:"#672",type:"Grass",evoAt:32,svg:s=>pkImg(672,s),fact:"Skiddo is so gentle that you can ride on its back through grassy fields!",gen:5},
+{n:"Gogoat",num:"#673",type:"Grass",evoAt:null,isEvo:true,svg:s=>pkImg(673,s),fact:"Gogoat is so large and gentle that people actually ride on its back through the city!",gen:5},
+// Gen 7 — Alola
+{n:"Yungoos",num:"#734",type:"Normal",evoAt:20,svg:s=>pkImg(734,s),fact:"Yungoos is always hungry and patrols the streets looking for tasty snacks!",gen:6},
+{n:"Gumshoos",num:"#735",type:"Normal",evoAt:null,isEvo:true,svg:s=>pkImg(735,s),fact:"Gumshoos waits patiently for hours in one spot to ambush its favorite prey!",gen:6},
+{n:"Pikipek",num:"#731",type:["Normal","Flying"],evoAt:14,svg:s=>pkImg(731,s),fact:"Pikipek pecks on tree trunks SIXTEEN times every single second!",gen:6},
+{n:"Trumbeak",num:"#732",type:["Normal","Flying"],evoAt:28,isEvo:true,svg:s=>pkImg(732,s),fact:"Trumbeak fires hardened seeds like little bullets from its tough beak!",gen:6},
+{n:"Toucannon",num:"#733",type:["Normal","Flying"],evoAt:null,isEvo:true,svg:s=>pkImg(733,s),fact:"Toucannon's beak gets so hot in battle that it can pop seeds just like popcorn!",gen:6},
+{n:"Rockruff",num:"#744",type:"Normal",evoAt:25,svg:s=>pkImg(744,s),fact:"Rockruff is a friendly puppy with a rocky collar that grows around its neck!",gen:6},
+{n:"Lycanroc",num:"#745",type:"Normal",evoAt:null,isEvo:true,svg:s=>pkImg(745,s),fact:"Lycanroc is fierce in battle but gentle and deeply loyal to the trainers it trusts!",gen:6},
+{n:"Stufful",num:"#759",type:"Normal",evoAt:27,svg:s=>pkImg(759,s),fact:"Stufful looks cute and cuddly but has powerful arms that can even snap a tree!",gen:6},
+{n:"Bewear",num:"#760",type:"Normal",evoAt:null,isEvo:true,svg:s=>pkImg(760,s),fact:"Bewear loves giving hugs but is SO strong its hugs can be really dangerous — watch out!",gen:6},
+// Gen 8 — Galar
+{n:"Wooloo",num:"#831",type:"Normal",evoAt:24,svg:s=>pkImg(831,s),fact:"Wooloo's fluffy wool is so thick and soft that it bounces back from anything!",gen:7},
+{n:"Dubwool",num:"#832",type:"Normal",evoAt:null,isEvo:true,svg:s=>pkImg(832,s),fact:"Dubwool's thick woolly coat is as tough as armor and repels most attacks!",gen:7},
+{n:"Yamper",num:"#835",type:"Electric",evoAt:25,svg:s=>pkImg(835,s),fact:"Yamper makes electricity by running around and wagging its happy little tail!",gen:7},
+{n:"Boltund",num:"#836",type:"Electric",evoAt:null,isEvo:true,svg:s=>pkImg(836,s),fact:"Boltund runs so fast on electric energy it can outrun even speeding cars!",gen:7},
+{n:"Skwovet",num:"#819",type:"Normal",evoAt:24,svg:s=>pkImg(819,s),fact:"Skwovet stuffs its cheeks with berries and panics when its cheeks are empty!",gen:7},
+{n:"Greedent",num:"#820",type:"Normal",evoAt:null,isEvo:true,svg:s=>pkImg(820,s),fact:"Greedent hoards so many berries in its tail that they trail behind it everywhere!",gen:7},
+{n:"Rookidee",num:"#821",type:"Flying",evoAt:18,svg:s=>pkImg(821,s),fact:"Rookidee is a brave little bird that bravely faces opponents much bigger!",gen:7},
+{n:"Corvisquire",num:"#822",type:"Flying",evoAt:38,isEvo:true,svg:s=>pkImg(822,s),fact:"Corvisquire is crafty and clever and has learned to use tools in battle!",gen:7},
+{n:"Corviknight",num:"#823",type:"Flying",evoAt:null,isEvo:true,svg:s=>pkImg(823,s),fact:"Corviknight is clad in gleaming black iron armor and soars to guard Galar's skies!",gen:7},
+// Gen 9 — Paldea
+{n:"Lechonk",num:"#915",type:"Normal",evoAt:18,svg:s=>pkImg(915,s),fact:"Lechonk smells like fresh herbs and snuffles around looking for tasty berries!",gen:8},
+{n:"Oinkologne",num:"#916",type:"Normal",evoAt:null,isEvo:true,svg:s=>pkImg(916,s),fact:"Oinkologne has a lovely herby scent and can smell where the best food is from miles away!",gen:8},
+{n:"Pawmi",num:"#921",type:"Electric",evoAt:18,svg:s=>pkImg(921,s),fact:"Pawmi rubs its cheek pads together to spark up little zaps of electricity!",gen:8},
+{n:"Pawmo",num:"#922",type:"Electric",evoAt:32,isEvo:true,svg:s=>pkImg(922,s),fact:"Pawmo walks on all fours and uses both its cheeks and paws to make electricity!",gen:8},
+{n:"Pawmot",num:"#923",type:"Electric",evoAt:null,isEvo:true,svg:s=>pkImg(923,s),fact:"Pawmot can bring tired Pokémon back to full energy with a special electric charge!",gen:8},
+{n:"Smoliv",num:"#928",type:["Grass","Normal"],evoAt:25,svg:s=>pkImg(928,s),fact:"Smoliv has a tiny olive on its head that's full of bright sunny oil!",gen:8},
+{n:"Dolliv",num:"#929",type:["Grass","Normal"],evoAt:35,isEvo:true,svg:s=>pkImg(929,s),fact:"Dolliv's branch grows bigger and bigger as it soaks up sunlight every single day!",gen:8},
+{n:"Arboliva",num:"#930",type:["Grass","Normal"],evoAt:null,isEvo:true,svg:s=>pkImg(930,s),fact:"Arboliva spreads rich olive oil everywhere it walks to help plants around it grow!",gen:8},
+{n:"Fidough",num:"#926",type:"Fairy",evoAt:26,svg:s=>pkImg(926,s),fact:"Fidough's puffy body is squishy and stretchy — just like a ball of bread dough!",gen:8},
+{n:"Dachsbun",num:"#927",type:"Fairy",evoAt:null,isEvo:true,svg:s=>pkImg(927,s),fact:"Dachsbun's warm bread-like body smells amazing and helps dry out everything around it!",gen:8},
+];
+PKM.push(...WILD_PKM);
+const WILD_BY_GEN=[[],[],[],[],[],[],[],[],[]];
+const WILD_PDX_BY_GEN=[[],[],[],[],[],[],[],[],[]];
+WILD_PKM.forEach((w,i)=>{const pi=STARTER_COUNT+i;WILD_PDX_BY_GEN[w.gen].push(pi);if(!w.isEvo)WILD_BY_GEN[w.gen].push(pi);});
+
+const LINES=[
+  [0,1,2],[3,4,5],[6,7,8],
+  [9,10,11],[12,13,14],[15,16,17],
+  [18,19,20],[21,22,23],[24,25,26],
+  [27,28,29],[30,31,32],[33,34,35],
+  [36,37,38],[39,40,41],[42,43,44],
+  [45,46,47],[48,49,50],[51,52,53],
+  [54,55,56],[57,58,59],[60,61,62],
+  [63,64,65],[66,67,68],[69,70,71],
+  [72,73,74],[75,76,77],[78,79,80],
+];
+const GENS=[
+  [0,1,2],[3,4,5],[6,7,8],[9,10,11],[12,13,14],
+  [15,16,17],[18,19,20],[21,22,23],[24,25,26],
+];
+const GEN_NAMES=["Kanto","Johto","Hoenn","Sinnoh","Unova","Kalos","Alola","Galar","Paldea"];
+const GEN_ROMAN=["I","II","III","IV","V","VI","VII","VIII","IX"];
+
+PKM.forEach(p=>{const i=new Image();i.src=`${BASE}${parseInt(p.num.slice(1))}.png`;});
+
+const SUBS=["math","reading","science"];
+const SNAME={math:"Math",reading:"Reading",science:"Science"};
+const SCLS={math:"tagm",reading:"tagr",science:"tags"};
+
+const QB={
+math:{
+1:[
+  ["What is 1 + 2?",["1","2","3","4"],2,"Adding star!","Start at 1, count up 2!"],
+  ["{P} has 2 berries. Gets 3 more. How many total?",["3","4","5","6"],2,"Math champion!","2 plus 3 equals...?"],
+  ["What is 4 + 1?",["3","4","5","6"],2,"Number genius!","Count up 1 from 4!"],
+  ["Which 3D shape looks like a globe?",["Cube","Sphere","Cylinder","Cone"],1,"3D shape star!","A sphere is perfectly round — like a globe!"],
+  ["What is 5 - 1?",["2","3","4","5"],2,"Subtraction star!","Take away 1 from 5!"],
+  ["{P} has 3 Poke Balls. Catches 2 more. How many now?",["3","4","5","6"],2,"Pokemon counter!","3 plus 2 equals...?"],
+  ["What is 2 + 2?",["2","3","4","5"],2,"Doubles expert!","2 and 2 together makes...?"],
+  ["What number comes after 3?",["2","3","4","5"],2,"Number order ace!","Count: 1, 2, 3, ...?"],
+  ["What is 3 + 3?",["4","5","6","7"],2,"Adding genius!","Count up 3 more from 3!"],
+  ["Which is LESS — 8 or 1?",["8","1","Same","Both"],1,"Smart comparing!","Which number is smaller?"],
+  ["What is 1 + 1?",["1","2","3","4"],1,"Doubles champ!","1 and 1 together makes...?"],
+  ["Which 3D shape looks like a soup can?",["Cube","Sphere","Cylinder","Cone"],2,"Shape detective!","A cylinder has two flat circles — like a can!"],
+  ["Which is MORE — 5 or 3?",["3","5","Same","Both"],1,"Great comparing!","Which pile would be bigger?"],
+  ["What is 4 - 2?",["0","1","2","3"],2,"Subtraction champ!","Count back 2 from 4!"],
+  ["What number comes after 5?",["4","5","6","7"],2,"Counting star!","Count: 3, 4, 5, ...?"],
+  ["{P} had 4 apples. Eats 1. How many left?",["2","3","4","5"],1,"Smart subtract!","4 take away 1 is...?"],
+  ["What shape has 3 sides?",["Circle","Square","Triangle","Rectangle"],2,"Shape detective!","Think of a pointy shape!"],
+  ["What shape is a pizza?",["Triangle","Circle","Square","Rectangle"],1,"Shape genius!","A pizza is round with no corners!"],
+  ["Which 3D shape has a pointy top and a round bottom?",["Cube","Sphere","Cylinder","Cone"],3,"3D genius!","Think of an ice cream cone!"],
+  ["What is 5 - 2?",["1","2","3","4"],2,"Subtraction star!","Count back 2 from 5!"],
+  ["What number comes before 4?",["2","3","4","5"],1,"Number order!","Count: 2, 3, ___?"],
+  ["Which 3D shape looks like a gift box?",["Cube","Sphere","Cylinder","Cone"],0,"Shape explorer!","A cube has 6 square faces!"],
+  ["A square has how many sides?",["2","3","4","5"],2,"Shape explorer!","Count the sides of a square!"],
+  ["Which is LONGER — a school bus or a pencil?",["A pencil","A school bus","They are the same","Can't tell"],1,"Measurement star!","Which one would stretch further?"],
+  ["What number comes after 7?",["6","7","8","9"],2,"Counting ace!","Count: 5, 6, 7, ...?"],
+  ["What is 3 - 1?",["1","2","3","4"],1,"Subtraction ace!","Take away 1 from 3!"],
+  ["Which is HEAVIER — a rock or a feather?",["A feather","A rock","They weigh the same","Can't tell"],1,"Weight detective!","Which one would push your hand down more?"],
+  ["What is 5 + 0?",["3","4","5","6"],2,"Zero hero!","Adding zero doesn't change the number!"],
+  ["How many fingers on one hand?",["3","4","5","6"],2,"Body counter!","Hold up one hand and count!"],
+  ["What is 4 - 4?",["0","1","2","3"],0,"Zero genius!","When you take all away, you get...?"],
+  ["{P} had 5 berries and ate 3. How many left?",["1","2","3","4"],1,"Berry counter!","5 take away 3 is...?"],
+  ["Which is MORE — 1 or 6?",["1","6","Same","Both"],1,"Comparing champ!","Which pile would be bigger?"],
+  ["What number comes after 9?",["8","9","10","11"],2,"Big counter!","Count: 7, 8, 9, ...?"],
+  ["Which holds MORE water — a bathtub or a cup?",["A cup","A bathtub","Same amount","Can't tell"],1,"Capacity star!","Which container is bigger?"],
+  ["What is 5 - 3?",["1","2","3","4"],1,"Subtraction genius!","Count back 3 from 5!"],
+  ["{P} needs 10 berries but only has 6. How many more does it need?",["2","3","4","5"],2,"Make 10!","6 + ___ = 10?"],
+  ["A circle has how many corners?",["0","1","2","4"],0,"Shape detective!","Does a circle have any pointy corners?"],
+  ["Which is LESS — 7 or 3?",["7","3","Same","Both"],1,"Comparing star!","Which number is smaller?"],
+  ["What number comes before 8?",["6","7","8","9"],1,"Counting back!","Count: 6, ___, 8!"],
+  ["{P} had 4 cookies and got 1 more. How many total?",["3","4","5","6"],2,"Cookie counter!","4 plus 1 equals...?"],
+  ["What is 2 - 1?",["0","1","2","3"],1,"Tiny subtract!","Take 1 away from 2!"],
+  ["How many wheels does a tricycle have?",["2","3","4","5"],1,"Wheel counter!","Tri means 3!"],
+  ["What number goes with 4 to make 10?",["4","5","6","7"],2,"Number bonds!","4 + ___ = 10?"],
+  ["What number is between 2 and 4?",["1","2","3","5"],2,"Number detective!","What comes after 2 but before 4?"],
+  ["What is 1 + 3?",["2","3","4","5"],2,"Adding ace!","Count up 3 from 1!"],
+  ["Count by 10s: 10, ___",["15","18","20","25"],2,"Tens counter!","What comes after 10 when counting by 10s?"],
+  ["What is 3 - 2?",["0","1","2","3"],1,"Careful subtract!","Count back 2 from 3!"],
+  ["{P} picked 2 flowers, then 2 more. How many flowers?",["2","3","4","5"],2,"Flower counter!","2 plus 2 equals...?"],
+  ["What number comes before 6?",["4","5","6","7"],1,"Order expert!","Count: 4, ___, 6!"],
+  ["What is 5 - 0?",["3","4","5","6"],2,"Zero subtract!","Taking away 0 keeps the number!"],
+  ["Which of these does NOT belong — cat, dog, bird, or rock?",["Cat","Dog","Bird","Rock"],3,"Sorting star!","Three of these are animals — which one is NOT an animal?"],
+  ["Start at 16 and count up 2. What number do you reach?",["16","17","18","19"],2,"Count on!","16... 17... 18 — count up 2 steps!"],
+],
+2:[
+  ["{P} has 4 berries. It finds 3 more. How many total?",["5","6","7","8"],2,"Math wizard!","Count on from 4!"],
+  ["There are 8 Poke Balls. {P} uses 3. How many left?",["4","5","6","7"],1,"Awesome subtraction!","Count back from 8!"],
+  ["{P} took 5 steps forward, then 5 more steps. How many steps total?",["8","9","10","11"],2,"Perfect adding!","5 plus 5 equals..."],
+  ["Which is MORE — 7 or 4?",["4","7","Same","Both"],1,"Great comparing!","Which number is bigger?"],
+  ["{P} scored 6 goals, then 4 more. How many goals total?",["8","9","10","11"],2,"Goal scorer!","6 plus 4 equals..."],
+  ["10 Pokemon are playing. 3 go home. How many stay?",["5","6","7","8"],2,"Brilliant!","Count back from 10!"],
+  ["{P} has 9 stickers. Gives away 4. How many left?",["4","5","6","7"],1,"Sharing superstar!","9 take away 4..."],
+  ["What is 3 + 6?",["7","8","9","10"],2,"Number genius!","Count up 6 from 3!"],
+  ["{P} found coins: 2 + 2 + 2. How many coins?",["4","5","6","7"],2,"Great adding!","Three groups of 2!"],
+  ["Which is LESS — 8 or 5?",["8","5","Same","Both"],1,"Smart comparing!","Which is the smaller number?"],
+  ["{P} has 7 berries and finds 5 more. How many total?",["10","11","12","13"],2,"Adding star!","Count up 5 from 7!"],
+  ["What is 6 + 7?",["11","12","13","14"],2,"Adding champ!","Count up 7 from 6!"],
+  ["What is 14 - 6?",["6","7","8","9"],2,"Subtraction wizard!","Count back 6 from 14!"],
+  ["Count by 2s: 2, 4, 6, 8, ___",["9","10","11","12"],1,"Skip counting star!","Keep adding 2!"],
+  ["Which is MORE — 15 or 9?",["9","15","Same","Both"],1,"Comparing ace!","Which number is bigger?"],
+  ["{P} had 11 berries and ate 3. How many left?",["6","7","8","9"],2,"Subtraction champ!","11 take away 3 is...?"],
+  ["Count by 5s: 5, 10, ___",["13","14","15","16"],2,"Skip counter!","Keep adding 5!"],
+  ["What is 8 + 8?",["14","15","16","17"],2,"Doubles master!","8 plus 8 equals...?"],
+  ["How many tens are in the number 20?",["1","2","3","4"],1,"Place value star!","20 = ___ tens and 0 ones!"],
+  ["What is 15 - 7?",["6","7","8","9"],2,"Subtraction ace!","Count back 7 from 15!"],
+  ["{P} ran 6 laps then 8 more. How many laps total?",["12","13","14","15"],2,"Running counter!","6 plus 8 equals...?"],
+  ["Count by 2s: 8, 10, 12, ___",["13","14","15","16"],1,"Pattern wizard!","Keep adding 2!"],
+  ["Which is LESS — 17 or 12?",["17","12","Same","Both"],1,"Comparing expert!","Which number is smaller?"],
+  ["What is 9 + 7?",["14","15","16","17"],2,"Big adder!","Count up 7 from 9!"],
+  ["How many ones are in the number 13?",["1","2","3","4"],2,"Place value ace!","13 = 1 ten and ___ ones!"],
+  ["{P} scored 12 points then 5 more. How many total?",["15","16","17","18"],2,"Score counter!","12 plus 5 equals...?"],
+  ["What is 11 - 4?",["5","6","7","8"],2,"Careful subtract!","Count back 4 from 11!"],
+  ["Count by 5s: 10, 15, 20, ___",["23","24","25","26"],2,"Skip master!","Keep adding 5!"],
+  ["Which is MORE — 18 or 11?",["11","18","Same","Both"],1,"Comparing star!","Which number is bigger?"],
+  ["What is 7 + 8?",["13","14","15","16"],2,"Adding wizard!","Count up 8 from 7!"],
+  ["{P} had 16 stickers and gave 7 away. How many left?",["7","8","9","10"],2,"Generous subtract!","16 take away 7...?"],
+  ["How many tens are in the number 30?",["1","2","3","4"],2,"Tens expert!","30 = ___ tens!"],
+  ["What is 13 - 5?",["6","7","8","9"],2,"Subtraction star!","Count back 5 from 13!"],
+  ["Count by 2s: 12, 14, 16, ___",["17","18","19","20"],1,"Pattern champ!","Keep adding 2!"],
+  ["{P} found 9 + 9 coins. How many total?",["16","17","18","19"],2,"Coin counter!","9 plus 9 equals...?"],
+  ["Which is LESS — 14 or 19?",["19","14","Same","Both"],1,"Comparing wizard!","Which is smaller?"],
+  ["What is 10 + 8?",["16","17","18","19"],2,"Teen numbers!","10 plus 8 equals...?"],
+  ["How many ones are in the number 17?",["5","6","7","8"],2,"Place value champ!","17 = 1 ten and ___ ones!"],
+  ["{P} had 20 berries and ate 6. How many left?",["12","13","14","15"],2,"Berry subtract!","20 take away 6...?"],
+  ["Count by 5s: 20, 25, ___",["28","29","30","31"],2,"Skip star!","Keep adding 5!"],
+  ["What is 6 + 9?",["13","14","15","16"],2,"Adding genius!","Count up 9 from 6!"],
+  ["Which is MORE — 13 or 8?",["8","13","Same","Both"],1,"Number champ!","Which is the bigger number?"],
+  ["What is 18 - 9?",["7","8","9","10"],2,"Subtraction genius!","Count back 9 from 18!"],
+  ["{P} scored 8 + 7 points. How many total?",["13","14","15","16"],2,"Score adder!","8 plus 7 equals...?"],
+  ["How many tens are in the number 10?",["0","1","2","3"],1,"Place value star!","10 = ___ ten!"],
+  ["What is 12 - 4?",["6","7","8","9"],2,"Careful subtract!","Count back 4 from 12!"],
+  ["Count by 2s: 4, 6, 8, 10, ___",["11","12","13","14"],1,"Skip wizard!","Keep adding 2!"],
+  ["{P} caught 9 Pokemon in the morning and 8 at night. How many total?",["15","16","17","18"],2,"Pokemon counter!","9 plus 8 equals...?"],
+  ["Which is LESS — 11 or 20?",["20","11","Same","Both"],1,"Comparing expert!","Which is the smaller number?"],
+  ["What is 7 + 7?",["12","13","14","15"],2,"Doubles star!","7 plus 7 equals...?"],
+],
+3:[
+  ["{P} ran 14 laps. Then ran 3 more. How many laps total?",["15","16","17","18"],2,"Amazing!","14 plus 3 equals...?"],
+  ["Count by 2s: 2, 4, 6, ___",["7","8","9","10"],1,"Pattern master!","What comes after 6 counting by 2s?"],
+  ["{P} has 14 berries and gives away 3. How many left?",["9","10","11","12"],2,"Subtraction star!","14 take away 3...?"],
+  ["What is 8 + 7?",["13","14","15","16"],2,"Adding genius!","Count up 7 from 8!"],
+  ["Count by 5s: 5, 10, 15, ___",["18","19","20","21"],2,"Skip counting pro!","What comes after 15 counting by 5s?"],
+  ["{P} scored 9 + 9 points. How many total?",["16","17","18","19"],2,"Double digits!","9 plus 9 equals..."],
+  ["There are 27 berries. {P} eats 4. How many left?",["21","22","23","24"],2,"Great subtraction!","27 take away 4...?"],
+  ["What is 13 + 5?",["16","17","18","19"],2,"Number superstar!","Count up 5 from 13!"],
+  ["Count by 2s: 10, 12, 14, ___",["15","16","17","18"],1,"Pattern wizard!","Keep going by 2s!"],
+  ["{P} has 13 Poke Balls and gets 6 more. How many total?",["17","18","19","20"],2,"Champion math!","13 plus 6 equals...?"],
+  ["What is 25 + 10?",["33","34","35","36"],2,"Tens adder!","Add 10 to 25!"],
+  ["Is the number 7 odd or even?",["Even","Odd","Both","Neither"],1,"Odd/even wizard!","Odd numbers can't be split into equal pairs!"],
+  ["Is the number 8 odd or even?",["Odd","Even","Both","Neither"],1,"Even expert!","Even numbers can be split into equal pairs!"],
+  ["{P} ran 34 laps and then 12 more. How many total?",["44","45","46","47"],2,"Big runner!","34 plus 12 equals...?"],
+  ["What is 50 - 20?",["20","25","30","35"],2,"Tens subtract!","50 take away 20...?"],
+  ["Count by 10s: 10, 20, 30, ___",["35","38","40","45"],2,"Tens counter!","Keep adding 10!"],
+  ["A triangle has how many corners?",["2","3","4","5"],1,"Shape detective!","Count the pointy corners on a triangle!"],
+  ["What is 23 + 14?",["35","36","37","38"],2,"Careful adder!","23 plus 14 equals...?"],
+  ["Is the number 12 odd or even?",["Odd","Even","Both","Neither"],1,"Even star!","12 can be split into two equal groups of 6!"],
+  ["{P} had 45 berries and gave away 15. How many left?",["25","28","30","35"],2,"Big subtract!","45 take away 15...?"],
+  ["What is 63 + 20?",["81","82","83","84"],2,"Tens expert!","Add 20 to 63!"],
+  ["Count by 5s: 25, 30, 35, ___",["38","39","40","41"],2,"Skip champ!","Keep adding 5!"],
+  ["A rectangle has how many sides?",["2","3","4","5"],2,"Shape star!","Count all the sides of a rectangle!"],
+  ["Is the number 15 odd or even?",["Even","Odd","Both","Neither"],1,"Odd detective!","15 can't be split into equal pairs!"],
+  ["What is 38 - 15?",["21","22","23","24"],2,"Careful subtract!","38 take away 15...?"],
+  ["{P} scored 42 + 17 points. How many total?",["57","58","59","60"],2,"Score genius!","42 plus 17 equals...?"],
+  ["Count by 10s: 30, 40, 50, ___",["55","58","60","65"],2,"Tens master!","Keep adding 10!"],
+  ["Is the number 20 odd or even?",["Odd","Even","Both","Neither"],1,"Even champ!","20 splits into two equal groups of 10!"],
+  ["What is 53 + 24?",["75","76","77","78"],2,"Adding star!","53 plus 24 equals...?"],
+  ["A pentagon has how many sides?",["4","5","6","7"],1,"Shape explorer!","Penta means 5!"],
+  ["{P} collected 70 stickers then gave away 30. How many left?",["30","35","40","45"],2,"Sticker counter!","70 take away 30...?"],
+  ["Count by 5s: 40, 45, 50, ___",["53","54","55","56"],2,"Skip wizard!","Keep adding 5!"],
+  ["Is the number 9 odd or even?",["Even","Odd","Both","Neither"],1,"Odd star!","9 can't be split into equal pairs!"],
+  ["What is 41 + 26?",["65","66","67","68"],2,"Big adder!","41 plus 26 equals...?"],
+  ["A square has how many corners?",["2","3","4","5"],2,"Shape ace!","Count the corners on a square!"],
+  ["{P} had 78 berries and ate 35. How many left?",["41","42","43","44"],2,"Berry subtract!","78 take away 35...?"],
+  ["Count by 10s: 50, 60, 70, ___",["75","78","80","85"],2,"Big counter!","Keep adding 10!"],
+  ["Is the number 14 odd or even?",["Odd","Even","Both","Neither"],1,"Even wizard!","14 splits into two groups of 7!"],
+  ["What is 52 + 34?",["84","85","86","87"],2,"Century adder!","52 plus 34 equals...?"],
+  ["A hexagon has how many sides?",["4","5","6","7"],2,"Shape genius!","Hex means 6!"],
+  ["{P} ran 22 + 35 steps. How many total?",["55","56","57","58"],2,"Step counter!","22 plus 35 equals...?"],
+  ["Count by 5s: 55, 60, 65, ___",["68","69","70","71"],2,"Skip master!","Keep adding 5!"],
+  ["Is the number 6 odd or even?",["Odd","Even","Both","Neither"],1,"Even ace!","6 splits into two groups of 3!"],
+  ["What is 72 - 30?",["40","41","42","43"],2,"Tens subtract!","72 take away 30...?"],
+  ["{P} had 91 Pokemon cards and gave 21 away. How many left?",["68","69","70","71"],2,"Card counter!","91 take away 21...?"],
+  ["Count by 10s: 60, 70, 80, ___",["85","88","90","95"],2,"Counting on!","Keep adding 10!"],
+  ["Is the number 3 odd or even?",["Even","Odd","Both","Neither"],1,"Odd detective!","3 can't be split into equal pairs!"],
+  ["What is 61 + 26?",["85","86","87","88"],2,"Adding ace!","61 plus 26 equals...?"],
+  ["{P} collected 53 + 15 berries. How many total?",["66","67","68","69"],2,"Berry genius!","53 plus 15 equals...?"],
+  ["Is the number 100 odd or even?",["Odd","Even","Both","Neither"],1,"Hundred champ!","100 splits into two groups of 50!"],
+],
+},
+reading:{
+1:[
+  ["What letter does CAT start with?",["B","C","D","F"],1,"Letter star!","Cuh... what letter makes that sound?"],
+  ["Which word rhymes with HAT?",["Run","Bat","Dog","Fish"],1,"Rhyme champ!","Hat... bat... do they sound the same at the end?"],
+  ["What sound does the letter B make?",["Muh","Tuh","Buh","Puh"],2,"Sound genius!","Buh... like ball or bear!"],
+  ["Which word rhymes with BIG?",["Cat","Dog","Pig","Fish"],2,"Rhyme wizard!","Big... pig... do they match?"],
+  ["What letter does APPLE start with?",["E","B","A","O"],2,"Alphabet ace!","Ah... what letter starts apple?"],
+  ["Which word rhymes with SIT?",["Run","Jump","Hit","Walk"],2,"Rhyme master!","Sit... hit... do they sound alike?"],
+  ["What animal says WOOF?",["Cat","Dog","Cow","Bird"],1,"Animal sounds ace!","Which animal says woof?"],
+  ["Which word rhymes with MAP?",["Cup","Nap","Dog","Fish"],1,"Rhyme star!","Map... nap... listen to the endings!"],
+  ["Clap out the word CAT — how many syllables does it have?",["1","2","3","4"],0,"Syllable star!","CAT is one quick clap — just one part!"],
+  ["What animal says MOO?",["Dog","Cat","Cow","Duck"],2,"Farm animal expert!","Which animal goes moo?"],
+  ["Clap out the word HAPPY — how many syllables does it have?",["1","2","3","4"],1,"Syllable champ!","HAP-PY — clap twice — two parts!"],
+  ["Which word rhymes with PIG?",["Cat","Dig","Dog","Fish"],1,"Rhyme champ!","Pig... dig... do they sound the same at the end?"],
+  ["What sound does the letter M make?",["Buh","Muh","Nuh","Puh"],1,"Sound star!","Muh... like mom or moon!"],
+  ["What letter does FISH start with?",["D","E","F","G"],2,"Letter genius!","Fff... what letter makes that sound?"],
+  ["Which word rhymes with FUN?",["Run","Dog","Cat","Bird"],0,"Rhyme wizard!","Fun... run... listen to the ends!"],
+  ["What sound does the letter T make?",["Duh","Muh","Tuh","Puh"],2,"Sound genius!","Tuh... like top or tail!"],
+  ["What letter does BALL start with?",["A","B","C","D"],1,"Alphabet star!","Buh... what letter makes that sound?"],
+  ["Which word rhymes with RED?",["Blue","Bed","Green","Black"],1,"Rhyme ace!","Red... bed... do they match at the end?"],
+  ["What animal says QUACK?",["Dog","Cat","Duck","Cow"],2,"Animal sounds!","Which animal says quack quack?"],
+  ["Clap out ELEPHANT — how many syllables does it have?",["1","2","3","4"],2,"Syllable genius!","EL-E-PHANT — how many claps?"],
+  ["Which word rhymes with HOP?",["Run","Jump","Stop","Walk"],2,"Rhyme star!","Hop... stop... do they sound alike?"],
+  ["What sound does the letter S make?",["Buh","Sss","Tuh","Muh"],1,"Sound champ!","Sss... like snake or sun!"],
+  ["Which word is THE?",["A","An","The","It"],2,"Sight word star!","THE is the most common word in English!"],
+  ["Which word rhymes with CAKE?",["Bake","Cow","Dog","Fish"],0,"Rhyme champ!","Cake... bake... do they sound the same?"],
+  ["Which word is AND?",["An","Or","And","But"],2,"Sight word champ!","AND connects things — cats AND dogs!"],
+  ["What letter does PIG start with?",["N","O","P","Q"],2,"Letter star!","Puh... what letter makes that sound?"],
+  ["Which word is MY?",["Me","My","By","I"],1,"Sight word ace!","MY shows something belongs to you — MY book!"],
+  ["What sound does the letter R make?",["Buh","Muh","Rrr","Tuh"],2,"Sound star!","Rrr... like rain or run!"],
+  ["What letter does KING start with?",["I","J","K","L"],2,"Alphabet ace!","Kuh... what letter makes that sound?"],
+  ["Which word rhymes with BOAT?",["Cat","Coat","Dog","Bird"],1,"Rhyme master!","Boat... coat... listen to the end!"],
+  ["Which word starts with SH — like SHEEP?",["Train","Shoe","Ball","Frog"],1,"SH spotter!","SH makes one special sound — SHHH!"],
+  ["Which word starts with CH — like CHEESE?",["Train","Fish","Chip","Ball"],2,"CH starter!","CH makes one sound — like CHHHH!"],
+  ["Which word rhymes with NIGHT?",["Day","Light","Morning","Noon"],1,"Rhyme wizard!","Night... light... do they sound the same?"],
+  ["What sound does the letter N make?",["Muh","Nuh","Buh","Tuh"],1,"Sound ace!","Nnn... like nose or night!"],
+  ["What letter does HOUSE start with?",["F","G","H","I"],2,"Letter champ!","Huh... what letter makes that sound?"],
+  ["Which word rhymes with FROG?",["Cat","Sun","Bird","Log"],3,"Rhyme star!","Frog... log... do they match at the end?"],
+  ["What animal says OINK?",["Dog","Cat","Pig","Cow"],2,"Animal sounds!","Which animal says oink oink?"],
+  ["Which word starts with TH — like THREE?",["Frog","Three","Ball","Cat"],1,"TH finder!","TH is two letters that make one special sound!"],
+  ["Which word rhymes with TREE?",["Bush","Bee","Root","Branch"],1,"Rhyme champ!","Tree... bee... do they sound alike?"],
+  ["What sound does the letter L make?",["Buh","Muh","Lll","Tuh"],2,"Sound detective!","Lll... like lion or leaf!"],
+  ["What letter does WATER start with?",["T","U","V","W"],3,"Letter ace!","Wuh... what letter makes that sound?"],
+  ["Which word starts with WH — like WHALE?",["Train","Whale","Frog","Cat"],1,"WH spotter!","WH makes a special sound — like in WHALE or WHEN!"],
+  ["What letter does OWL start with?",["M","N","O","P"],2,"Letter ace!","Ohh... what letter makes that sound?"],
+  ["{P} found a big red ball. What did {P} find?",["A blue hat","A big red ball","A small toy","A yellow star"],1,"Story star!","What did the sentence say {P} found?"],
+  ["Which word rhymes with RAIN?",["Snow","Train","Cloud","Wind"],1,"Rhyme master!","Rain... train... do they match?"],
+  ["What sound does the letter D make?",["Buh","Duh","Muh","Tuh"],1,"Sound star!","Duh... like dog or duck!"],
+  ["What letter does EGG start with?",["C","D","E","F"],2,"Letter star!","Eh... what letter makes that sound?"],
+  ["Which word rhymes with KING?",["Queen","Ring","Crown","Prince"],1,"Rhyme ace!","King... ring... do they sound alike?"],
+  ["Which word rhymes with PAN?",["Dog","Bird","Ran","Fish"],2,"Rhyme champ!","Pan... ran... do they sound the same?"],
+  ["{P} hid under the bed. Where did {P} hide?",["On the roof","Under the bed","In a tree","Behind a rock"],1,"Where reader!","What place did the sentence mention?"],
+  ["What do you call the person who WRITES a book?",["Illustrator","Author","Publisher","Reader"],1,"Book expert!","The AUTHOR is the one who writes all the words!"],
+  ["What does the ILLUSTRATOR of a book do?",["Writes the words","Draws the pictures","Prints the book","Sells the book"],1,"Book artist!","The illustrator creates all the pictures!"],
+  ["Which sentence starts CORRECTLY?",["the bird flew.","The bird flew.","THE bird flew.","tHe bird flew."],1,"Capital starter!","Every sentence must start with a capital letter!"],
+  ["Which sentence uses the word I correctly?",["Today i played outside.","Today I played outside.","today I played outside.","today i played outside."],1,"Capital I!","The word I is always written as a capital letter!"],
+  ["Which mark ends a TELLING sentence — like 'The cat sat'?",["?","!",".",","],2,"Period pro!","A period ends a sentence that tells something!"],
+  ["Which mark ends a QUESTION?",[".",",","?","!"],2,"Question mark star!","A question mark ends a sentence that asks something!"],
+  ["Which mark shows EXCITEMENT — like 'I won'?",[".",",","?","!"],3,"Excited ending!","An exclamation mark shows excitement or surprise!"],
+  ["Change the S in SAT to M — what new word do you get?",["MAT","MET","MOP","MUG"],0,"Sound swapper!","Take away S, put in M — what new word starts with M-A?"],
+  ["Which word does NOT belong — circle, square, triangle, or apple?",["Circle","Square","Triangle","Apple"],3,"Sorting star!","Three of these are shapes — which one is NOT a shape?"],
+],
+2:[
+  ["Which word rhymes with CAT?",["Dog","Hat","Bird","Fish"],1,"Rhyme champ!","Say cat... hat... do they sound the same at the end?"],
+  ["Which word rhymes with SUN?",["Moon","Star","Run","Sky"],2,"Rhyme master!","Sun... run... do they match?"],
+  ["{P} sat on a ___. Which word fits?",["Purple","Log","Loudly","Never"],1,"Reading genius!","Which word makes the sentence make sense?"],
+  ["Which word rhymes with DOG?",["Cat","Frog","Bird","Fish"],1,"Rhyme wizard!","Dog... frog... listen to the endings!"],
+  ["What word fits? {P} is very ___.",["Under","Fast","Purple","Never"],1,"Smart reader!","Which word describes {P}?"],
+  ["Which word rhymes with FIRE?",["Water","Jump","Tire","Rain"],2,"Rhyme rockstar!","Fire... tire... do they sound alike?"],
+  ["What sound does a cat make?",["Woof","Moo","Meow","Quack"],2,"Animal expert!","Which animal goes meow?"],
+  ["What word fits? {P} can ___ very fast.",["Purple","Run","Never","Under"],1,"Reading star!","Which word shows what {P} can do?"],
+  ["Which word rhymes with BEACH?",["Sand","Reach","Wave","Shell"],1,"Rhyme hero!","Beach... reach... do they sound alike?"],
+  ["Which word starts with the same sound as SHIP?",["Train","Shell","Frog","Ball"],1,"Sound detective!","Sh... sh... which word starts the same?"],
+  ["Which word has a SHORT vowel sound?",["Cake","Cat","Kite","Rope"],1,"Short vowel star!","Short vowels are quick sounds — like the 'a' in cat!"],
+  ["Which word starts with SH — like a SHark?",["Train","Frog","Shine","Ball"],2,"SH spotter!","Sh... sh... which word starts the same as shark?"],
+  ["Which word rhymes with SLEEP?",["Wake","Dream","Deep","Rest"],2,"Rhyme champ!","Sleep... deep... do they sound the same?"],
+  ["Which word has a LONG vowel sound?",["Cat","Dog","Kite","Fig"],2,"Long vowel ace!","Long vowels say their name — like the 'i' in kite!"],
+  ["{P} jumped into the lake. Where did {P} jump?",["Into a tree","Into the lake","Over a hill","Under a rock"],1,"Story star!","What did the sentence say {P} jumped into?"],
+  ["Which word starts with CH — like a CHerry?",["Train","Shell","Chip","Ball"],2,"CH starter!","Ch... ch... which word starts the same as cherry?"],
+  ["Which word rhymes with JUMP?",["Fall","Run","Dump","Slide"],2,"Rhyme wizard!","Jump... dump... do they sound alike?"],
+  ["Which word has a SHORT vowel sound?",["Bone","Tune","Sit","Cake"],2,"Short vowel champ!","Short vowel — like the 'i' in sit!"],
+  ["{P} ate the apple quickly. What did {P} eat?",["A berry","A cookie","An apple","A sandwich"],2,"Story reader!","What did the sentence say {P} ate?"],
+  ["Which word starts with TH — like a THorn?",["Frog","Train","Thin","Ball"],2,"TH starter!","Th... th... which word begins with TH?"],
+  ["Which word rhymes with MOON?",["Sun","Spoon","Star","Cloud"],1,"Rhyme ace!","Moon... spoon... do they sound the same?"],
+  ["Which word has a LONG vowel sound?",["Dog","Run","Cake","Sit"],2,"Long vowel star!","Long vowels say their name — the 'a' in cake!"],
+  ["{P} ran to the park to play. Where did {P} go?",["To school","To the store","To the park","To the beach"],2,"Where reader!","What place did the sentence mention?"],
+  ["Which word starts with SH?",["Cheese","Shoe","Train","Frog"],1,"SH detector!","Sh... like shoe or sheep?"],
+  ["Which word rhymes with BRAVE?",["Scare","Cave","Bold","Strong"],1,"Rhyme master!","Brave... cave... do they match?"],
+  ["Which word has a SHORT vowel sound?",["Kite","Bone","Cup","Tune"],2,"Short vowel ace!","Short 'u' — like the sound in cup!"],
+  ["{P} was happy because it won the race. How did {P} feel?",["Sad","Angry","Happy","Scared"],2,"Feelings reader!","What word describes how {P} felt?"],
+  ["Which word starts with CH?",["Train","Frog","Cherry","Ball"],2,"CH detector!","Ch... like cherry or cheese?"],
+  ["Which word rhymes with STAR?",["Moon","Car","Sun","Cloud"],1,"Rhyme star!","Star... car... do they sound alike?"],
+  ["Which word has a LONG vowel sound?",["Sun","Dog","Bone","Cat"],2,"Long vowel champ!","Long 'o' — like the sound in bone!"],
+  ["{P} was cold so it put on a coat. Why did {P} put on a coat?",["It was raining","It was cold","It was dark","It was wet"],1,"Why reader!","What reason did the sentence give?"],
+  ["Which word starts with TH?",["Frog","Train","Three","Ball"],2,"TH ace!","Th... like three or the?"],
+  ["Which word rhymes with BOAT?",["Fish","Coat","Bird","Dog"],1,"Rhyme champion!","Boat... coat... do they sound alike?"],
+  ["Which word has a SHORT vowel sound?",["Kite","Road","Hen","Tune"],2,"Short vowel star!","Short 'e' — like the sound in hen!"],
+  ["{P} and its best friend played all day. Who did {P} play with?",["A teacher","Its best friend","A stranger","Its mom"],1,"Who reader!","Who did the sentence say {P} played with?"],
+  ["Which word starts with SH?",["Frog","Train","Ball","Shark"],3,"SH champ!","Sh... like shark or shell?"],
+  ["Which word rhymes with RING?",["Crown","Sing","Hat","Boot"],1,"Rhyme wizard!","Ring... sing... do they sound the same?"],
+  ["Which word has a LONG vowel sound?",["Cat","Run","Kite","Fog"],2,"Long vowel ace!","Long 'i' — like the sound in kite!"],
+  ["{P} found a big blue egg near the lake. What color was the egg?",["Red","Green","Blue","Yellow"],2,"Detail reader!","What color did the sentence say the egg was?"],
+  ["Which word starts with CH?",["Frog","Chin","Train","Star"],1,"CH star!","Ch... like chin or chair?"],
+  ["Which word rhymes with PLAY?",["Night","Day","Moon","Sun"],1,"Rhyme champ!","Play... day... do they sound alike?"],
+  ["Which word has a SHORT vowel sound?",["Cake","Kite","Bone","Fog"],3,"Short vowel master!","Short 'o' — like the sound in fog!"],
+  ["{P} looked up and saw the stars were bright. What did {P} see?",["The sun","The moon","The stars","The clouds"],2,"What reader!","What did the sentence say {P} saw?"],
+  ["Which word starts with TH?",["Frog","Ball","Thumb","Train"],2,"TH detective!","Th... like thumb or think?"],
+  ["Which word rhymes with HILL?",["Valley","Fill","Mountain","Rock"],1,"Rhyme genius!","Hill... fill... do they sound the same?"],
+  ["Which word has a LONG vowel sound?",["Dog","Cat","Tune","Sit"],2,"Long vowel star!","Long 'u' — like the sound in tune!"],
+  ["{P} woke up early and ate breakfast. When did {P} eat?",["At night","In the evening","Early in the morning","At lunchtime"],2,"When reader!","When did the sentence say {P} ate?"],
+  ["Which word starts with SH?",["Train","Frog","Sheep","Ball"],2,"SH spotter!","Sh... like sheep or shine?"],
+  ["Which word rhymes with BIG?",["Dog","Twig","Cat","Fish"],1,"Rhyme wizard!","Big... twig... do they sound the same?"],
+  ["Which word has a SHORT vowel sound?",["Kite","Cake","Log","Tune"],2,"Short vowel champ!","Short 'o' — like the sound in log!"],
+],
+3:[
+  ["{P} ran ___ the tall mountain.",["up","purple","loudly","never"],0,"Sentence superstar!","Which word tells where {P} ran?"],
+  ["Which word starts with BL — like the color BLue?",["Spot","Clap","Bloom","Train"],2,"BL starter!","BL... BL... which word begins with BL?"],
+  ["{P} was ___ because it won the race.",["under","happy","purple","loudly"],1,"Great reading!","Which word shows how {P} felt?"],
+  ["Which word starts with TR — like a TRuck?",["Frog","Bloom","Clap","Train"],3,"TR starter!","TR... TR... which word begins with TR?"],
+  ["The sky is ___ today.",["purple","sing","blue","run"],2,"Sentence genius!","Which word describes the sky?"],
+  ["Which word starts with ST — like a STop sign?",["Frog","Star","Bloom","Train"],1,"ST starter!","ST... ST... which word begins with ST?"],
+  ["{P} jumped ___ the big puddle.",["over","purple","loudly","never"],0,"Reading rockstar!","Which word tells how {P} jumped?"],
+  ["Which word starts with CL — like a CLoud?",["Frog","Train","Clap","Star"],2,"CL starter!","CL... CL... which word begins with CL?"],
+  ["Which sentence makes sense?",["The cat barked loudly.","The dog barked loudly.","The fish barked loudly.","The bird barked loudly."],1,"Logic master!","Which animal makes a barking sound?"],
+  ["{P} felt ___ when it evolved!",["never","under","excited","purple"],2,"Feeling words!","Which word is a feeling?"],
+  ["The word UN-happy means ___.",["Very happy","Not happy","A little happy","Super happy"],1,"Prefix pro!","UN means 'not' — so unhappy means...?"],
+  ["Which word has TWO syllables?",["Cat","Frog","Happy","Run"],2,"Syllable star!","Clap it out: Hap-py — how many claps?"],
+  ["The suffix -FUL means 'full of.' HELP-FUL means ___.",["Without help","Full of help","Needs help","Gives help"],1,"Suffix ace!","-ful means full of — helpful means full of...?"],
+  ["{P} was care-less with its toys. CARELESS means ___.",["Full of care","Very careful","Without care","Extra careful"],2,"Suffix detective!","-less means 'without' — careless means without...?"],
+  ["The word RE-do means ___.",["Not do","Do before","Do again","Do slowly"],2,"Prefix star!","RE means 'again' — redo means do...?"],
+  ["Which word has TWO syllables?",["Fish","Run","Rainbow","Cat"],2,"Syllable champ!","Clap it out: Rain-bow — how many claps?"],
+  ["A story where a slow turtle beats a speedy rabbit teaches ___.",["Run very fast","Keep going and never give up","Turtles are smarter","Rabbits should sleep more"],1,"Moral master!","What lesson can we learn?"],
+  ["Which word has a LONG vowel sound?",["Frog","Sun","Rain","Dog"],2,"Long vowel ace!","Long vowels say their name — the 'a' in rain!"],
+  ["The word UN-lock means ___.",["Lock again","Lock tightly","Open something locked","Make it stronger"],2,"Prefix genius!","UN means the opposite — unlock is the opposite of lock!"],
+  ["Which word has TWO syllables?",["Tree","Dog","Pencil","Frog"],2,"Syllable ace!","Clap it out: Pen-cil — how many claps?"],
+  ["The suffix -LESS means 'without.' HOPE-LESS means ___.",["Full of hope","Very hopeful","Without hope","Gives hope"],2,"Suffix star!","-less means 'without' — hopeless means without...?"],
+  ["{P} would not give up no matter what. This shows that {P} is ___.",["Lazy","Brave and determined","Afraid","Very tired"],1,"Character trait!","What word describes someone who never gives up?"],
+  ["The word RE-build means ___.",["Not build","Build before","Build again","Build slowly"],2,"Prefix champ!","RE means again — rebuild means build...?"],
+  ["Which word has TWO syllables?",["Sun","Cat","Basket","Run"],2,"Syllable star!","Clap it out: Bas-ket — how many claps?"],
+  ["{P} was joy-FUL after winning. JOYFUL means ___.",["Without joy","Full of joy","A little joy","Needs joy"],1,"Suffix ace!","-ful means 'full of' — joyful means full of...?"],
+  ["A story ends: always tell the truth. What is the LESSON?",["Lie when you must","Be honest always","Never speak","Run fast"],1,"Moral star!","What does the story want you to learn?"],
+  ["Which word has a LONG vowel sound?",["Dog","Cup","Dream","Run"],2,"Long vowel star!","Long vowels say their name — the 'ea' in dream!"],
+  ["The word UN-safe means ___.",["Very safe","Somewhat safe","Not safe","Extra safe"],2,"Prefix detective!","UN means 'not' — unsafe means not...?"],
+  ["Which word has TWO syllables?",["Dog","Frog","Table","Run"],2,"Syllable champ!","Clap it out: Ta-ble — how many claps?"],
+  ["THANK-FUL means ___.",["Without thanks","Full of thanks","Needs thanks","Before thanks"],1,"Suffix genius!","-ful means full of — thankful means full of...?"],
+  ["{P} learned from its mistake and tried again. This teaches ___.",["Give up when things are hard","Mistakes help us learn and grow","Never make mistakes","Ask for help always"],1,"Moral master!","What lesson did {P} learn?"],
+  ["Which word has a LONG vowel sound?",["Cat","Fun","Boat","Dog"],2,"Long vowel ace!","Long 'o' — the 'oa' in boat says its name!"],
+  ["The word RE-play means ___.",["Not play","Play before","Play again","Play slowly"],2,"Prefix ace!","RE means 'again' — replay means play...?"],
+  ["Which word has TWO syllables?",["Sun","Cat","Robot","Dog"],2,"Syllable star!","Clap it out: Ro-bot — how many claps?"],
+  ["FEAR-LESS means ___.",["Full of fear","Very fearful","Without fear","Extra fearful"],2,"Suffix star!","-less means 'without' — fearless means without...?"],
+  ["{P} shares food with a hungry friend. This story teaches ___.",["Always keep food for yourself","Sharing makes everyone happy","Food is for eating fast","Never share your food"],1,"Moral ace!","What lesson does the story teach about sharing?"],
+  ["Which word has a LONG vowel sound?",["Fog","Run","Cube","Dog"],2,"Long vowel champ!","Long 'u' — the 'u' in cube says its name!"],
+  ["The word UN-kind means ___.",["Very kind","Not kind","Sort of kind","Extra kind"],1,"Prefix star!","UN means 'not' — unkind means not...?"],
+  ["Which word has TWO syllables?",["Frog","Bug","Flower","Sun"],2,"Syllable ace!","Clap it out: Flow-er — how many claps?"],
+  ["WONDER-FUL means ___.",["Without wonder","Full of wonder","Needs wonder","Before wonder"],1,"Suffix champ!","-ful means full of — wonderful means full of...?"],
+  ["In the word WONDERFUL, the suffix is ___.",["Wonder","Won","ful","derful"],2,"Suffix detective!","The suffix is the ending that changes the meaning!"],
+  ["Which word has a LONG vowel sound?",["Hot","Cap","Street","Fog"],2,"Long vowel star!","The 'ee' in street says its name — long 'e'!"],
+  ["The word RE-fill means ___.",["Not fill","Empty out","Fill again","Fill slowly"],2,"Prefix ace!","RE means 'again' — refill means fill...?"],
+  ["Which word has TWO syllables?",["Cat","Sun","Butter","Dog"],2,"Syllable star!","Clap it out: But-ter — how many claps?"],
+  ["SLEEP-LESS means ___.",["Full of sleep","Very sleepy","Without sleep","Needs sleep"],2,"Suffix genius!","-less means 'without' — sleepless means without...?"],
+  ["{P} helped others and felt happy. This story teaches ___.",["Keep everything for yourself","Helping others makes you happy too","Never help anyone","Always ask for rewards"],1,"Moral master!","What did {P} learn from helping?"],
+  ["Which word has a LONG vowel sound?",["Fun","Dog","Sky","Cup"],2,"Long vowel ace!","The 'y' at the end of sky sounds like long 'i'!"],
+  ["The word UN-wrap means ___.",["Wrap again","Wrap tightly","Open by unwrapping","Not wrap"],2,"Prefix detective!","UN means the opposite — unwrap is the opposite of wrap!"],
+  ["Which word has TWO syllables?",["Run","Frog","Garden","Sun"],2,"Syllable champ!","Clap it out: Gar-den — how many claps?"],
+  ["PEACE-FUL means ___.",["Without peace","Full of peace","Needs peace","Sort of peaceful"],1,"Suffix star!","-ful means full of — peaceful means full of...?"],
+],
+},
+science:{
+1:[
+  ["What animal hops and has long ears?",["Dog","Cat","Rabbit","Pig"],2,"Animal detective!","Which animal is known for hopping?"],
+  ["How many legs does a dog have?",["2","4","6","8"],1,"Animal expert!","Count the legs on a dog!"],
+  ["What do we use our EYES for?",["Hearing","Seeing","Smelling","Tasting"],1,"Body scientist!","What do you use to watch TV?"],
+  ["What does the sun give us?",["Rain","Light and warmth","Snow","Darkness"],1,"Sun scientist!","Step outside on a sunny day — what do you feel?"],
+  ["Which animal lives in water?",["Cat","Dog","Fish","Rabbit"],2,"Habitat genius!","Which animal swims?"],
+  ["What do we use our EARS for?",["Seeing","Tasting","Hearing","Smelling"],2,"Senses expert!","What do you use to listen to music?"],
+  ["What color is the sky on a sunny day?",["Green","Red","Blue","Purple"],2,"Sky watcher!","Look up outside on a sunny day!"],
+  ["Which animal can FLY?",["Dog","Fish","Bird","Frog"],2,"Nature explorer!","Which animal has wings?"],
+  ["What do we breathe?",["Water","Air","Food","Dirt"],1,"Body scientist!","What fills your lungs when you breathe in?"],
+  ["Which animal says MEOW?",["Dog","Cat","Cow","Duck"],1,"Animal sounds ace!","Which animal makes this sound: meow!"],
+  ["What do plants need to grow?",["Toys","Sunlight","Pillows","Music"],1,"Plant scientist!","What helps flowers bloom?"],
+  ["How many legs does a spider have?",["4","6","8","10"],2,"Bug scientist!","Count the legs on a spider — more than a dog!"],
+  ["What do we use our NOSE for?",["Seeing","Hearing","Smelling","Tasting"],2,"Senses explorer!","What do you use to smell flowers?"],
+  ["Which animal can swim?",["Cat","Duck","Horse","Rabbit"],1,"Swim scientist!","Which animal likes water?"],
+  ["What falls from the sky when it rains?",["Snow","Water drops","Leaves","Sand"],1,"Weather watcher!","What do you see falling on a rainy day?"],
+  ["Which part of the body do we use to TASTE food?",["Nose","Eyes","Tongue","Ears"],2,"Taste scientist!","What wiggles in your mouth?"],
+  ["What does a dog need to stay alive?",["Toys","Water and food","Pillows","Music"],1,"Animal needs ace!","What do all living things need?"],
+  ["Which animal builds a web?",["Bird","Spider","Fish","Dog"],1,"Bug explorer!","Which small creature spins a web?"],
+  ["What type of weather has snowflakes?",["Rain","Sunshine","Snow","Wind"],2,"Weather expert!","What cold white stuff falls in winter?"],
+  ["How many legs does an insect have?",["4","6","8","10"],1,"Insect scientist!","Insects always have 6 legs!"],
+  ["What do we use our SKIN for?",["Seeing","Hearing","Touching and feeling","Tasting"],2,"Touch expert!","What lets you feel if something is hot or cold?"],
+  ["Which animal lays eggs?",["Dog","Cat","Bird","Horse"],2,"Animal expert!","Which animal hatches from an egg?"],
+  ["What do plants get from the sun?",["Rain","Snow","Sunlight","Lightning"],2,"Plant needs star!","What do plants need to make their food?"],
+  ["Which type of weather is windy with lightning?",["Snow","Sunshine","Storm","Drizzle"],2,"Storm watcher!","Which weather is loud and flashy?"],
+  ["{P} pushed a rock and it rolled away. What did {P} do?",["Pulled it","Lifted it","Pushed it","Threw it"],2,"Push/pull star!","When you push something, you move it away from you!"],
+  ["Which animal hops?",["Fish","Frog","Bird","Snake"],1,"Animal mover!","Which animal moves by jumping and hopping?"],
+  ["What color is the sun?",["Blue","Red","Yellow","Green"],2,"Sun scientist!","What color do you see in the sky during the day?"],
+  ["Which animal has feathers?",["Dog","Fish","Bird","Cat"],2,"Bird scientist!","Which animal wears feathers instead of fur?"],
+  ["{P} pulled a wagon full of berries. What did {P} do to the wagon?",["Pushed it","Pulled it","Kicked it","Threw it"],1,"Pull scientist!","When you pull something, you bring it toward you!"],
+  ["What do we need to eat and drink to stay healthy?",["Toys","Food and water","Games","Music"],1,"Health scientist!","What does your body need every day?"],
+  ["Which animal lives underground?",["Bird","Fish","Mole","Eagle"],2,"Habitat expert!","Which animal digs tunnels to live?"],
+  ["What falls from trees in autumn?",["Flowers","Fruit","Leaves","Seeds"],2,"Autumn scientist!","What changes color and falls in fall?"],
+  ["What does the wind do to a kite?",["Pulls it down","Lifts it up","Buries it","Stops it"],1,"Wind explorer!","What does the wind help a kite do?"],
+  ["Which animal has a shell?",["Dog","Cat","Turtle","Bird"],2,"Animal armor ace!","Which animal carries its home on its back?"],
+  ["What is ice made from?",["Snow","Water","Air","Dirt"],1,"States scientist!","When water gets very cold, it turns into...?"],
+  ["Which big cat has orange and black stripes?",["Lion","Tiger","Cheetah","Leopard"],1,"Animal expert!","This big cat has bold stripes, not spots!"],
+  ["Which animal gives us milk?",["Dog","Cow","Bird","Fish"],1,"Farm scientist!","Which farm animal gives us milk to drink?"],
+  ["What happens to a puddle on a hot sunny day?",["It grows bigger","It turns to ice","It dries up","It changes color"],2,"Evaporation star!","What happens when the sun heats up water?"],
+  ["Which sense helps you hear music?",["Sight","Touch","Taste","Hearing"],3,"Senses ace!","What sense do you use to listen to your favorite song?"],
+  ["What do bees collect from flowers?",["Water","Nectar","Leaves","Dirt"],1,"Bee scientist!","What sticky sweet stuff do bees gather?"],
+  ["Which animal uses its long tongue to catch insects?",["Dog","Fish","Frog","Bird"],2,"Frog expert!","Which jumping animal catches bugs with its tongue?"],
+  ["What do we call the white stuff that falls in winter?",["Rain","Hail","Snow","Fog"],2,"Winter watcher!","What cold white fluffy stuff falls from the sky in winter?"],
+  ["What is the moon?",["A star","A planet","A large rock in the sky","The sun at night"],2,"Space scientist!","The moon is a big round rock that orbits Earth!"],
+  ["What kind of weather is very hot and bright?",["Rainy","Cloudy","Snowy","Sunny"],3,"Weather watcher!","What kind of weather makes you want to wear sunscreen?"],
+  ["Which body part helps you SEE?",["Ears","Eyes","Nose","Mouth"],1,"Senses star!","What do you use to look at the world?"],
+  ["Which animal can change its color to hide?",["Dog","Fish","Chameleon","Cat"],2,"Animal magic!","Which reptile changes colors to blend in?"],
+  ["What comes out of a cloud when it rains?",["Snow","Water","Ice","Fire"],1,"Cloud scientist!","What do clouds release when they get heavy?"],
+  ["Which of these is a living thing?",["Rock","Water","Tree","Sand"],2,"Living or not!","Which one grows and needs food and water?"],
+  ["What do we call the daytime sky with no clouds?",["Cloudy","Rainy","Clear and blue","Stormy"],2,"Sky watcher!","What do you see when the sky has no clouds?"],
+  ["Which of these can FLOAT on water?",["Rock","Metal coin","Wood","Stone"],2,"Float scientist!","Which material is light enough to float?"],
+],
+2:[
+  ["What do plants need to grow?",["Toys","Sunlight","Pillows","Music"],1,"Plant scientist!","Think about what helps flowers bloom!"],
+  ["Where does a bear live?",["Ocean","Desert","Forest","Sky"],2,"Habitat expert!","Where do you see bears in nature?"],
+  ["What do rabbits eat?",["Meat","Carrots","Rocks","Sand"],1,"Animal diet expert!","What do you give a bunny to eat?"],
+  ["Which season has the MOST sunshine and warmest weather?",["Winter","Fall","Spring","Summer"],3,"Season scientist!","Which season is the hottest and sunniest?"],
+  ["Where do penguins live?",["Desert","Jungle","Ice and snow","Treetops"],2,"Habitat champion!","Where is it very very cold?"],
+  ["What do butterflies eat?",["Grass","Nectar from flowers","Rocks","Sand"],1,"Nature expert!","What do you see butterflies sipping from?"],
+  ["In which direction does the sun move across the sky each day?",["North to south","East to west","West to east","Up and down"],1,"Sun path star!","The sun rises in the east and sets in the west — so it moves...?"],
+  ["Where does a fish live?",["Desert","Forest","Water","Sky"],2,"Habitat genius!","Where do you see fish swimming?"],
+  ["What do cows eat?",["Meat","Fish","Grass","Rocks"],2,"Farm scientist!","What do cows munch on in fields?"],
+  ["What season has falling leaves?",["Spring","Summer","Fall","Winter"],2,"Season expert!","When do leaves turn orange and fall?"],
+  ["What causes sound?",["Heat","Vibrating objects","Light","Cold"],1,"Sound scientist!","When objects shake back and forth very fast, they make...?"],
+  ["A baby cat is called a ___.",["Pup","Kitten","Cub","Calf"],1,"Baby animal ace!","What do we call a baby cat?"],
+  ["What do webbed feet help a duck do?",["Climb trees","Swim in water","Dig holes","Run fast"],1,"Adaptation star!","Webbed feet are perfect for...?"],
+  ["When does the sun RISE?",["At night","In the morning","In the afternoon","At midnight"],1,"Sun pattern ace!","When do you first see the sun each day?"],
+  ["A baby dog is called a ___.",["Kitten","Cub","Pup","Calf"],2,"Baby animal star!","What do we call a baby dog?"],
+  ["Why can't you see in a completely dark room?",["It's too cold","Objects can only be seen when there is light","The room is too small","Your eyes are closed"],1,"Light scientist!","What do you need to see anything?"],
+  ["What helps a bird fly?",["Strong legs","Wide wings","Sharp claws","Long neck"],1,"Adaptation genius!","What body part does a bird use to fly?"],
+  ["When does the sun SET?",["In the morning","At noon","In the evening","At midnight"],2,"Sun pattern star!","When does the sky turn orange and red?"],
+  ["A baby bear is called a ___.",["Pup","Kitten","Cub","Calf"],2,"Baby animal expert!","What do we call a baby bear?"],
+  ["What part of a cactus stores water?",["Roots","Thick stem","Leaves","Flowers"],1,"Desert plant star!","The thick part of a cactus stores water!"],
+  ["Which makes a sound — a vibrating guitar string or a still one?",["Still string","Vibrating string","Both","Neither"],1,"Sound star!","Sound comes from things that are moving and shaking!"],
+  ["A baby cow is called a ___.",["Pup","Cub","Calf","Kitten"],2,"Baby animal champ!","What do we call a baby cow?"],
+  ["What does a bird's beak help it do?",["Swim","Pick up and eat food","Dig tunnels","Run fast"],1,"Adaptation ace!","A bird uses its beak like a tool — for what?"],
+  ["Does the sun rise in the EAST or the WEST?",["North","South","East","West"],2,"Direction star!","The sun comes up in the EAST every morning!"],
+  ["A baby horse is called a ___.",["Cub","Foal","Calf","Pup"],1,"Baby animal genius!","What do we call a baby horse?"],
+  ["How do you make a drum louder?",["Hit it softer","Hit it harder","Don't touch it","Pour water on it"],1,"Sound scientist!","What happens when you hit harder — more or less vibration?"],
+  ["What helps a fish breathe underwater?",["Lungs","Fins","Gills","Scales"],2,"Fish expert!","What body part lets fish breathe in water?"],
+  ["Which comes FIRST each day — sunrise or sunset?",["Sunset","Sunrise","Same time","Neither"],1,"Sun order star!","Does the sun go up or down first?"],
+  ["A baby frog starts as a ___.",["Egg then tadpole","Full-grown frog","Butterfly","Caterpillar"],0,"Life cycle star!","What hatches first from a frog's egg?"],
+  ["When you pluck a guitar string, it makes sound because ___.",["It gets hot","It vibrates","It lights up","It gets cold"],1,"Vibration ace!","Sound comes from back-and-forth movement!"],
+  ["What helps a polar bear stay warm?",["Thin fur","Thick fur and fat","Scales","Feathers"],1,"Adaptation champ!","What keeps a polar bear warm in icy weather?"],
+  ["Where does the sun go at night?",["Behind a cloud","Into the ocean","It's still there — Earth turned","To the moon"],2,"Earth science star!","The sun doesn't move — the Earth spins away from it!"],
+  ["A baby duck is called a ___.",["Chick","Duckling","Cub","Pup"],1,"Baby bird star!","What do we call a baby duck?"],
+  ["What do our ears do when they hear sound?",["Make the sound","Feel the vibrations in the air","Create light","Push sound away"],1,"Ear scientist!","Ears sense the vibrations traveling through the air!"],
+  ["What helps a monkey grip branches?",["Wings","Long tail and hands","Thick fur","Sharp beak"],1,"Primate star!","What body parts help a monkey hang in trees?"],
+  ["Which season comes after Spring?",["Fall","Winter","Summer","Spring again"],2,"Season ace!","Spring, then ___?"],
+  ["A baby deer is called a ___.",["Pup","Cub","Fawn","Calf"],2,"Baby animal star!","What do we call a baby deer?"],
+  ["What travels through the air to make sound?",["Light","Heat","Vibrations","Water"],2,"Sound wave star!","When something vibrates, it sends ___ through the air!"],
+  ["What helps a camel survive in the desert?",["Thick fur","Humps that store energy","Sharp claws","Webbed feet"],1,"Desert animal ace!","What does a camel carry on its back that helps it survive?"],
+  ["Which season comes AFTER summer?",["Spring","Winter","Fall","Summer again"],2,"Season expert!","Summer, then ___?"],
+  ["A baby chicken is called a ___.",["Cub","Chick","Pup","Calf"],1,"Baby bird champ!","What do we call a baby chicken?"],
+  ["Why do fireflies glow?",["To stay warm","To communicate and attract mates","To scare predators","To find food"],1,"Bioluminescence star!","Fireflies flash their light to send messages!"],
+  ["What does a chameleon do to hide from enemies?",["Runs very fast","Changes its color","Digs underground","Plays dead"],1,"Adaptation genius!","This reptile blends in by changing its...?"],
+  ["When is it darkest outside?",["At sunrise","At noon","In the middle of the night","At sunset"],2,"Day/night star!","When is the sun completely gone from the sky?"],
+  ["A baby kangaroo is called a ___.",["Pup","Joey","Cub","Calf"],1,"Marsupial ace!","Baby kangaroos live in their mom's pouch!"],
+  ["How does a snake move without legs?",["Hops","Wiggles and slithers","Flies","Rolls"],1,"Snake scientist!","How does a legless snake get around?"],
+  ["What keeps a turtle safe from predators?",["Fast legs","Hard shell","Sharp teeth","Long neck"],1,"Turtle expert!","What body armor does a turtle have?"],
+  ["Which is a NOCTURNAL animal — active at night?",["Eagle","Owl","Parrot","Bee"],1,"Nocturnal star!","Which animal hunts and flies at night?"],
+  ["A baby whale is called a ___.",["Pup","Cub","Calf","Joey"],2,"Marine mammal ace!","What do we call a baby whale?"],
+  ["What do all young animals have in common with their parents?",["Same exact color","Same body parts and features","Same size","Same food"],1,"Baby animal champ!","Young animals look like smaller versions of their...?"],
+],
+3:[
+  ["What happens to a caterpillar when it grows up?",["It stays the same","It becomes a butterfly","It becomes a fish","It becomes a bird"],1,"Life cycle genius!","Think about what a caterpillar turns into!"],
+  ["Why do leaves change color in the fall?",["They get painted","Days get shorter and colder","It rains more","The sun gets hotter"],1,"Science champion!","What changes when summer ends?"],
+  ["What happens to water when it gets very cold?",["It disappears","It turns red","It turns to ice","It turns to steam"],2,"Freezing expert!","Think about what happens to water in a freezer!"],
+  ["Which season comes after winter?",["Summer","Fall","Spring","Winter"],2,"Season scientist!","Winter, then ___?"],
+  ["Why do many birds fly away to warmer places in winter?",["To play","To find warmer weather","To sleep","To swim"],1,"Bird expert!","What do birds need when it gets really cold?"],
+  ["What do tadpoles grow into?",["Fish","Birds","Frogs","Snakes"],2,"Life cycle expert!","A tadpole lives in water and grows up to be a..."],
+  ["What happens to a plant if it gets no sunlight?",["It grows faster","It turns pink","It stops growing and wilts","It makes more flowers"],2,"Plant scientist!","Plants need sunlight — what happens without it?"],
+  ["Why do we wear coats in winter?",["They look nice","To stay warm in the cold","To keep dry from spring rain","To block the summer sun"],1,"Season genius!","What does winter feel like outside?"],
+  ["A seed grows into a ___.",["Rock","Cloud","Plant","River"],2,"Plant life cycle!","What sprouts from a seed in the ground?"],
+  ["Where does a baby bird come from?",["A pond","An egg","A flower","A cloud"],1,"Life cycle star!","What breaks open when a baby bird hatches?"],
+  ["Which word describes something HARD?",["Fluffy","Squishy","Solid rock","Soft pillow"],2,"Material scientist!","A rock is hard — not soft or fluffy!"],
+  ["Is melting ice REVERSIBLE — can it be undone?",["No — it's permanent","Yes — it can refreeze","It depends","It changes color"],1,"States scientist!","Ice melts to water and water can freeze back to ice!"],
+  ["What do plants need MOST to make their food?",["Toys","Sunlight, water, and air","Sand","Music"],1,"Photosynthesis star!","Plants use sun, water, and air to make energy!"],
+  ["Which is a FAST Earth event?",["A canyon forming","A mountain growing","An earthquake","A fossil forming"],2,"Earth science ace!","Which happens in seconds — not thousands of years?"],
+  ["Which word describes something ROUGH?",["Smooth glass","Rough sandpaper","Soft cotton","Slippery ice"],1,"Texture scientist!","Rough means bumpy — like sandpaper!"],
+  ["Is burning paper REVERSIBLE?",["Yes — it can unburn","No — you can't unburn paper","Sometimes","With water"],1,"Change scientist!","Once paper burns, can you get it back?"],
+  ["Which animal would you find in the OCEAN?",["Polar bear","Dolphin","Camel","Eagle"],1,"Habitat genius!","Which animal swims in salty ocean water?"],
+  ["Which word describes something BENDY?",["Hard rock","Stiff board","Rubber hose","Solid metal"],2,"Property scientist!","Bendy means it can bend without breaking!"],
+  ["Is mixing paint colors REVERSIBLE?",["Yes — easy to unmix","No — mixed colors are hard to separate","It depends","Always"],1,"Change expert!","Once you mix paints, can you easily get the separate colors back?"],
+  ["Which animal lives in the DESERT?",["Penguin","Camel","Dolphin","Frog"],1,"Desert habitat ace!","Which animal is built for hot, dry, sandy places?"],
+  ["Which property describes a SPONGE?",["Hard and stiff","Smooth and slippery","Soft and absorbent","Rough and sharp"],2,"Material ace!","A sponge soaks up water — it is soft and...?"],
+  ["Is making a paper airplane REVERSIBLE?",["No — it changes permanently","Yes — you can unfold it","It burns","It melts"],1,"Reversible star!","Can you unfold a paper airplane back to flat paper?"],
+  ["Which animal would you find in the ARCTIC?",["Camel","Polar bear","Giraffe","Frog"],1,"Cold habitat star!","Which animal has thick white fur for icy places?"],
+  ["Which word describes GLASS?",["Soft and squishy","Rough and scratchy","Smooth and hard","Fluffy and warm"],2,"Material scientist!","Glass is hard and has a smooth surface!"],
+  ["Is cooking an egg REVERSIBLE?",["Yes — it can uncook","No — you can't uncook an egg","Sometimes","If you freeze it"],1,"Cooking scientist!","Once an egg is cooked, can you turn it raw again?"],
+  ["Which animal lives in a FOREST?",["Camel","Dolphin","Deer","Penguin"],2,"Forest habitat ace!","Which animal runs through the woods and eats plants?"],
+  ["Which is a SLOW Earth event?",["A volcano erupting","A storm","Mountains forming over millions of years","An earthquake"],2,"Earth time star!","Which change takes millions of years?"],
+  ["Which word describes COTTON?",["Hard and stiff","Rough and scratchy","Soft and fluffy","Heavy and solid"],2,"Material champ!","Cotton feels light and...?"],
+  ["Is freezing juice into ice pops REVERSIBLE?",["No — permanent change","Yes — the ice pops can melt back to juice","It burns","It cannot change"],1,"Freeze scientist!","Frozen juice can melt back to...?"],
+  ["Which animal would you find in the RAINFOREST?",["Polar bear","Camel","Toucan","Penguin"],2,"Rainforest star!","Which colorful bird with a big beak lives in the jungle?"],
+  ["What property does a BRICK have?",["Soft and squishy","Bendy and stretchy","Hard and rough","Smooth and silky"],2,"Building scientist!","A brick is hard and feels bumpy and rough!"],
+  ["Is tearing paper REVERSIBLE?",["Yes — it's easy to undo","No — you can't easily untear it","It melts back","It grows back"],1,"Change ace!","Once paper is torn, can you put it back perfectly?"],
+  ["Which animal needs SALTWATER to survive?",["Deer","Cat","Sea turtle","Rabbit"],2,"Ocean habitat ace!","Which animal lives in the salty sea?"],
+  ["Which happens QUICKLY — in hours or days?",["Fossil forming","A volcano erupting","Canyon forming slowly","A mountain growing"],1,"Geology star!","Which changes the land in hours or days?"],
+  ["Which word describes a RUBBER BAND?",["Hard and stiff","Bendy and stretchy","Rough and sharp","Heavy and solid"],1,"Stretchy scientist!","A rubber band can stretch and snap back!"],
+  ["Is dissolving sugar in water REVERSIBLE?",["No — permanent","Yes — evaporate the water and sugar is left","It burns","Sugar disappears forever"],1,"Dissolving star!","If you evaporate the water, what is left behind?"],
+  ["Which animal lives in BOTH water AND on land?",["Fish","Frog","Shark","Dolphin"],1,"Amphibian star!","Which animal hops on land but also swims in ponds?"],
+  ["Which word describes SANDPAPER?",["Smooth and silky","Rough and scratchy","Soft and fluffy","Bendy and stretchy"],1,"Texture ace!","Sandpaper feels rough because of tiny hard particles!"],
+  ["Is a broken egg REVERSIBLE?",["Yes — you can unbreak it","No — broken shells don't go back","It melts","It freezes"],1,"Breaking scientist!","Once a shell is broken, can you make it whole again?"],
+  ["Which animal would you find in the GRASSLANDS?",["Penguin","Camel","Polar bear","Zebra"],3,"Savanna star!","Which striped animal roams the wide grassy plains?"],
+  ["Which property tells us if something is HEAVY or LIGHT?",["Color","Texture","Weight","Temperature"],2,"Property detective!","Which property — how much does it weigh?"],
+  ["Is baking bread REVERSIBLE?",["Yes — you can unbake it","No — you can't turn bread back to dough","It melts back","The yeast reverses it"],1,"Baking scientist!","Once bread is baked, can you get the dough back?"],
+  ["Which animal burrows underground in the DESERT?",["Polar bear","Prairie dog","Penguin","Toucan"],1,"Desert burrower!","Which small animal digs tunnels to stay cool in the heat?"],
+  ["Which material floats in water?",["Iron nail","Heavy rock","Wood","Glass bottle filled with sand"],2,"Float scientist!","Which material is light enough to float?"],
+  ["Is evaporation REVERSIBLE — can the water come back?",["No — it's permanent","Yes — vapor can condense back to water","It burns","It freezes permanently"],1,"Water cycle star!","Water vapor can cool and turn back into water — condensation!"],
+  ["Which animal lives on ICE and swims in freezing water?",["Camel","Polar bear","Kangaroo","Tiger"],1,"Arctic ace!","Which large white bear swims in freezing Arctic water?"],
+  ["Which word describes a FEATHER?",["Heavy and hard","Rough and scratchy","Light and soft","Stiff and solid"],2,"Bird scientist!","Feathers help birds fly because they are...?"],
+  ["Which Earth event happens in DAYS — not millions of years?",["Canyon erosion","A hurricane striking","A mountain growing","A fossil forming"],1,"Weather science!","Which weather event can form and hit in days?"],
+  ["Is a melted crayon REVERSIBLE?",["No — it burns","Yes — it can cool and harden back","It evaporates","It turns to gas"],1,"Wax scientist!","Melted wax can cool and become solid again!"],
+  ["Which animal uses ECHOLOCATION — sound to find its way?",["Eagle","Bat","Frog","Rabbit"],1,"Sound navigator!","Which flying mammal uses sound to navigate in the dark?"],
+],
+},
+};
+
+function shuffle(a){const b=[...a];for(let i=b.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[b[i],b[j]]=[b[j],b[i]];}return b;}
+const QUEUES={};
+SUBS.forEach(sub=>{QUEUES[sub]={};[1,2,3].forEach(lv=>{QUEUES[sub][lv]=shuffle(QB[sub][lv].map((_,i)=>i));});});
+function pickBuiltIn(sub,level,pname){
+  if(QUEUES[sub][level].length===0) QUEUES[sub][level]=shuffle(QB[sub][level].map((_,i)=>i));
+  const idx=QUEUES[sub][level].shift();
+  const raw=QB[sub][level][idx];
+  const fill=s=>s.replace(/\{P\}/g,pname);
+  return{subject:sub,question:fill(raw[0]),answers:raw[1].map(fill),correctIndex:raw[2],encouragement:raw[3],hint:fill(raw[4])};
+}
+
+function mkStat(){return{cor:0,att:0,level:1,cs:0,ws:0};}
+const STARTER_START_LEVEL=5;
+const XP_PER_ANSWER=15;
+const WILD_CHANCE=0.10;
+const STARTER_WILD_CHANCE=0.03;
+const CATCH_STREAK_NEEDED=3;
+const RECENT_Q_LIMIT=25;
+function xpToNext(level){return 20+level*2;}
+function mkState(){return{
+  phase:'starter',
+  starter:null,
+  team:[],
+  activeIdx:0,
+  q:null,sel:null,cor:false,
+  pdx:new Array(PKM.length).fill(false),
+  streak:0,anim:'',
+  stats:{math:mkStat(),reading:mkStat(),science:mkStat()},
+  lvc:null,
+  wild:null,
+  pendingEvo:null,
+  recentQs:[],
+  qCache:{math:null,reading:null,science:null},
+  prefetchInFlight:{math:false,reading:false,science:false},
+  lvlUpMsg:null,
+};}
+function recordRecent(qText){
+  if(!qText)return;
+  st.recentQs.push(qText);
+  while(st.recentQs.length>RECENT_Q_LIMIT)st.recentQs.shift();
+}
+
+let st=mkState();
+let view='game';
+const gameEl=document.getElementById("game");
+const pdxEl=document.getElementById("pokedex-page");
+
+const LVLU={math:"Math level up! Trickier problems ahead!",reading:"Reading level up! Harder words coming!",science:"Science level up! Bigger questions next!"};
+const LVLD={math:"Taking math a bit easier for now!",reading:"Trying simpler reading questions!",science:"Easier science coming up!"};
+const LDESC={
+  math:{
+    1:"Kindergarten (CCSS K.CC/K.OA): count objects up to 10, add two numbers with sum ≤5, subtract within 5, compare which group has more or fewer, name basic 2D shapes (circle, square, triangle, rectangle).",
+    2:"Grade 1 (CCSS 1.OA/1.NBT): add or subtract within 20, identify tens and ones in a two-digit number, count by 2s or 5s, compare two-digit numbers, tell time to the nearest hour.",
+    3:"Grade 2 (CCSS 2.OA/2.NBT): add or subtract within 100, skip-count by 5s or 10s, identify odd or even numbers, tell time to the half-hour, identify a shape by its number of sides or corners."
+  },
+  reading:{
+    1:"Kindergarten (CCSS RF.K.2/RF.K.3): identify the beginning letter or sound of a word, recognize a rhyming pair (cat/bat), match a letter to its sound (B says 'buh'), identify a basic sight word (the, I, a, is, to, my).",
+    2:"Grade 1 (CCSS RF.1.2/RF.1.3/RL.1): identify short vs. long vowel sounds in simple words, recognize consonant digraph words (ch, sh, th), blend sounds to make a word, answer a who/what/where question about a short story, identify a Grade-1 sight word (said, come, were).",
+    3:"Grade 2 (CCSS RF.2.3/RL.2/L.2.4): use sentence context to figure out a word's meaning, recognize words with common prefixes (un-, re-) or suffixes (-ful, -less), identify the lesson or moral of a familiar story, pick the word with a long vowel sound, break a two-syllable word into its parts."
+  },
+  science:{
+    1:"Kindergarten (NGSS K-LS1/K-ESS2/K-PS2): what plants and animals need to survive (food, water, sunlight, air), weather types (sunny/rainy/cloudy/snowy), basic body senses (eyes for seeing, ears for hearing), which animals swim or fly, what a push or pull does to an object.",
+    2:"Grade 1 (NGSS 1-PS4/1-LS1/1-ESS1): sound comes from vibrating objects, objects can only be seen when there is light, how an animal's body part helps it survive (duck webbed feet for swimming), baby animals look like but are not exactly the same as their parents, the sun rises and sets in a daily pattern.",
+    3:"Grade 2 (NGSS 2-PS1/2-LS2/2-ESS1): describe a material by its properties (hard/soft, rough/smooth, bendy/stiff), identify if a change is reversible (ice melting) or not reversible (burning toast), what plants need to grow (sunlight and water), match an animal to its habitat based on its needs, whether an Earth event happens fast (earthquake) or slow (a canyon forming over time)."
+  }
+};
+
+function activeTM(){return st.team[st.activeIdx];}
+function activePi(){const t=activeTM();return t?t.pi:0;}
+function genFromPi(pi){const li=LINES.findIndex(ln=>ln.includes(pi));if(li!==-1){return GENS.findIndex(g=>g.includes(li));}const w=PKM[pi];return w&&typeof w.gen==='number'?w.gen:0;}
+function accPct(s){return s.att===0?0:Math.min(100,Math.round(s.cor/s.att*100));}
+function updStats(sub,ok){
+  const s=st.stats[sub];s.att++;const pv=s.level;
+  if(ok){s.cor++;s.cs++;s.ws=0;if(s.cs>=3&&s.level<3){s.level++;s.cs=0;}}
+  else{s.ws++;s.cs=0;if(s.ws>=2&&s.level>1){s.level--;s.ws=0;}}
+  st.lvc=s.level>pv?"up":s.level<pv?"down":null;
+}
+const TYPE_COLOR={Fire:'#FF5722',Water:'#1976D2',Grass:'#16A34A',Electric:'#EAB308',Normal:'#6B7280',Flying:'#0EA5E9',Bug:'#84CC16',Fairy:'#EC4899',Poison:'#9C27B0',Fighting:'#D32F2F',Ground:'#795548',Steel:'#607D8B',Psychic:'#E91E63',Dark:'#424242',Ghost:'#512DA8'};
+const TYPE_CLASS={Fire:'fire-type',Water:'water-type',Grass:'grass-type',Electric:'electric-type',Normal:'normal-type',Flying:'flying-type',Bug:'bug-type',Fairy:'fairy-type',Poison:'normal-type',Fighting:'normal-type',Ground:'normal-type',Steel:'normal-type',Psychic:'normal-type',Dark:'normal-type',Ghost:'normal-type'};
+const TYPE_OPT_CLASS={Fire:'fire-opt',Water:'water-opt',Grass:'grass-opt'};
+const TYPE_EMOJI={Fire:'&#128293;',Water:'&#128167;',Grass:'&#127807;',Electric:'&#9889;',Normal:'&#11088;',Flying:'&#128038;',Bug:'&#128027;',Fairy:'&#10024;',Poison:'&#128156;',Fighting:'&#128170;',Ground:'&#127759;',Steel:'&#9881;',Psychic:'&#128302;',Dark:'&#127769;',Ghost:'&#128123;'};
+function typeArr(t){return Array.isArray(t)?t:[t];}
+function typeLabel(t){return typeArr(t).join('/');}
+function typeColor(t){return TYPE_COLOR[typeArr(t)[0]]||'#6B7280';}
+function typeClass(t){return TYPE_CLASS[typeArr(t)[0]]||'normal-type';}
+function typeEmoji(t){return typeArr(t).map(tp=>TYPE_EMOJI[tp]||'&#11088;').join('');}
+function typeOptClass(t){return TYPE_OPT_CLASS[typeArr(t)[0]]||'grass-opt';}
+function typeBadgesInline(t){return typeArr(t).map(tp=>`<span style="color:${TYPE_COLOR[tp]||'#6B7280'}">${tp}</span>`).join('<span style="color:#D1D5DB"> / </span>');}
+
+function qCardHTML(resultMsg,btnLabel){
+  if(!st.q)return'';
+  const q=st.q,lv=st.stats[q.subject]?.level||1;
+  let h=`<div class="card"><div class="subj-tag ${SCLS[q.subject]||'tagm'}">${SNAME[q.subject]} &bull; Level ${lv}</div><div class="qtext">${q.question}</div><div class="ans-grid">`;
+  q.answers.forEach((a,i)=>{let c='ans-btn';if(st.sel!==null){if(i===q.correctIndex)c+=' cor';else if(i===st.sel&&!st.cor)c+=' wrg';}h+=`<button class="${c}"${st.sel!==null?' disabled':''} data-i="${i}">${a}</button>`;});
+  h+=`</div>`;
+  if(st.sel!==null){
+    h+=`<div class="result-msg ${st.cor?'ok':'no'}">${resultMsg}</div>`;
+    if(st.lvc){const m=st.lvc==='up'?LVLU[q.subject]:LVLD[q.subject];if(m)h+=`<div class="lvl-toast">${m}</div>`;}
+    h+=`<button class="nxt-btn" id="nxt">${btnLabel}</button>`;
+  }
+  return h+`</div>`;
+}
+
+function statsHTML(){
+  let h=`<div class="stats-row">`;
+  SUBS.forEach(sub=>{const s=st.stats[sub];const p2=accPct(s);const lc=['','lv1','lv2','lv3'][s.level];h+=`<div class="stat-card"><div class="stat-subj">${SNAME[sub]}</div><div class="stat-lvl ${lc}">Level ${s.level}</div><div class="stat-acc">${s.cor}<span class="stat-denom">/${s.att}</span></div><div class="stat-bar"><div class="stat-fill" style="width:${p2}%"></div></div></div>`;});
+  return h+`</div>`;
+}
+
+function render(){
+  const hdr=`<div class="hdr"><span class="app-name">Pokémon Learning Adventure</span>${st.streak>1?`<span class="streak-badge">Streak: ${st.streak}</span>`:''}</div>`;
+  let h=hdr;
+
+  if(st.phase==='starter'){
+    h+=`<div class="starter-card"><div style="font-size:20px;font-weight:700;color:#1A1A2E;margin-bottom:3px;text-align:center">Choose your starter!</div><div style="font-size:13px;color:#6B7280;margin-bottom:16px;text-align:center">Pick your partner for this learning adventure</div>`;
+    GENS.forEach((genLines,gi)=>{
+      h+=`<div class="gen-section"><div class="gen-label">Gen ${GEN_ROMAN[gi]} &mdash; ${GEN_NAMES[gi]}</div><div class="starter-row">`;
+      genLines.forEach(li=>{
+        const pk=PKM[LINES[li][0]];
+        h+=`<button class="starter-opt ${typeOptClass(pk.type)}" id="pick-${li}">${pk.svg(64)}<div class="starter-opt-name">${pk.n}</div><span class="starter-opt-type ${typeClass(pk.type)}">${typeEmoji(pk.type)} ${typeLabel(pk.type)}</span></button>`;
+      });
+      h+=`</div></div>`;
+    });
+    h+=`</div>`;
+    gameEl.innerHTML=h;
+    GENS.forEach(genLines=>{genLines.forEach(li=>{document.getElementById(`pick-${li}`).addEventListener('click',()=>pickStarter(li));});});
+    return;
+  }
+
+  if(st.phase==='play'){
+    const tm=activeTM();
+    const p=PKM[tm.pi];
+    const xpMx=xpToNext(tm.level);
+    const pct=Math.min(100,Math.round(tm.xp/xpMx*100));
+    h+=`<div class="card pcard"><div class="pnum">${p.num} &bull; ${typeBadgesInline(p.type)} Type</div><div class="pname">${p.n} <span class="lvl-badge">Lv ${tm.level}</span></div><div class="psvg ${st.anim}">${p.svg(148)}</div><div class="xp-row"><span>XP</span><span>${tm.xp}/${xpMx}</span></div><div class="xp-track"><div class="xp-fill" style="width:${pct}%"></div></div></div>`;
+    if(st.lvlUpMsg){
+      h+=`<div class="lvl-up-toast">&#11088; ${st.lvlUpMsg}</div>`;
+    }
+    if(st.team.length>1){
+      h+=`<div class="team-row"><span class="team-label">Team</span>`;
+      st.team.forEach((mem,i)=>{
+        const mp=PKM[mem.pi];
+        h+=`<button class="team-slot${i===st.activeIdx?' active':''}" data-team-idx="${i}" title="${mp.n} Lv ${mem.level}">${mp.svg(44)}<span class="team-slot-lvl">${mem.level}</span></button>`;
+      });
+      h+=`</div>`;
+    }
+    const rm=st.cor?(st.q?.encouragement||'Amazing!'):(st.q?.hint||'Good try!');
+    const willEvolve=!!st.pendingEvo;
+    const btn=willEvolve?`What's happening to ${p.n}?! &#8594;`:'Next Question &#8594;';
+    h+=qCardHTML(rm,btn);
+  }
+
+  if(st.phase==='wild'&&st.wild){
+    const wild=PKM[st.wild.pi];
+    const cs=st.wild.correctStreak;
+    const pips='<div class="catch-pips">'+[0,1,2].map(i=>`<div class="catch-pip${i<cs?' filled':''}"></div>`).join('')+'</div>';
+    h+=`<div class="wild-card"><div class="wild-badge">&#9889; Wild Encounter</div><div class="wild-name">A wild <strong>${wild.n}</strong> appeared! <span class="lvl-badge">Lv ${st.wild.level}</span></div><div class="psvg ${st.anim}">${wild.svg(140)}</div><div class="catch-counter">Answer 3 in a row to catch it! (${cs}/3)</div>${pips}</div>`;
+    const escaped=st.wildEscape;
+    const caught=cs>=CATCH_STREAK_NEEDED;
+    const rm=escaped?`${wild.n} broke free and ran away!`:caught?`&#9889; Gotcha! ${wild.n} was caught!`:st.cor?`Great answer! Keep going!`:(st.q?.hint||'Good try!');
+    const btn=escaped?'Continue &#8594;':caught?'Catch it! &#8594;':st.cor?'Next Question &#8594;':'Try Again &#8594;';
+    h+=qCardHTML(rm,btn);
+  }
+
+  h+=statsHTML();
+  gameEl.innerHTML=h;
+  gameEl.querySelectorAll('[data-i]').forEach(b=>b.addEventListener('click',()=>handleAnswer(+b.dataset.i)));
+  gameEl.querySelectorAll('[data-team-idx]').forEach(b=>b.addEventListener('click',()=>switchPokemon(+b.dataset.teamIdx)));
+  const nb=gameEl.querySelector('#nxt');if(nb)nb.addEventListener('click',onNext);
+}
+
+function renderPokedex(){
+  let h=`<div class="hdr"><span class="app-name">Pokédex</span></div>`;
+  GENS.forEach((genLines,gi)=>{
+    h+=`<div class="pdx-gen-section"><div class="pdx-gen-label">Gen ${GEN_ROMAN[gi]} &mdash; ${GEN_NAMES[gi]}</div><div class="pdx-grid">`;
+    genLines.forEach(li=>{
+      LINES[li].forEach(pi=>{
+        const pk=PKM[pi];const u=st.pdx[pi];
+        h+=`<div class="pdx-entry${u?'':' locked'}">${pk.svg(52)}<div class="pdx-num">${pk.num}</div><div class="pdx-name">${u?pk.n:'???'}</div>${u?`<div class="pdx-fact">${pk.fact}</div>`:''}</div>`;
+      });
+    });
+    (WILD_PDX_BY_GEN[gi]||[]).forEach(pi=>{
+      const pk=PKM[pi];const u=st.pdx[pi];
+      h+=`<div class="pdx-entry${u?'':' locked'}">${pk.svg(52)}<div class="pdx-num">${pk.num}</div><div class="pdx-name">${u?pk.n:'???'}</div>${u?`<div class="pdx-fact">${pk.fact}</div>`:''}</div>`;
+    });
+    h+=`</div></div>`;
+  });
+  pdxEl.innerHTML=h;
+}
+
+function switchView(v){
+  view=v;
+  document.getElementById('nav-game').classList.toggle('nav-active',v==='game');
+  document.getElementById('nav-pdx').classList.toggle('nav-active',v==='pdx');
+  if(v==='game'){
+    gameEl.style.display='block';
+    pdxEl.style.display='none';
+  } else {
+    gameEl.style.display='none';
+    pdxEl.style.display='block';
+    renderPokedex();
+  }
+}
+
+
+async function loadQuestion(){
+  const sub=SUBS[Math.floor(Math.random()*3)];
+  const lv=st.stats[sub].level;
+  const pname=st.phase==='wild'&&st.wild?PKM[st.wild.pi].n:PKM[activePi()].n;
+  st.lvc=null;
+  st.wildEscape=false;
+  st.lvlUpMsg=null;
+  const q=pickBuiltIn(sub,lv,pname);
+  st.q=q;st.sel=null;st.cor=false;st.anim="";
+  recordRecent(q.question);
+  render();
+}
+
+function playEvolution(fromIdx,toIdx,onDone){
+  const ov=document.getElementById('evo-overlay');
+  const img=document.getElementById('evo-img');
+  const lbl=document.getElementById('evo-label');
+  const bgw=document.getElementById('evo-bg-white');
+  const fromP=PKM[fromIdx],toP=PKM[toIdx];
+  const fromId=parseInt(fromP.num.slice(1)),toId=parseInt(toP.num.slice(1));
+  ov.classList.add('active');
+  img.style.cssText='display:block;object-fit:contain;width:200px;height:200px;filter:none;transition:none';
+  img.src=`${BASE}${fromId}.png`;
+  lbl.textContent=`What?! ${fromP.n} is evolving!`;
+  bgw.style.cssText='position:absolute;inset:0;background:white;opacity:0;pointer-events:none;transition:none';
+  const halfCycles=[170,150,130,110,90,75,60,50,42,38];
+  let hi=0,isWhite=false;
+  function flash(){
+    if(hi>=halfCycles.length){
+      img.style.filter='brightness(0) invert(1)';
+      bgw.style.transition='opacity 0.22s ease';bgw.style.opacity='1';
+      setTimeout(()=>{
+        img.src=`${BASE}${toId}.png`;img.style.transition='none';img.style.filter='brightness(0) invert(1)';
+        lbl.textContent=`${toP.n}!`;
+        bgw.style.transition='opacity 0.35s ease';bgw.style.opacity='0';
+        setTimeout(()=>{
+          img.style.transition='filter 1.3s ease-out';img.offsetWidth;img.style.filter='brightness(1) saturate(1)';
+          setTimeout(()=>{
+            ov.style.transition='opacity 0.45s ease';ov.style.opacity='0';
+            setTimeout(()=>{ov.classList.remove('active');ov.style.cssText='';img.style.cssText='';onDone();},450);
+          },1400);
+        },380);
+      },250);
+      return;
+    }
+    isWhite=!isWhite;
+    img.style.filter=isWhite?'brightness(0) invert(1)':'brightness(1) saturate(1)';
+    if(!isWhite)hi++;
+    setTimeout(flash,halfCycles[Math.min(hi,halfCycles.length-1)]);
+  }
+  flash();
+}
+
+function playCatch(pkIdx,onDone){
+  const ballSVG=`<svg width="56" height="56" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"><circle cx="30" cy="30" r="28" fill="#EF4444" stroke="#1A1A2E" stroke-width="3"/><rect x="2" y="27" width="56" height="6" fill="#1A1A2E"/><circle cx="30" cy="30" r="28" fill="none" stroke="#1A1A2E" stroke-width="3"/><circle cx="30" cy="30" r="10" fill="white" stroke="#1A1A2E" stroke-width="3"/><circle cx="30" cy="30" r="5" fill="#F3F4F6"/></svg>`;
+  const ov=document.getElementById('catch-overlay');
+  const pkmImg=document.getElementById('catch-pkm-img');
+  const ball=document.getElementById('catch-ball');
+  const lbl=document.getElementById('catch-lbl');
+  const pkId=parseInt(PKM[pkIdx].num.slice(1));
+  ov.style.cssText='';ov.style.opacity='1';ov.classList.add('active');
+  pkmImg.src=`${BASE}${pkId}.png`;
+  pkmImg.style.cssText='display:block;object-fit:contain;width:180px;height:180px;filter:none;transition:none';
+  ball.innerHTML=ballSVG;ball.style.display='none';ball.style.animation='none';
+  lbl.textContent=`A wild ${PKM[pkIdx].n} appeared!`;
+  setTimeout(()=>{
+    ball.style.display='block';ball.offsetWidth;
+    ball.style.animation='ball-fly 0.75s cubic-bezier(0.15,0.5,0.5,1) forwards';
+    setTimeout(()=>{
+      pkmImg.style.cssText='display:block;object-fit:contain;width:180px;height:180px;transition:transform 0.3s ease,filter 0.15s ease,opacity 0.3s ease;transform:scale(0.05);filter:brightness(0) invert(1);opacity:0';
+      lbl.textContent='...';
+      setTimeout(()=>{
+        ball.style.animation='ball-wobble 0.5s ease 3 forwards';
+        setTimeout(()=>{
+          lbl.textContent=`Gotcha! ${PKM[pkIdx].n} was caught!`;
+          setTimeout(()=>{
+            ov.style.transition='opacity 0.4s ease';ov.style.opacity='0';
+            setTimeout(()=>{ov.classList.remove('active');ov.style.cssText='';onDone();},400);
+          },1100);
+        },1600);
+      },380);
+    },750);
+  },500);
+}
+
+function pickStarter(lineIdx){
+  st.starter=lineIdx;
+  st.phase='play';
+  const startPi=LINES[lineIdx][0];
+  st.team=[{pi:startPi,level:STARTER_START_LEVEL,xp:0}];
+  st.activeIdx=0;
+  st.pdx[startPi]=true;
+  loadQuestion();
+}
+
+function switchPokemon(idx){
+  if(idx===st.activeIdx)return;
+  if(st.phase!=='play')return;
+  st.activeIdx=idx;
+  loadQuestion();
+}
+
+function applyLevelUps(){
+  const tm=activeTM();if(!tm)return;
+  while(tm.xp>=xpToNext(tm.level)){
+    tm.xp-=xpToNext(tm.level);
+    tm.level++;
+    const evoAt=PKM[tm.pi].evoAt;
+    if(evoAt&&tm.level>=evoAt){
+      st.pendingEvo={fromPi:tm.pi,toPi:tm.pi+1};
+      return;
+    }
+    st.lvlUpMsg=`${PKM[tm.pi].n} grew to level ${tm.level}!`;
+  }
+}
+
+function processEvolution(){
+  if(!st.pendingEvo){afterTurn();return;}
+  const {fromPi,toPi}=st.pendingEvo;
+  st.pendingEvo=null;
+  playEvolution(fromPi,toPi,()=>{
+    const tm=activeTM();
+    tm.pi=toPi;
+    st.pdx[toPi]=true;
+    applyLevelUps();
+    if(st.pendingEvo){processEvolution();}
+    else{afterTurn();}
+  });
+}
+
+function getAvailableOtherStarters(){
+  const tm=activeTM();if(!tm)return[];
+  const genIdx=genFromPi(tm.pi);
+  const genLines=GENS[genIdx]||[];
+  const teamPis=new Set(st.team.map(t=>t.pi));
+  return genLines.map(li=>LINES[li][0]).filter(pi=>{
+    const line=LINES.find(ln=>ln.includes(pi))||[];
+    return !line.some(lpi=>teamPis.has(lpi));
+  });
+}
+function triggerWildEncounter(){
+  const tm=activeTM();
+  const genIdx=genFromPi(tm.pi);
+  const allWild=WILD_BY_GEN[genIdx]||[];
+  const teamPis=new Set(st.team.map(t=>t.pi));
+  const available=allWild.filter(pi=>!teamPis.has(pi));
+  if(available.length===0){loadQuestion();return;}
+  const wpi=available[Math.floor(Math.random()*available.length)];
+  const minLv=Math.max(2,tm.level-3);
+  const maxLv=Math.max(minLv,tm.level);
+  const wlev=Math.floor(Math.random()*(maxLv-minLv+1))+minLv;
+  st.wild={pi:wpi,level:wlev,correctStreak:0};
+  st.phase='wild';
+  loadQuestion();
+}
+
+function afterTurn(){
+  if(st.cor&&st.phase==='play'){
+    const starterCands=getAvailableOtherStarters();
+    if(starterCands.length>0&&Math.random()<STARTER_WILD_CHANCE){
+      const wpi=starterCands[Math.floor(Math.random()*starterCands.length)];
+      const tm=activeTM();
+      const minLv=Math.max(2,tm.level-3),maxLv=Math.max(minLv,tm.level);
+      st.wild={pi:wpi,level:Math.floor(Math.random()*(maxLv-minLv+1))+minLv,correctStreak:0};
+      st.phase='wild';
+      loadQuestion();return;
+    }
+    if(Math.random()<WILD_CHANCE){triggerWildEncounter();return;}
+  }
+  loadQuestion();
+}
+
+function onNext(){
+  if(st.phase==='wild'){
+    if(st.wildEscape){
+      st.wild=null;st.wildEscape=false;st.phase='play';
+      loadQuestion();return;
+    }
+    if(st.wild&&st.wild.correctStreak>=CATCH_STREAK_NEEDED){
+      const wp=st.wild.pi;const wlev=st.wild.level;
+      playCatch(wp,()=>{
+        st.team.push({pi:wp,level:wlev,xp:0});
+        st.pdx[wp]=true;
+        st.wild=null;
+        st.phase='play';
+        loadQuestion();
+      });
+      return;
+    }
+    loadQuestion();return;
+  }
+  if(st.pendingEvo){processEvolution();return;}
+  afterTurn();
+}
+
+function handleAnswer(i){
+  if(st.sel!==null)return;
+  const ok=i===st.q.correctIndex;
+  st.sel=i;st.cor=ok;
+  updStats(st.q.subject,ok);
+  if(ok){
+    st.streak++;st.anim='bk';
+    if(st.phase==='play'){
+      const tm=activeTM();
+      if(tm){tm.xp+=XP_PER_ANSWER;applyLevelUps();}
+    } else if(st.phase==='wild'&&st.wild){
+      st.wild.correctStreak++;
+    }
+  } else {
+    st.streak=0;st.anim='sk';
+    if(st.phase==='wild'){st.wildEscape=true;}
+  }
+  render();
+}
+
+document.getElementById("nav-game").addEventListener("click",()=>switchView('game'));
+document.getElementById("nav-pdx").addEventListener("click",()=>switchView('pdx'));
+
+gameEl.style.display="block";
+document.getElementById("bottom-nav").style.display="flex";
+render();
+</script>
+</body>
+</html>
