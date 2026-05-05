@@ -127,7 +127,13 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;min-heigh
 @keyframes evo-spin{to{transform:rotate(360deg)}}
 @keyframes evo-label-in{0%{opacity:0;transform:translateY(10px)}100%{opacity:1;transform:translateY(0)}}
 @keyframes ball-fly{0%{transform:translateX(-50%) translateY(170px) scale(0.3) rotate(-540deg);opacity:0}65%{opacity:1}100%{transform:translateX(-50%) translateY(0) scale(1) rotate(0deg);opacity:1}}
-@keyframes ball-wobble{0%,100%{transform:translateX(-50%) rotate(0deg)}20%{transform:translateX(-50%) rotate(-22deg)}40%{transform:translateX(-50%) rotate(22deg)}60%{transform:translateX(-50%) rotate(-14deg)}80%{transform:translateX(-50%) rotate(14deg)}}
+@keyframes ball-wobble-seq{0%,100%{transform:translateX(-50%) rotate(0deg)}5%{transform:translateX(-50%) rotate(-24deg)}10%{transform:translateX(-50%) rotate(22deg)}14%{transform:translateX(-50%) rotate(-12deg)}18%{transform:translateX(-50%) rotate(8deg)}22%{transform:translateX(-50%) rotate(0deg)}38%{transform:translateX(-50%) rotate(20deg)}43%{transform:translateX(-50%) rotate(-22deg)}47%{transform:translateX(-50%) rotate(11deg)}51%{transform:translateX(-50%) rotate(-6deg)}55%{transform:translateX(-50%) rotate(0deg)}71%{transform:translateX(-50%) rotate(-19deg)}76%{transform:translateX(-50%) rotate(19deg)}80%{transform:translateX(-50%) rotate(-9deg)}84%{transform:translateX(-50%) rotate(5deg)}88%{transform:translateX(-50%) rotate(0deg)}}
+@keyframes pkm-absorb{0%{transform:scale(1) rotate(0deg);filter:brightness(1) saturate(1);opacity:1}25%{transform:scale(1.12) rotate(-6deg);filter:brightness(1.8) saturate(0.6);opacity:1}55%{transform:scale(0.55) rotate(180deg);filter:brightness(3) saturate(0) invert(1);opacity:0.7}100%{transform:scale(0.04) rotate(540deg);filter:brightness(0) invert(1);opacity:0}}
+@keyframes ball-pop{0%{transform:translateX(-50%) scale(1) rotate(0deg)}40%{transform:translateX(-50%) scale(1.22) rotate(0deg)}100%{transform:translateX(-50%) scale(1) rotate(0deg)}}
+@keyframes sparkle-fly{0%{opacity:0;transform:translate(-50%,50%) scale(0.3)}12%{opacity:1}100%{opacity:0;transform:translate(calc(-50% + var(--dx)),calc(50% + var(--dy))) scale(1.4)}}
+.sparkle{position:absolute;left:50%;bottom:38px;width:10px;height:10px;background:#FCD34D;border-radius:50%;box-shadow:0 0 14px 3px #FCD34D,0 0 30px 6px rgba(252,211,77,0.5);opacity:0;pointer-events:none;z-index:4}
+.sparkle.s2{background:#FFFFFF;box-shadow:0 0 14px 3px #FFFFFF,0 0 30px 6px rgba(255,255,255,0.6)}
+.sparkle.s3{background:#FCA5A5;box-shadow:0 0 14px 3px #FCA5A5,0 0 28px 6px rgba(252,165,165,0.5)}
 </style>
 </head>
 <body>
@@ -1123,34 +1129,108 @@ function playEvolution(fromIdx,toIdx,onDone){
   flash();
 }
 
+let _audioCtx=null;
+function _getAudioCtx(){
+  if(!_audioCtx){
+    try{_audioCtx=new (window.AudioContext||window.webkitAudioContext)();}catch(e){return null;}
+  }
+  if(_audioCtx.state==='suspended'){_audioCtx.resume();}
+  return _audioCtx;
+}
+function _tone(f,dur,type='sine',vol=0.14,when=0){
+  const ctx=_getAudioCtx();if(!ctx)return;
+  const t0=ctx.currentTime+when;
+  const osc=ctx.createOscillator(),g=ctx.createGain();
+  osc.type=type;osc.frequency.setValueAtTime(f,t0);
+  g.gain.setValueAtTime(0.0001,t0);
+  g.gain.linearRampToValueAtTime(vol,t0+0.012);
+  g.gain.exponentialRampToValueAtTime(0.0001,t0+dur);
+  osc.connect(g);g.connect(ctx.destination);
+  osc.start(t0);osc.stop(t0+dur+0.05);
+}
+function _sweep(f1,f2,dur,type='sine',vol=0.14){
+  const ctx=_getAudioCtx();if(!ctx)return;
+  const t0=ctx.currentTime;
+  const osc=ctx.createOscillator(),g=ctx.createGain();
+  osc.type=type;
+  osc.frequency.setValueAtTime(f1,t0);
+  osc.frequency.exponentialRampToValueAtTime(Math.max(20,f2),t0+dur);
+  g.gain.setValueAtTime(0.0001,t0);
+  g.gain.linearRampToValueAtTime(vol,t0+0.015);
+  g.gain.exponentialRampToValueAtTime(0.0001,t0+dur);
+  osc.connect(g);g.connect(ctx.destination);
+  osc.start(t0);osc.stop(t0+dur+0.05);
+}
+function playSfx(name){
+  if(name==='throw'){_sweep(880,260,0.42,'triangle',0.12);}
+  else if(name==='capture'){_sweep(360,140,0.32,'sine',0.18);}
+  else if(name==='wobble'){_tone(520,0.06,'square',0.09);_tone(380,0.08,'square',0.07,0.04);}
+  else if(name==='gotcha'){
+    _tone(523,0.13,'triangle',0.18,0);
+    _tone(659,0.13,'triangle',0.18,0.12);
+    _tone(784,0.13,'triangle',0.18,0.24);
+    _tone(1047,0.32,'triangle',0.2,0.36);
+  }
+}
+
+function _spawnSparkles(host){
+  host.querySelectorAll('.sparkle').forEach(s=>s.remove());
+  const N=14;
+  for(let i=0;i<N;i++){
+    const angle=(i/N)*Math.PI*2+(Math.random()*0.4-0.2);
+    const dist=70+Math.random()*60;
+    const dx=Math.cos(angle)*dist;
+    const dy=-Math.sin(angle)*dist;
+    const s=document.createElement('div');
+    const variant=i%3===0?' s2':i%3===1?' s3':'';
+    s.className='sparkle'+variant;
+    s.style.setProperty('--dx',dx+'px');
+    s.style.setProperty('--dy',dy+'px');
+    const dur=(0.7+Math.random()*0.45).toFixed(2);
+    const delay=(Math.random()*0.12).toFixed(2);
+    s.style.animation=`sparkle-fly ${dur}s ease-out ${delay}s forwards`;
+    host.appendChild(s);
+  }
+}
+
 function playCatch(pkIdx,onDone){
   const ballSVG=`<svg width="56" height="56" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"><circle cx="30" cy="30" r="28" fill="#EF4444" stroke="#1A1A2E" stroke-width="3"/><rect x="2" y="27" width="56" height="6" fill="#1A1A2E"/><circle cx="30" cy="30" r="28" fill="none" stroke="#1A1A2E" stroke-width="3"/><circle cx="30" cy="30" r="10" fill="white" stroke="#1A1A2E" stroke-width="3"/><circle cx="30" cy="30" r="5" fill="#F3F4F6"/></svg>`;
   const ov=document.getElementById('catch-overlay');
   const pkmImg=document.getElementById('catch-pkm-img');
   const ball=document.getElementById('catch-ball');
   const lbl=document.getElementById('catch-lbl');
+  const sparkleHost=document.getElementById('catch-pkm');
   const pkId=parseInt(PKM[pkIdx].num.slice(1));
   ov.style.cssText='';ov.style.opacity='1';ov.classList.add('active');
+  sparkleHost.querySelectorAll('.sparkle').forEach(s=>s.remove());
   pkmImg.src=`${BASE}${pkId}.png`;
-  pkmImg.style.cssText='display:block;object-fit:contain;width:180px;height:180px;filter:none;transition:none';
+  pkmImg.style.cssText='display:block;object-fit:contain;width:180px;height:180px;filter:none;transition:none;transform:none;opacity:1;animation:none';
   ball.innerHTML=ballSVG;ball.style.display='none';ball.style.animation='none';
   lbl.textContent=`A wild ${PKM[pkIdx].n} appeared!`;
   setTimeout(()=>{
     ball.style.display='block';ball.offsetWidth;
     ball.style.animation='ball-fly 0.75s cubic-bezier(0.15,0.5,0.5,1) forwards';
+    playSfx('throw');
     setTimeout(()=>{
-      pkmImg.style.cssText='display:block;object-fit:contain;width:180px;height:180px;transition:transform 0.3s ease,filter 0.15s ease,opacity 0.3s ease;transform:scale(0.05);filter:brightness(0) invert(1);opacity:0';
+      pkmImg.style.cssText='display:block;object-fit:contain;width:180px;height:180px;animation:pkm-absorb 0.55s ease-in forwards';
+      playSfx('capture');
       lbl.textContent='...';
       setTimeout(()=>{
-        ball.style.animation='ball-wobble 0.5s ease 3 forwards';
+        ball.style.animation='ball-wobble-seq 1.9s ease-in-out forwards';
+        setTimeout(()=>playSfx('wobble'),140);
+        setTimeout(()=>playSfx('wobble'),780);
+        setTimeout(()=>playSfx('wobble'),1410);
         setTimeout(()=>{
+          ball.style.animation='ball-pop 0.45s ease forwards';
+          _spawnSparkles(sparkleHost);
+          playSfx('gotcha');
           lbl.textContent=`Gotcha! ${PKM[pkIdx].n} was caught!`;
           setTimeout(()=>{
             ov.style.transition='opacity 0.4s ease';ov.style.opacity='0';
             setTimeout(()=>{ov.classList.remove('active');ov.style.cssText='';onDone();},400);
-          },1100);
-        },1600);
-      },380);
+          },1200);
+        },1900);
+      },550);
     },750);
   },500);
 }
