@@ -44,16 +44,11 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;min-heigh
 .result-msg{text-align:center;padding:11px 14px;border-radius:10px;font-size:14px;margin-bottom:8px;font-weight:500}
 .result-msg.ok{background:#ECFDF5;color:#065F46}
 .result-msg.no{background:#FEF2F2;color:#991B1B}
-.lvl-toast{background:#FEF3C7;color:#92400E;border-radius:10px;padding:8px 14px;font-size:13px;font-weight:600;margin-bottom:8px;text-align:center}
 .nxt-btn{width:100%;background:#1A1A2E;color:white;border:none;border-radius:12px;padding:13px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit}
 .nxt-btn:hover{opacity:0.85}
 .stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
 .stat-card{background:#fff;border-radius:12px;padding:10px 8px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,0.06)}
 .stat-subj{font-size:11px;color:#6B7280;font-weight:600;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.04em}
-.stat-lvl{display:inline-block;font-size:11px;font-weight:700;padding:2px 9px;border-radius:20px;margin-bottom:5px}
-.lv1{background:#DBEAFE;color:#1D4ED8}
-.lv2{background:#FEF3C7;color:#92400E}
-.lv3{background:#D1FAE5;color:#065F46}
 .stat-acc{font-size:15px;font-weight:700;color:#1A1A2E}
 .stat-denom{font-size:11px;color:#9CA3AF;font-weight:400}
 .stat-bar{height:4px;background:#F3F4F6;border-radius:999px;margin-top:6px;overflow:hidden}
@@ -99,6 +94,10 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;min-heigh
 .catch-pips{display:flex;justify-content:center;gap:8px;margin-top:10px}
 .catch-pip{width:14px;height:14px;border-radius:50%;background:rgba(255,255,255,0.18);border:1.5px solid rgba(255,255,255,0.4);transition:all 0.2s ease}
 .catch-pip.filled{background:#86efac;border-color:#86efac;box-shadow:0 0 8px rgba(134,239,172,0.6)}
+.catch-balls{display:flex;justify-content:center;align-items:center;gap:7px;margin-top:9px}
+.catch-balls-lbl{font-size:11px;font-weight:600;color:rgba(255,255,255,0.6);margin-right:3px}
+.miss-ball{width:15px;height:15px;border-radius:50%;background:linear-gradient(#EF4444 0 49%,#fff 51% 100%);border:1.5px solid rgba(0,0,0,0.45);transition:all 0.2s ease}
+.miss-ball.used{background:rgba(255,255,255,0.12);border-color:rgba(255,255,255,0.22);opacity:0.5}
 .lvl-up-toast{background:linear-gradient(90deg,#FCD34D,#F59E0B);color:#1A1A2E;border-radius:12px;padding:11px 16px;font-size:15px;font-weight:700;margin-bottom:12px;text-align:center;box-shadow:0 4px 14px rgba(245,158,11,0.35);animation:lvl-up-flash 0.55s cubic-bezier(0.34,1.56,0.64,1)}
 @keyframes lvl-up-flash{0%{opacity:0;transform:translateY(-10px) scale(0.92)}40%{opacity:1;transform:translateY(0) scale(1.06)}70%{transform:scale(0.98)}100%{opacity:1;transform:scale(1)}}
 .wild-card{background:linear-gradient(145deg,#0f2f0f,#1e4d1e);border-radius:16px;padding:16px 16px 12px;margin-bottom:12px;text-align:center;box-shadow:0 2px 16px rgba(0,0,0,0.25)}
@@ -892,6 +891,12 @@ const XP_PER_ANSWER=15;
 const WILD_CHANCE=0.10;
 const STARTER_WILD_CHANCE=0.03;
 const CATCH_STREAK_NEEDED=3;
+// A wrong answer during an encounter costs a ball rather than ending it outright;
+// the Pokemon only flees once the balls run out.
+const CATCH_MISSES_ALLOWED=1;
+// Symmetric on purpose: falling a level should be no easier than climbing one.
+const LEVEL_UP_STREAK=3;
+const LEVEL_DOWN_STREAK=3;
 const RECENT_Q_LIMIT=25;
 function xpToNext(level){return 20+level*2;}
 function mkState(saved){
@@ -904,7 +909,6 @@ function mkState(saved){
     pdx:new Array(PKM.length).fill(false),
     streak:0,anim:'',
     stats:{math:mkStat(),reading:mkStat(),science:mkStat()},
-    lvc:null,
     wild:null,
     pendingEvo:null,
     recentQs:[],
@@ -1003,8 +1007,6 @@ let view='game';
 const gameEl=document.getElementById("game");
 const pdxEl=document.getElementById("pokedex-page");
 
-const LVLU={math:"Math level up! Trickier problems ahead!",reading:"Reading level up! Harder words coming!",science:"Science level up! Bigger questions next!"};
-const LVLD={math:"Taking math a bit easier for now!",reading:"Trying simpler reading questions!",science:"Easier science coming up!"};
 const LDESC={
   math:{
     1:"Kindergarten (CCSS K.CC/K.OA): count objects up to 10, add two numbers with sum ≤5, subtract within 5, compare which group has more or fewer, name basic 2D shapes (circle, square, triangle, rectangle).",
@@ -1027,11 +1029,12 @@ function activeTM(){return st.team[st.activeIdx];}
 function activePi(){const t=activeTM();return t?t.pi:0;}
 function genFromPi(pi){const li=LINES.findIndex(ln=>ln.includes(pi));if(li!==-1){return GENS.findIndex(g=>g.includes(li));}const w=PKM[pi];return w&&typeof w.gen==='number'?w.gen:0;}
 function accPct(s){return s.att===0?0:Math.min(100,Math.round(s.cor/s.att*100));}
+// Difficulty still adapts per subject, but the level is never shown to the player —
+// "Lv" in the UI means a Pokemon's level and nothing else.
 function updStats(sub,ok){
-  const s=st.stats[sub];s.att++;const pv=s.level;
-  if(ok){s.cor++;s.cs++;s.ws=0;if(s.cs>=3&&s.level<3){s.level++;s.cs=0;}}
-  else{s.ws++;s.cs=0;if(s.ws>=2&&s.level>1){s.level--;s.ws=0;}}
-  st.lvc=s.level>pv?"up":s.level<pv?"down":null;
+  const s=st.stats[sub];s.att++;
+  if(ok){s.cor++;s.cs++;s.ws=0;if(s.cs>=LEVEL_UP_STREAK&&s.level<3){s.level++;s.cs=0;}}
+  else{s.ws++;s.cs=0;if(s.ws>=LEVEL_DOWN_STREAK&&s.level>1){s.level--;s.ws=0;}}
 }
 const TYPE_COLOR={Fire:'#FF5722',Water:'#1976D2',Grass:'#16A34A',Electric:'#EAB308',Normal:'#6B7280',Flying:'#0EA5E9',Bug:'#84CC16',Fairy:'#EC4899',Poison:'#9C27B0',Fighting:'#D32F2F',Ground:'#795548',Steel:'#607D8B',Psychic:'#E91E63',Dark:'#424242',Ghost:'#512DA8'};
 const TYPE_CLASS={Fire:'fire-type',Water:'water-type',Grass:'grass-type',Electric:'electric-type',Normal:'normal-type',Flying:'flying-type',Bug:'bug-type',Fairy:'fairy-type',Poison:'normal-type',Fighting:'normal-type',Ground:'normal-type',Steel:'normal-type',Psychic:'normal-type',Dark:'normal-type',Ghost:'normal-type'};
@@ -1047,13 +1050,12 @@ function typeBadgesInline(t){return typeArr(t).map(tp=>`<span style="color:${TYP
 
 function qCardHTML(resultMsg,btnLabel){
   if(!st.q)return'';
-  const q=st.q,lv=st.stats[q.subject]?.level||1;
-  let h=`<div class="card"><div class="subj-tag ${SCLS[q.subject]||'tagm'}">${SNAME[q.subject]} &bull; Level ${lv}</div><div class="qtext">${q.question}</div><div class="ans-grid">`;
+  const q=st.q;
+  let h=`<div class="card"><div class="subj-tag ${SCLS[q.subject]||'tagm'}">${SNAME[q.subject]}</div><div class="qtext">${q.question}</div><div class="ans-grid">`;
   q.answers.forEach((a,i)=>{let c='ans-btn';if(st.sel!==null){if(i===q.correctIndex)c+=' cor';else if(i===st.sel&&!st.cor)c+=' wrg';}h+=`<button class="${c}"${st.sel!==null?' disabled':''} data-i="${i}">${a}</button>`;});
   h+=`</div>`;
   if(st.sel!==null){
     h+=`<div class="result-msg ${st.cor?'ok':'no'}">${resultMsg}</div>`;
-    if(st.lvc){const m=st.lvc==='up'?LVLU[q.subject]:LVLD[q.subject];if(m)h+=`<div class="lvl-toast">${m}</div>`;}
     h+=`<button class="nxt-btn" id="nxt">${btnLabel}</button>`;
   }
   return h+`</div>`;
@@ -1061,7 +1063,7 @@ function qCardHTML(resultMsg,btnLabel){
 
 function statsHTML(){
   let h=`<div class="stats-row">`;
-  SUBS.forEach(sub=>{const s=st.stats[sub];const p2=accPct(s);const lc=['','lv1','lv2','lv3'][s.level];h+=`<div class="stat-card"><div class="stat-subj">${SNAME[sub]}</div><div class="stat-lvl ${lc}">Level ${s.level}</div><div class="stat-acc">${s.cor}<span class="stat-denom">/${s.att}</span></div><div class="stat-bar"><div class="stat-fill" style="width:${p2}%"></div></div></div>`;});
+  SUBS.forEach(sub=>{const s=st.stats[sub];const p2=accPct(s);h+=`<div class="stat-card"><div class="stat-subj">${SNAME[sub]}</div><div class="stat-acc">${s.cor}<span class="stat-denom">/${s.att}</span></div><div class="stat-bar"><div class="stat-fill" style="width:${p2}%"></div></div></div>`;});
   return h+`</div>`;
 }
 
@@ -1111,11 +1113,17 @@ function render(){
   if(st.phase==='wild'&&st.wild){
     const wild=PKM[st.wild.pi];
     const cs=st.wild.correctStreak;
+    const misses=st.wild.misses||0;
+    const totalBalls=CATCH_MISSES_ALLOWED+1;
     const pips='<div class="catch-pips">'+[0,1,2].map(i=>`<div class="catch-pip${i<cs?' filled':''}"></div>`).join('')+'</div>';
-    h+=`<div class="wild-card"><div class="wild-badge">&#9889; Wild Encounter</div><div class="wild-name">A wild <strong>${wild.n}</strong> appeared! <span class="lvl-badge">Lv ${st.wild.level}</span></div><div class="psvg ${st.anim}">${wild.svg(140)}</div><div class="catch-counter">Answer 3 in a row to catch it! (${cs}/3)</div>${pips}</div>`;
+    // Progress is no longer "in a row" — a miss costs a ball but keeps the count.
+    // spent balls drop off the right, so the ones still in hand stay left-aligned
+    const balls='<div class="catch-balls"><span class="catch-balls-lbl">Pok&eacute; Balls</span>'+
+      Array.from({length:totalBalls},(_,i)=>`<div class="miss-ball${i>=totalBalls-misses?' used':''}"></div>`).join('')+'</div>';
+    h+=`<div class="wild-card"><div class="wild-badge">&#9889; Wild Encounter</div><div class="wild-name">A wild <strong>${wild.n}</strong> appeared! <span class="lvl-badge">Lv ${st.wild.level}</span></div><div class="psvg ${st.anim}">${wild.svg(140)}</div><div class="catch-counter">Answer ${CATCH_STREAK_NEEDED} to catch it! (${cs}/${CATCH_STREAK_NEEDED})</div>${pips}${balls}</div>`;
     const escaped=st.wildEscape;
     const caught=cs>=CATCH_STREAK_NEEDED;
-    const rm=escaped?`${wild.n} broke free and ran away!`:caught?`&#9889; Gotcha! ${wild.n} was caught!`:st.cor?`Great answer! Keep going!`:(st.q?.hint||'Good try!');
+    const rm=escaped?`${wild.n} broke free and ran away!`:caught?`&#9889; Gotcha! ${wild.n} was caught!`:st.cor?`Great answer! Keep going!`:`${wild.n} broke free! ${st.q?.hint||'Try again!'}`;
     const btn=escaped?'Continue &#8594;':caught?'Catch it! &#8594;':st.cor?'Next Question &#8594;':'Try Again &#8594;';
     h+=qCardHTML(rm,btn);
   }
@@ -1202,7 +1210,6 @@ async function loadQuestion(){
   const sub=SUBS[Math.floor(Math.random()*3)];
   const lv=st.stats[sub].level;
   const pname=st.phase==='wild'&&st.wild?PKM[st.wild.pi].n:PKM[activePi()].n;
-  st.lvc=null;
   st.wildEscape=false;
   st.lvlUpMsg=null;
   const q=pickBuiltIn(sub,lv,pname);
@@ -1426,7 +1433,7 @@ function triggerWildEncounter(){
   const minLv=Math.max(2,tm.level-3);
   const maxLv=Math.max(minLv,tm.level);
   const wlev=Math.floor(Math.random()*(maxLv-minLv+1))+minLv;
-  st.wild={pi:wpi,level:wlev,correctStreak:0};
+  st.wild={pi:wpi,level:wlev,correctStreak:0,misses:0};
   st.phase='wild';
   loadQuestion();
 }
@@ -1438,7 +1445,7 @@ function afterTurn(){
       const wpi=starterCands[Math.floor(Math.random()*starterCands.length)];
       const tm=activeTM();
       const minLv=Math.max(2,tm.level-3),maxLv=Math.max(minLv,tm.level);
-      st.wild={pi:wpi,level:Math.floor(Math.random()*(maxLv-minLv+1))+minLv,correctStreak:0};
+      st.wild={pi:wpi,level:Math.floor(Math.random()*(maxLv-minLv+1))+minLv,correctStreak:0,misses:0};
       st.phase='wild';
       loadQuestion();return;
     }
@@ -1486,7 +1493,12 @@ function handleAnswer(i){
     }
   } else {
     st.streak=0;st.anim='sk';
-    if(st.phase==='wild'){st.wildEscape=true;}
+    // A miss spends a ball but leaves the catch progress intact; only the last
+    // ball running out lets it flee.
+    if(st.phase==='wild'&&st.wild){
+      st.wild.misses=(st.wild.misses||0)+1;
+      if(st.wild.misses>CATCH_MISSES_ALLOWED)st.wildEscape=true;
+    }
   }
   save();
   render();
