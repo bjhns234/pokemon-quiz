@@ -878,6 +878,31 @@ function pickBuiltIn(sub,level,pname){
   return{subject:sub,question:fill(raw[0]),answers:raw[1].map(fill),correctIndex:raw[2],encouragement:raw[3],hint:fill(raw[4])};
 }
 
+// Subjects are dealt from a shuffled bag rather than picked independently at
+// random, which used to allow the same subject four or five times running.
+// A weight is how many slots a subject gets per bag: raise one to see more of
+// it, or set it to 0 to drop the subject from the rotation entirely.
+const SUBJECT_WEIGHTS={math:1,reading:1,science:1};
+let subjectBag=[];
+let lastSubject=null;
+function refillSubjectBag(){
+  const bag=[];
+  SUBS.forEach(sub=>{for(let i=0;i<(SUBJECT_WEIGHTS[sub]||0);i++)bag.push(sub);});
+  const b=shuffle(bag);
+  // Don't let a new bag open with the subject the previous one closed on.
+  if(b.length>1&&b[0]===lastSubject){
+    const j=b.findIndex(s=>s!==lastSubject);
+    if(j>0){[b[0],b[j]]=[b[j],b[0]];}
+  }
+  subjectBag=b;
+}
+function nextSubject(){
+  if(subjectBag.length===0)refillSubjectBag();
+  if(subjectBag.length===0)return SUBS[0]; // every weight is 0 — misconfigured
+  lastSubject=subjectBag.shift();
+  return lastSubject;
+}
+
 function mkStat(){return{cor:0,att:0,level:1,cs:0,ws:0};}
 const STARTER_START_LEVEL=5;
 const XP_PER_ANSWER=15;
@@ -1192,7 +1217,7 @@ function switchView(v){
 
 
 async function loadQuestion(){
-  const sub=SUBS[Math.floor(Math.random()*3)];
+  const sub=nextSubject();
   const lv=st.stats[sub].level;
   const pname=st.phase==='wild'&&st.wild?PKM[st.wild.pi].n:PKM[activePi()].n;
   st.wildEscape=false;
