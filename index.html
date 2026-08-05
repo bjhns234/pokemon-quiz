@@ -9,9 +9,6 @@
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;min-height:100vh;display:flex;align-items:flex-start;justify-content:center;padding:20px 20px 80px}
 .wrap{width:100%;max-width:520px}
-.logo-ball{margin:0 auto 20px;width:72px;height:72px}
-.app-title{font-size:22px;font-weight:700;color:#1A1A2E;margin-bottom:6px}
-.app-sub{font-size:14px;color:#6B7280;margin-bottom:28px;line-height:1.5}
 #game{display:none}
 #pokedex-page{display:none}
 .hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
@@ -25,11 +22,9 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;min-heigh
 .psvg img{display:block}
 .psvg.bk{animation:bounce 0.5s ease forwards}
 .psvg.sk{animation:shake 0.45s ease forwards}
-.psvg.fl{animation:flash 1.6s ease forwards}
 .xp-row{display:flex;justify-content:space-between;font-size:11px;color:#9CA3AF;margin-bottom:5px;font-weight:500}
 .xp-track{height:10px;background:#F3F4F6;border-radius:999px;overflow:hidden}
 .xp-fill{height:100%;border-radius:999px;background:linear-gradient(90deg,#FF5722,#FF8A65);transition:width 0.7s cubic-bezier(0.4,0,0.2,1)}
-.xp-max{background:linear-gradient(90deg,#F59E0B,#FCD34D)}
 .subj-tag{display:inline-block;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;margin-bottom:10px;letter-spacing:0.03em}
 .tagm{background:#DBEAFE;color:#1D4ED8}
 .tagr{background:#D1FAE5;color:#065F46}
@@ -116,10 +111,6 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;min-heigh
 @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
 @keyframes bounce{0%,100%{transform:scale(1)}30%{transform:scale(1.18) rotate(-3deg)}65%{transform:scale(0.95)}}
 @keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-8px)}50%{transform:translateX(8px)}75%{transform:translateX(-5px)}}
-@keyframes flash{0%,100%{filter:brightness(1)}40%{filter:brightness(5) saturate(0)}}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.5}}
-@keyframes pop{0%{opacity:0;transform:scale(0.85) translateY(8px)}100%{opacity:1;transform:scale(1) translateY(0)}}
-@keyframes lvlup{0%{opacity:0;transform:scale(0.7)}60%{transform:scale(1.06)}100%{opacity:1;transform:scale(1)}}
 @keyframes evo-spin{to{transform:rotate(360deg)}}
 @keyframes evo-label-in{0%{opacity:0;transform:translateY(10px)}100%{opacity:1;transform:translateY(0)}}
 @keyframes ball-fly{0%{transform:translateX(-50%) translateY(170px) scale(0.3) rotate(-540deg);opacity:0}65%{opacity:1}100%{transform:translateX(-50%) translateY(0) scale(1) rotate(0deg);opacity:1}}
@@ -915,7 +906,6 @@ const CATCH_MISSES_ALLOWED=1;
 // Symmetric on purpose: falling a level should be no easier than climbing one.
 const LEVEL_UP_STREAK=3;
 const LEVEL_DOWN_STREAK=3;
-const RECENT_Q_LIMIT=25;
 function xpToNext(level){return 20+level*2;}
 function mkState(saved){
   const s={
@@ -929,9 +919,6 @@ function mkState(saved){
     stats:{math:mkStat(),reading:mkStat(),science:mkStat()},
     wild:null,
     pendingEvo:null,
-    recentQs:[],
-    qCache:{math:null,reading:null,science:null},
-    prefetchInFlight:{math:false,reading:false,science:false},
     lvlUpMsg:null,
   };
   if(saved){
@@ -1014,34 +1001,57 @@ function loadSaved(){
     return null;
   }
 }
-function recordRecent(qText){
-  if(!qText)return;
-  st.recentQs.push(qText);
-  while(st.recentQs.length>RECENT_Q_LIMIT)st.recentQs.shift();
-}
 
 let st=mkState(loadSaved());
 let view='game';
 const gameEl=document.getElementById("game");
 const pdxEl=document.getElementById("pokedex-page");
 
-const LDESC={
-  math:{
-    1:"Kindergarten (CCSS K.CC/K.OA): count objects up to 10, add two numbers with sum ≤5, subtract within 5, compare which group has more or fewer, name basic 2D shapes (circle, square, triangle, rectangle).",
-    2:"Grade 1 (CCSS 1.OA/1.NBT): add or subtract within 20, identify tens and ones in a two-digit number, count by 2s or 5s, compare two-digit numbers, tell time to the nearest hour.",
-    3:"Grade 2 (CCSS 2.OA/2.NBT): add or subtract within 100, skip-count by 5s or 10s, identify odd or even numbers, tell time to the half-hour, identify a shape by its number of sides or corners."
-  },
-  reading:{
-    1:"Kindergarten (CCSS RF.K.2/RF.K.3): identify the beginning letter or sound of a word, recognize a rhyming pair (cat/bat), match a letter to its sound (B says 'buh'), identify a basic sight word (the, I, a, is, to, my).",
-    2:"Grade 1 (CCSS RF.1.2/RF.1.3/RL.1): identify short vs. long vowel sounds in simple words, recognize consonant digraph words (ch, sh, th), blend sounds to make a word, answer a who/what/where question about a short story, identify a Grade-1 sight word (said, come, were).",
-    3:"Grade 2 (CCSS RF.2.3/RL.2/L.2.4): use sentence context to figure out a word's meaning, recognize words with common prefixes (un-, re-) or suffixes (-ful, -less), identify the lesson or moral of a familiar story, pick the word with a long vowel sound, break a two-syllable word into its parts."
-  },
-  science:{
-    1:"Kindergarten (NGSS K-LS1/K-ESS2/K-PS2): what plants and animals need to survive (food, water, sunlight, air), weather types (sunny/rainy/cloudy/snowy), basic body senses (eyes for seeing, ears for hearing), which animals swim or fly, what a push or pull does to an object.",
-    2:"Grade 1 (NGSS 1-PS4/1-LS1/1-ESS1): sound comes from vibrating objects, objects can only be seen when there is light, how an animal's body part helps it survive (duck webbed feet for swimming), baby animals look like but are not exactly the same as their parents, the sun rises and sets in a daily pattern.",
-    3:"Grade 2 (NGSS 2-PS1/2-LS2/2-ESS1): describe a material by its properties (hard/soft, rough/smooth, bendy/stiff), identify if a change is reversible (ice melting) or not reversible (burning toast), what plants need to grow (sunlight and water), match an animal to its habitat based on its needs, whether an Earth event happens fast (earthquake) or slow (a canyon forming over time)."
-  }
-};
+/* Curriculum targets for each difficulty bucket in QB. This was a live object
+   when questions were generated from prompts; it is kept as reference for
+   anyone adding questions to the bank by hand.
+
+   MATH
+     1  Kindergarten (CCSS K.CC/K.OA): count objects up to 10, add two numbers
+        with sum <= 5, subtract within 5, compare which group has more or fewer,
+        name basic 2D shapes (circle, square, triangle, rectangle).
+     2  Grade 1 (CCSS 1.OA/1.NBT): add or subtract within 20, identify tens and
+        ones in a two-digit number, count by 2s or 5s, compare two-digit
+        numbers, tell time to the nearest hour.
+     3  Grade 2 (CCSS 2.OA/2.NBT): add or subtract within 100, skip-count by 5s
+        or 10s, identify odd or even numbers, tell time to the half-hour,
+        identify a shape by its number of sides or corners.
+
+   READING
+     1  Kindergarten (CCSS RF.K.2/RF.K.3): identify the beginning letter or
+        sound of a word, recognize a rhyming pair (cat/bat), match a letter to
+        its sound (B says 'buh'), identify a basic sight word (the, I, a, is,
+        to, my).
+     2  Grade 1 (CCSS RF.1.2/RF.1.3/RL.1): identify short vs. long vowel sounds
+        in simple words, recognize consonant digraph words (ch, sh, th), blend
+        sounds to make a word, answer a who/what/where question about a short
+        story, identify a Grade-1 sight word (said, come, were).
+     3  Grade 2 (CCSS RF.2.3/RL.2/L.2.4): use sentence context to figure out a
+        word's meaning, recognize words with common prefixes (un-, re-) or
+        suffixes (-ful, -less), identify the lesson or moral of a familiar
+        story, pick the word with a long vowel sound, break a two-syllable word
+        into its parts.
+
+   SCIENCE
+     1  Kindergarten (NGSS K-LS1/K-ESS2/K-PS2): what plants and animals need to
+        survive (food, water, sunlight, air), weather types
+        (sunny/rainy/cloudy/snowy), basic body senses (eyes for seeing, ears for
+        hearing), which animals swim or fly, what a push or pull does.
+     2  Grade 1 (NGSS 1-PS4/1-LS1/1-ESS1): sound comes from vibrating objects,
+        objects can only be seen when there is light, how an animal's body part
+        helps it survive (duck webbed feet for swimming), baby animals look like
+        but are not exactly the same as their parents, the sun rises and sets in
+        a daily pattern.
+     3  Grade 2 (NGSS 2-PS1/2-LS2/2-ESS1): describe a material by its properties
+        (hard/soft, rough/smooth, bendy/stiff), identify if a change is
+        reversible (ice melting) or not (burning toast), what plants need to
+        grow, match an animal to its habitat, whether an Earth event happens
+        fast (earthquake) or slow (a canyon forming). */
 
 function activeTM(){return st.team[st.activeIdx];}
 function activePi(){const t=activeTM();return t?t.pi:0;}
@@ -1059,7 +1069,6 @@ const TYPE_OPT_CLASS={Fire:'fire-opt',Water:'water-opt',Grass:'grass-opt'};
 const TYPE_EMOJI={Fire:'&#128293;',Water:'&#128167;',Grass:'&#127807;',Electric:'&#9889;',Normal:'&#11088;',Flying:'&#128038;',Bug:'&#128027;',Fairy:'&#10024;',Poison:'&#128156;',Fighting:'&#128170;',Ground:'&#127759;',Steel:'&#9881;',Psychic:'&#128302;',Dark:'&#127769;',Ghost:'&#128123;'};
 function typeArr(t){return Array.isArray(t)?t:[t];}
 function typeLabel(t){return typeArr(t).join('/');}
-function typeColor(t){return TYPE_COLOR[typeArr(t)[0]]||'#6B7280';}
 function typeClass(t){return TYPE_CLASS[typeArr(t)[0]]||'normal-type';}
 function typeEmoji(t){return typeArr(t).map(tp=>TYPE_EMOJI[tp]||'&#11088;').join('');}
 function typeOptClass(t){return TYPE_OPT_CLASS[typeArr(t)[0]]||'grass-opt';}
@@ -1224,7 +1233,6 @@ async function loadQuestion(){
   st.lvlUpMsg=null;
   const q=pickBuiltIn(sub,lv,pname);
   st.q=q;st.sel=null;st.cor=false;st.anim="";
-  recordRecent(q.question);
   render();
 }
 
