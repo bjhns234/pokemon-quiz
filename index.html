@@ -66,6 +66,9 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;min-heigh
 .pdx-num{font-size:10px;color:#9CA3AF;font-weight:500}
 .pdx-name{font-size:12px;font-weight:700;color:#1A1A2E;margin-top:2px}
 .pdx-fact{font-size:10px;color:#6B7280;margin-top:3px;line-height:1.4}
+.reset-btn{position:relative;overflow:hidden;border:1px solid #E5E7EB;background:#fff;color:#9CA3AF;font-size:11px;font-weight:600;padding:5px 10px;border-radius:8px;cursor:pointer;touch-action:none;user-select:none;-webkit-user-select:none}
+.reset-fill{position:absolute;left:0;top:0;bottom:0;width:0;background:#FECACA}
+.reset-lbl{position:relative}
 .starter-card{background:#fff;border-radius:16px;padding:16px 14px 20px;margin-bottom:12px;box-shadow:0 2px 8px rgba(0,0,0,0.06)}
 .gen-section{margin-bottom:14px}
 .gen-label{font-size:11px;font-weight:700;color:#9CA3AF;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:6px;text-align:left}
@@ -891,30 +894,111 @@ const STARTER_WILD_CHANCE=0.03;
 const CATCH_STREAK_NEEDED=3;
 const RECENT_Q_LIMIT=25;
 function xpToNext(level){return 20+level*2;}
-function mkState(){return{
-  phase:'starter',
-  starter:null,
-  team:[],
-  activeIdx:0,
-  q:null,sel:null,cor:false,
-  pdx:new Array(PKM.length).fill(false),
-  streak:0,anim:'',
-  stats:{math:mkStat(),reading:mkStat(),science:mkStat()},
-  lvc:null,
-  wild:null,
-  pendingEvo:null,
-  recentQs:[],
-  qCache:{math:null,reading:null,science:null},
-  prefetchInFlight:{math:false,reading:false,science:false},
-  lvlUpMsg:null,
-};}
+function mkState(saved){
+  const s={
+    phase:'starter',
+    starter:null,
+    team:[],
+    activeIdx:0,
+    q:null,sel:null,cor:false,
+    pdx:new Array(PKM.length).fill(false),
+    streak:0,anim:'',
+    stats:{math:mkStat(),reading:mkStat(),science:mkStat()},
+    lvc:null,
+    wild:null,
+    pendingEvo:null,
+    recentQs:[],
+    qCache:{math:null,reading:null,science:null},
+    prefetchInFlight:{math:false,reading:false,science:false},
+    lvlUpMsg:null,
+  };
+  if(saved){
+    s.starter=saved.starter;
+    s.team=saved.team;
+    s.activeIdx=saved.activeIdx;
+    s.pdx=saved.pdx;
+    s.stats=saved.stats;
+    // phase is derived, never restored: an interrupted wild encounter or
+    // evolution is forfeited rather than resumed into a half-built state.
+    s.phase=saved.team.length>0?'play':'starter';
+  }
+  return s;
+}
+
+// ---- save / restore -------------------------------------------------------
+// Only durable progress is stored. In-flight question, wild encounter,
+// pending evolution, streak and toasts are all rebuilt fresh on load.
+const SAVE_KEY='pkq-save';
+const SAVE_V=1;
+const NUM_TO_PI={};PKM.forEach((p,i)=>{NUM_TO_PI[p.num]=i;});
+
+function save(){
+  if(st.team.length===0)return; // nothing to restore yet; don't write a stub save
+  try{
+    localStorage.setItem(SAVE_KEY,JSON.stringify({
+      v:SAVE_V,
+      starter:st.starter,
+      activeIdx:st.activeIdx,
+      // keyed by dex number, not array index, so PKM can grow without
+      // silently remapping someone's team onto the wrong Pokemon
+      team:st.team.map(t=>({num:PKM[t.pi].num,level:t.level,xp:t.xp})),
+      dex:st.pdx.map((caught,i)=>caught?PKM[i].num:null).filter(Boolean),
+      stats:st.stats,
+    }));
+  }catch(e){/* storage full or unavailable — keep playing unsaved */}
+}
+
+function clearSave(){
+  try{localStorage.removeItem(SAVE_KEY);}catch(e){}
+}
+
+function loadSaved(){
+  try{
+    const raw=localStorage.getItem(SAVE_KEY);
+    if(!raw)return null;
+    const data=JSON.parse(raw);
+    if(!data||data.v!==SAVE_V)return null;
+
+    const team=(data.team||[]).map(t=>{
+      const pi=NUM_TO_PI[t&&t.num];
+      if(pi===undefined)return null;
+      return{pi,level:Math.max(1,t.level|0),xp:Math.max(0,t.xp|0)};
+    }).filter(Boolean);
+    if(team.length===0)return null;
+
+    const pdx=new Array(PKM.length).fill(false);
+    (data.dex||[]).forEach(n=>{const pi=NUM_TO_PI[n];if(pi!==undefined)pdx[pi]=true;});
+    team.forEach(t=>{pdx[t.pi]=true;});
+
+    const stats={};
+    SUBS.forEach(sub=>{
+      const s=(data.stats||{})[sub]||{};
+      stats[sub]={
+        cor:Math.max(0,s.cor|0),
+        att:Math.max(0,s.att|0),
+        level:Math.min(3,Math.max(1,s.level|0)),
+        cs:Math.max(0,s.cs|0),
+        ws:Math.max(0,s.ws|0),
+      };
+    });
+
+    return{
+      starter:typeof data.starter==='number'?data.starter:null,
+      activeIdx:Math.min(Math.max(0,data.activeIdx|0),team.length-1),
+      team,pdx,stats,
+    };
+  }catch(e){
+    // corrupt or half-written save: start fresh rather than fail to a blank screen
+    return null;
+  }
+}
 function recordRecent(qText){
   if(!qText)return;
   st.recentQs.push(qText);
   while(st.recentQs.length>RECENT_Q_LIMIT)st.recentQs.shift();
 }
 
-let st=mkState();
+let st=mkState(loadSaved());
 let view='game';
 const gameEl=document.getElementById("game");
 const pdxEl=document.getElementById("pokedex-page");
@@ -1044,7 +1128,7 @@ function render(){
 }
 
 function renderPokedex(){
-  let h=`<div class="hdr"><span class="app-name">Pokédex</span></div>`;
+  let h=`<div class="hdr"><span class="app-name">Pokédex</span><button class="reset-btn" id="reset-btn"><span class="reset-fill" id="reset-fill"></span><span class="reset-lbl" id="reset-lbl">Hold to start over</span></button></div>`;
   GENS.forEach((genLines,gi)=>{
     h+=`<div class="pdx-gen-section"><div class="pdx-gen-label">Gen ${GEN_ROMAN[gi]} &mdash; ${GEN_NAMES[gi]}</div><div class="pdx-grid">`;
     genLines.forEach(li=>{
@@ -1060,6 +1144,43 @@ function renderPokedex(){
     h+=`</div></div>`;
   });
   pdxEl.innerHTML=h;
+  wireReset();
+}
+
+// Held rather than tapped so a stray finger can't wipe the Pokedex.
+function wireReset(){
+  const btn=document.getElementById('reset-btn');
+  if(!btn)return;
+  const fill=document.getElementById('reset-fill');
+  const lbl=document.getElementById('reset-lbl');
+  const HOLD=2000;
+  let timer=null,raf=null,t0=0;
+  function stop(){
+    if(timer){clearTimeout(timer);timer=null;}
+    if(raf){cancelAnimationFrame(raf);raf=null;}
+    fill.style.width='0%';
+    lbl.textContent='Hold to start over';
+  }
+  function tick(){
+    const p=Math.min(1,(Date.now()-t0)/HOLD);
+    fill.style.width=(p*100)+'%';
+    if(p<1)raf=requestAnimationFrame(tick);
+  }
+  btn.addEventListener('pointerdown',e=>{
+    e.preventDefault();
+    if(timer)return;
+    t0=Date.now();
+    lbl.textContent='Keep holding…';
+    raf=requestAnimationFrame(tick);
+    timer=setTimeout(()=>{
+      stop();
+      clearSave();
+      st=mkState();
+      switchView('game');
+      render();
+    },HOLD);
+  });
+  ['pointerup','pointerleave','pointercancel'].forEach(ev=>btn.addEventListener(ev,stop));
 }
 
 function switchView(v){
@@ -1243,6 +1364,7 @@ function pickStarter(lineIdx){
   st.team=[{pi:startPi,level:STARTER_START_LEVEL,xp:0}];
   st.activeIdx=0;
   st.pdx[startPi]=true;
+  save();
   loadQuestion();
 }
 
@@ -1250,6 +1372,7 @@ function switchPokemon(idx){
   if(idx===st.activeIdx)return;
   if(st.phase!=='play')return;
   st.activeIdx=idx;
+  save();
   loadQuestion();
 }
 
@@ -1276,6 +1399,7 @@ function processEvolution(){
     tm.pi=toPi;
     st.pdx[toPi]=true;
     applyLevelUps();
+    save();
     if(st.pendingEvo){processEvolution();}
     else{afterTurn();}
   });
@@ -1336,6 +1460,7 @@ function onNext(){
         st.pdx[wp]=true;
         st.wild=null;
         st.phase='play';
+        save();
         loadQuestion();
       });
       return;
@@ -1363,15 +1488,21 @@ function handleAnswer(i){
     st.streak=0;st.anim='sk';
     if(st.phase==='wild'){st.wildEscape=true;}
   }
+  save();
   render();
 }
 
 document.getElementById("nav-game").addEventListener("click",()=>switchView('game'));
 document.getElementById("nav-pdx").addEventListener("click",()=>switchView('pdx'));
 
+// iPad swipe-away and tab close don't always fire a normal teardown
+window.addEventListener('pagehide',save);
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')save();});
+
 gameEl.style.display="block";
 document.getElementById("bottom-nav").style.display="flex";
-render();
+// a restored game resumes straight into a fresh question; a new one picks a starter first
+if(st.phase==='play')loadQuestion();else render();
 </script>
 </body>
 </html>
