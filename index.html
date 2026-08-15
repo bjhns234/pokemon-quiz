@@ -13,7 +13,6 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;min-heigh
 #pokedex-page{display:none}
 .hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
 .app-name{font-size:15px;font-weight:600;color:#1A1A2E}
-.streak-badge{background:#FEF3C7;color:#B45309;font-size:13px;font-weight:600;padding:4px 12px;border-radius:20px}
 .card{background:#fff;border-radius:16px;padding:18px;margin-bottom:12px;box-shadow:0 2px 8px rgba(0,0,0,0.06)}
 .pcard{text-align:center}
 .pnum{font-size:11px;color:#9CA3AF;margin-bottom:2px;font-weight:500}
@@ -25,7 +24,14 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;min-heigh
 .xp-row{display:flex;justify-content:space-between;font-size:11px;color:#9CA3AF;margin-bottom:5px;font-weight:500}
 .xp-track{height:10px;background:#F3F4F6;border-radius:999px;overflow:hidden}
 .xp-fill{height:100%;border-radius:999px;background:linear-gradient(90deg,#FF5722,#FF8A65);transition:width 0.7s cubic-bezier(0.4,0,0.2,1)}
-.subj-tag{display:inline-block;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;margin-bottom:10px;letter-spacing:0.03em}
+.q-head{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.subj-tag{display:inline-block;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;letter-spacing:0.03em}
+/* Sits beside the subject pill rather than up in the header: the streak is what
+   the XP ladder pays for, so it has to be in his eyeline while he reads. */
+.streak-pill{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:#FEF3C7;color:#B45309;letter-spacing:0.03em;white-space:nowrap}
+.streak-pill.maxed{background:#FFEDD5;color:#C2410C}
+.streak-pill.bump{animation:streak-pop 0.45s ease}
+@keyframes streak-pop{0%{transform:scale(1)}40%{transform:scale(1.28)}100%{transform:scale(1)}}
 .tagm{background:#DBEAFE;color:#1D4ED8}
 .tagr{background:#D1FAE5;color:#065F46}
 .tags{background:#FEF3C7;color:#92400E}
@@ -1153,7 +1159,16 @@ function qCardHTML(resultMsg,btnLabel){
   const armLeft=Math.max(0,st.armAt-Date.now());
   const arming=!resolved&&armLeft>0;
   const gridAttrs=arming?` class="ans-grid arming" style="--arm:${armLeft}ms"`:` class="ans-grid"`;
-  let h=`<div class="card"><div class="subj-tag ${SCLS[q.subject]||'tagm'}">${SNAME[q.subject]}</div><div class="qtext">${q.question}</div><div${gridAttrs}>`;
+  // Pops only when the streak just grew, so the eye is drawn to it climbing
+  // rather than to a number that's merely sitting there.
+  const grew=st.cor&&st.tries===1;
+  const maxed=st.streak>=XP_STREAK_CAP;
+  // Shows from two upward: a run is only worth flagging once it's actually a run,
+  // and a pill reading zero on every fresh question is just noise.
+  const streakPill=st.streak>1
+    ?`<span class="streak-pill${maxed?' maxed':''}${grew?' bump':''}">&#128293; ${st.streak} in a row</span>`
+    :'';
+  let h=`<div class="card"><div class="q-head"><div class="subj-tag ${SCLS[q.subject]||'tagm'}">${SNAME[q.subject]}</div>${streakPill}</div><div class="qtext">${q.question}</div><div${gridAttrs}>`;
   q.answers.forEach((a,i)=>{
     let c='ans-btn';
     const ruled=st.wrong.includes(i);
@@ -1171,8 +1186,10 @@ function qCardHTML(resultMsg,btnLabel){
 
 function render(){
   const showSubj=st.phase==='play'||st.phase==='wild';
-  const hdrRight=`${st.streak>1?`<span class="streak-badge">Streak: ${st.streak}</span>`:''}`+
-    `${showSubj?`<button class="subj-btn" id="subj-btn">${SUBJ_ICON[st.subject]} ${subjShort(st.subject)}<span class="subj-btn-car">&#9662;</span></button>`:''}`;
+  // The streak lives beside the subject pill on the question card now, not here.
+  const hdrRight=showSubj
+    ?`<button class="subj-btn" id="subj-btn">${SUBJ_ICON[st.subject]} ${subjShort(st.subject)}<span class="subj-btn-car">&#9662;</span></button>`
+    :'';
   const hdr=`<div class="hdr"><span class="app-name">Pokémon Learning Adventure</span><span class="hdr-right">${hdrRight}</span></div>`;
   let h=hdr;
 
