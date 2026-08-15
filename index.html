@@ -63,6 +63,21 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;min-heigh
 .grass-opt:hover{border-color:#16A34A;background:#F0FDF4}
 .starter-opt-name{font-size:12px;font-weight:700;color:#1A1A2E;margin-top:5px;margin-bottom:3px}
 .starter-opt-type{font-size:10px;font-weight:600;padding:2px 7px;border-radius:20px;display:inline-block}
+.subj-choice-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.subj-opt{background:#F9FAFB;border:2px solid #E5E7EB;border-radius:14px;padding:16px 8px 14px;cursor:pointer;transition:all 0.18s;text-align:center;display:flex;flex-direction:column;align-items:center;gap:5px;font-family:inherit}
+.subj-opt:hover{transform:translateY(-3px);box-shadow:0 6px 16px rgba(0,0,0,0.1)}
+.subj-opt-ico{font-size:30px;line-height:1}
+.subj-opt-name{font-size:15px;font-weight:700;color:#1A1A2E}
+.subj-opt-sub{font-size:11px;color:#9CA3AF;font-weight:500;line-height:1.3}
+.subj-opt.sel{border-color:#1A1A2E;background:#fff}
+.optm:hover{border-color:#1D4ED8;background:#EFF6FF}
+.optr:hover{border-color:#065F46;background:#ECFDF5}
+.opts:hover{border-color:#92400E;background:#FFFBEB}
+.optx:hover{border-color:#6D28D9;background:#F5F3FF}
+.hdr-right{display:flex;align-items:center;gap:8px}
+.subj-btn{border:1px solid #E5E7EB;background:#fff;color:#374151;font-size:12px;font-weight:600;padding:5px 10px;border-radius:8px;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+.subj-btn:hover{border-color:#1A1A2E;color:#1A1A2E}
+.subj-btn-car{color:#9CA3AF;font-size:10px}
 .fire-type{background:#FEE2E2;color:#DC2626}
 .water-type{background:#DBEAFE;color:#1D4ED8}
 .grass-type{background:#DCFCE7;color:#16A34A}
@@ -369,6 +384,17 @@ PKM.forEach(p=>{const i=new Image();i.src=`${BASE}${parseInt(p.num.slice(1))}.pn
 const SUBS=["math","reading","science"];
 const SNAME={math:"Math",reading:"Reading",science:"Science"};
 const SCLS={math:"tagm",reading:"tagr",science:"tags"};
+
+// What the player can pick in the subject chooser: one subject, or "mix" for
+// the shuffled-bag rotation across all three.
+const SUBJ_MIX="mix";
+const SUBJ_CHOICES=[...SUBS,SUBJ_MIX];
+// Emoji chosen for colour: the heavy-plus U+2795 renders as a flat black glyph.
+const SUBJ_ICON={math:"&#128290;",reading:"&#128214;",science:"&#128300;",mix:"&#127922;"};
+const SUBJ_BLURB={math:"Numbers and counting",reading:"Words and letters",science:"How the world works",mix:"A bit of everything"};
+const SUBJ_OPT_CLS={math:"optm",reading:"optr",science:"opts",mix:"optx"};
+function subjShort(s){return s===SUBJ_MIX?"Mix":SNAME[s];}
+function subjTitle(s){return s===SUBJ_MIX?"Mix it up":SNAME[s];}
 
 const QB={
 math:{
@@ -887,7 +913,16 @@ function refillSubjectBag(){
   }
   subjectBag=b;
 }
-function nextSubject(){
+// `choice` is what the player picked in the chooser. A single subject bypasses
+// the bag entirely; the bag exists only to serve "mix".
+function nextSubject(choice){
+  if(choice&&choice!==SUBJ_MIX&&SUBS.includes(choice)){
+    // Remembered, and the half-used bag dropped, so that switching back to mix
+    // doesn't open on the subject he just spent twenty questions on.
+    lastSubject=choice;
+    subjectBag=[];
+    return choice;
+  }
   if(subjectBag.length===0)refillSubjectBag();
   if(subjectBag.length===0)return SUBS[0]; // every weight is 0 — misconfigured
   lastSubject=subjectBag.shift();
@@ -920,6 +955,8 @@ function mkState(saved){
     wild:null,
     pendingEvo:null,
     lvlUpMsg:null,
+    subject:SUBJ_MIX,
+    subjectReturn:null,
   };
   if(saved){
     s.starter=saved.starter;
@@ -927,6 +964,7 @@ function mkState(saved){
     s.activeIdx=saved.activeIdx;
     s.pdx=saved.pdx;
     s.stats=saved.stats;
+    s.subject=saved.subject;
     // phase is derived, never restored: an interrupted wild encounter or
     // evolution is forfeited rather than resumed into a half-built state.
     s.phase=saved.team.length>0?'play':'starter';
@@ -953,6 +991,7 @@ function save(){
       team:st.team.map(t=>({num:PKM[t.pi].num,level:t.level,xp:t.xp})),
       dex:st.pdx.map((caught,i)=>caught?PKM[i].num:null).filter(Boolean),
       stats:st.stats,
+      subject:st.subject,
     }));
   }catch(e){/* storage full or unavailable — keep playing unsaved */}
 }
@@ -994,6 +1033,9 @@ function loadSaved(){
     return{
       starter:typeof data.starter==='number'?data.starter:null,
       activeIdx:Math.min(Math.max(0,data.activeIdx|0),team.length-1),
+      // Saves written before the chooser existed have no subject; falling back
+      // to mix reproduces exactly how they used to behave, so SAVE_V holds.
+      subject:SUBJ_CHOICES.includes(data.subject)?data.subject:SUBJ_MIX,
       team,pdx,stats,
     };
   }catch(e){
@@ -1088,7 +1130,10 @@ function qCardHTML(resultMsg,btnLabel){
 }
 
 function render(){
-  const hdr=`<div class="hdr"><span class="app-name">Pokémon Learning Adventure</span>${st.streak>1?`<span class="streak-badge">Streak: ${st.streak}</span>`:''}</div>`;
+  const showSubj=st.phase==='play'||st.phase==='wild';
+  const hdrRight=`${st.streak>1?`<span class="streak-badge">Streak: ${st.streak}</span>`:''}`+
+    `${showSubj?`<button class="subj-btn" id="subj-btn">${SUBJ_ICON[st.subject]} ${subjShort(st.subject)}<span class="subj-btn-car">&#9662;</span></button>`:''}`;
+  const hdr=`<div class="hdr"><span class="app-name">Pokémon Learning Adventure</span><span class="hdr-right">${hdrRight}</span></div>`;
   let h=hdr;
 
   if(st.phase==='starter'){
@@ -1105,6 +1150,14 @@ function render(){
     gameEl.innerHTML=h;
     GENS.forEach(genLines=>{genLines.forEach(li=>{document.getElementById(`pick-${li}`).addEventListener('click',()=>pickStarter(li));});});
     return;
+  }
+
+  if(st.phase==='subject'){
+    h+=`<div class="starter-card"><div style="font-size:20px;font-weight:700;color:#1A1A2E;margin-bottom:3px;text-align:center">What do you want to practice?</div><div style="font-size:13px;color:#6B7280;margin-bottom:16px;text-align:center">You can change this any time</div><div class="subj-choice-grid">`;
+    SUBJ_CHOICES.forEach(s=>{
+      h+=`<button class="subj-opt ${SUBJ_OPT_CLS[s]}${s===st.subject?' sel':''}" data-subj="${s}"><span class="subj-opt-ico">${SUBJ_ICON[s]}</span><span class="subj-opt-name">${subjTitle(s)}</span><span class="subj-opt-sub">${SUBJ_BLURB[s]}</span></button>`;
+    });
+    h+=`</div></div>`;
   }
 
   if(st.phase==='play'){
@@ -1151,6 +1204,8 @@ function render(){
   gameEl.innerHTML=h;
   gameEl.querySelectorAll('[data-i]').forEach(b=>b.addEventListener('click',()=>handleAnswer(+b.dataset.i)));
   gameEl.querySelectorAll('[data-team-idx]').forEach(b=>b.addEventListener('click',()=>switchPokemon(+b.dataset.teamIdx)));
+  gameEl.querySelectorAll('[data-subj]').forEach(b=>b.addEventListener('click',()=>chooseSubject(b.dataset.subj)));
+  const sb=gameEl.querySelector('#subj-btn');if(sb)sb.addEventListener('click',openSubjectPicker);
   const nb=gameEl.querySelector('#nxt');if(nb)nb.addEventListener('click',onNext);
 }
 
@@ -1225,8 +1280,33 @@ function switchView(v){
 }
 
 
+// The chooser is a phase rather than a modal so it reuses the same render path
+// as the starter screen. The phase it interrupted is remembered and restored,
+// which is what lets a wild encounter survive a mid-fight subject change.
+function openSubjectPicker(){
+  if(st.phase==='subject')return;
+  st.subjectReturn=st.phase;
+  st.phase='subject';
+  render();
+}
+
+function chooseSubject(sub){
+  if(!SUBJ_CHOICES.includes(sub))return;
+  const changed=sub!==st.subject;
+  st.subject=sub;
+  st.phase=st.subjectReturn||'play';
+  st.subjectReturn=null;
+  save();
+  // Two cases put him back on the question he left rather than a new one:
+  // an answered question still has a result to resolve through onNext — a
+  // catch, an escape, an evolution — and picking the subject already selected
+  // is a cancel. Either way the choice applies from the next question on.
+  if(st.q&&(st.sel!==null||!changed))render();
+  else loadQuestion();
+}
+
 async function loadQuestion(){
-  const sub=nextSubject();
+  const sub=nextSubject(st.subject);
   const lv=st.stats[sub].level;
   const pname=st.phase==='wild'&&st.wild?PKM[st.wild.pi].n:PKM[activePi()].n;
   st.wildEscape=false;
@@ -1384,13 +1464,15 @@ function playCatch(pkIdx,onDone){
 
 function pickStarter(lineIdx){
   st.starter=lineIdx;
-  st.phase='play';
   const startPi=LINES[lineIdx][0];
   st.team=[{pi:startPi,level:STARTER_START_LEVEL,xp:0}];
   st.activeIdx=0;
   st.pdx[startPi]=true;
+  // Straight into the subject chooser; chooseSubject is what drops him into play.
+  st.subjectReturn='play';
+  st.phase='subject';
   save();
-  loadQuestion();
+  render();
 }
 
 function switchPokemon(idx){
