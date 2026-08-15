@@ -951,11 +951,11 @@ const XP_STREAK_CAP=7;   // streak 7+ pays 45
 // working a question out from the hint still visibly pays.
 const XP_AFTER_HINT=2;
 function xpForStreak(streak){return XP_BASE+XP_STREAK_STEP*Math.min(streak,XP_STREAK_CAP);}
-// Answers stay untappable this long after a question appears, which breaks
-// reflex tap-chains without a reading child ever noticing. The retry pause is
-// longer both to tax the guess-again loop and to make the hint get read.
-const ARM_MS=1500;
-const RETRY_ARM_MS=2500;
+// How long answers stay untappable, in ms. `first` breaks reflex tap-chains on a
+// new question; `retry` is longer both to tax the guess-again loop and to make
+// the hint actually get read. Grouped and mutable like SUBJECT_WEIGHTS so they
+// can be dialled in from the console mid-play: PAUSE.first=3000, then answer.
+const PAUSE={first:3000,retry:4000};
 const WILD_CHANCE=0.10;
 const STARTER_WILD_CHANCE=0.03;
 const CATCH_STREAK_NEEDED=3;
@@ -1362,7 +1362,7 @@ async function loadQuestion(){
   st.lvlUpMsg=null;
   const q=pickBuiltIn(sub,lv,pname);
   st.q=q;st.sel=null;st.cor=false;st.anim="";
-  st.tries=0;st.wrong=[];st.lastXp=0;st.armAt=Date.now()+ARM_MS;
+  st.tries=0;st.wrong=[];st.lastXp=0;st.armAt=Date.now()+PAUSE.first;
   render();
 }
 
@@ -1668,7 +1668,7 @@ function handleAnswer(i){
 
   // Re-arm before the retry: the hint needs reading anyway, and it's what stops
   // a wrong answer from becoming a free rapid-fire second guess.
-  if(!ok)st.armAt=Date.now()+RETRY_ARM_MS;
+  if(!ok)st.armAt=Date.now()+PAUSE.retry;
   save();
   render();
 }
