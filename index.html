@@ -36,6 +36,11 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;min-heigh
 .ans-btn.cor{background:#ECFDF5;border-color:#10B981;color:#065F46}
 .ans-btn.wrg{background:#FEF2F2;border-color:#EF4444;color:#991B1B}
 .ans-btn:disabled{cursor:default}
+/* Purely cosmetic: handleAnswer's timestamp check is what actually blocks the
+   tap, so a stalled animation in a backgrounded tab can never lock him out. */
+.ans-grid.arming .ans-btn{animation:ans-arm var(--arm,1500ms) ease}
+@keyframes ans-arm{0%{opacity:0.25}70%{opacity:0.55}100%{opacity:1}}
+.xp-gain{display:inline-block;background:#065F46;color:#fff;font-size:12px;font-weight:700;padding:1px 8px;border-radius:20px;margin-left:6px;vertical-align:middle}
 .result-msg{text-align:center;padding:11px 14px;border-radius:10px;font-size:14px;margin-bottom:8px;font-weight:500}
 .result-msg.ok{background:#ECFDF5;color:#065F46}
 .result-msg.no{background:#FEF2F2;color:#991B1B}
@@ -931,7 +936,26 @@ function nextSubject(choice){
 
 function mkStat(){return{cor:0,att:0,level:1,cs:0,ws:0};}
 const STARTER_START_LEVEL=5;
-const XP_PER_ANSWER=15;
+// XP scales with the answer streak rather than being flat, because a flat
+// per-answer reward is always won by whoever taps fastest: guessing clears ~13
+// questions in the time careful reading clears one, and 25% of 13 beats 80% of
+// 1. Streaks compound with accuracy and can't be farmed by tapping speed.
+// A streak of 1 pays 15 -- what every answer used to pay -- so this only ever
+// adds. Landing it after a hint still pays something; it just doesn't build.
+const XP_BASE=10;
+const XP_STREAK_STEP=5;
+const XP_STREAK_CAP=7;   // streak 7+ pays 45
+// Deliberately token. A guesser lands nearly every question eventually, so he
+// collects this on almost all of them -- measured at 5 XP it handed him enough
+// steady income to keep guessing the fastest way to level. It stays non-zero so
+// working a question out from the hint still visibly pays.
+const XP_AFTER_HINT=2;
+function xpForStreak(streak){return XP_BASE+XP_STREAK_STEP*Math.min(streak,XP_STREAK_CAP);}
+// Answers stay untappable this long after a question appears, which breaks
+// reflex tap-chains without a reading child ever noticing. The retry pause is
+// longer both to tax the guess-again loop and to make the hint get read.
+const ARM_MS=1500;
+const RETRY_ARM_MS=2500;
 const WILD_CHANCE=0.10;
 const STARTER_WILD_CHANCE=0.03;
 const CATCH_STREAK_NEEDED=3;
@@ -949,6 +973,7 @@ function mkState(saved){
     team:[],
     activeIdx:0,
     q:null,sel:null,cor:false,
+    tries:0,wrong:[],armAt:0,lastXp:0,
     pdx:new Array(PKM.length).fill(false),
     streak:0,anim:'',
     stats:{math:mkStat(),reading:mkStat(),science:mkStat()},
@@ -1119,12 +1144,27 @@ function typeBadgesInline(t){return typeArr(t).map(tp=>`<span style="color:${TYP
 function qCardHTML(resultMsg,btnLabel){
   if(!st.q)return'';
   const q=st.q;
-  let h=`<div class="card"><div class="subj-tag ${SCLS[q.subject]||'tagm'}">${SNAME[q.subject]}</div><div class="qtext">${q.question}</div><div class="ans-grid">`;
-  q.answers.forEach((a,i)=>{let c='ans-btn';if(st.sel!==null){if(i===q.correctIndex)c+=' cor';else if(i===st.sel&&!st.cor)c+=' wrg';}h+=`<button class="${c}"${st.sel!==null?' disabled':''} data-i="${i}">${a}</button>`;});
+  // Resolved means there is nothing left to do but move on: he solved it, or the
+  // encounter ended under him. Until then the un-ruled-out answers stay live so
+  // he can try again on the same question.
+  const resolved=st.cor||st.wildEscape;
+  // Driven off the time actually left, so a re-render part-way through the wait
+  // (a subject change, a team switch) doesn't restart the fade from full.
+  const armLeft=Math.max(0,st.armAt-Date.now());
+  const arming=!resolved&&armLeft>0;
+  const gridAttrs=arming?` class="ans-grid arming" style="--arm:${armLeft}ms"`:` class="ans-grid"`;
+  let h=`<div class="card"><div class="subj-tag ${SCLS[q.subject]||'tagm'}">${SNAME[q.subject]}</div><div class="qtext">${q.question}</div><div${gridAttrs}>`;
+  q.answers.forEach((a,i)=>{
+    let c='ans-btn';
+    const ruled=st.wrong.includes(i);
+    if(ruled)c+=' wrg';
+    else if(resolved&&i===q.correctIndex)c+=' cor';
+    h+=`<button class="${c}"${resolved||ruled?' disabled':''} data-i="${i}">${a}</button>`;
+  });
   h+=`</div>`;
-  if(st.sel!==null){
+  if(st.tries>0){
     h+=`<div class="result-msg ${st.cor?'ok':'no'}">${resultMsg}</div>`;
-    h+=`<button class="nxt-btn" id="nxt">${btnLabel}</button>`;
+    if(resolved)h+=`<button class="nxt-btn" id="nxt">${btnLabel}</button>`;
   }
   return h+`</div>`;
 }
@@ -1177,7 +1217,11 @@ function render(){
       });
       h+=`</div>`;
     }
-    const rm=st.cor?(st.q?.encouragement||'Amazing!'):(st.q?.hint||'Good try!');
+    // The XP badge is what makes the streak reward legible -- without seeing the
+    // number climb there's no felt reason to slow down and get a run going.
+    const rm=st.cor
+      ?`${st.q?.encouragement||'Amazing!'}${st.lastXp?`<span class="xp-gain">+${st.lastXp} XP</span>`:''}`
+      :(st.q?.hint||'Good try!');
     const willEvolve=!!st.pendingEvo;
     const btn=willEvolve?`What's happening to ${p.n}?! &#8594;`:'Next Question &#8594;';
     h+=qCardHTML(rm,btn);
@@ -1196,8 +1240,12 @@ function render(){
     h+=`<div class="wild-card"><div class="wild-badge">&#9889; Wild Encounter</div><div class="wild-name">A wild <strong>${wild.n}</strong> appeared! <span class="lvl-badge">Lv ${st.wild.level}</span></div><div class="psvg ${st.anim}">${wild.svg(140)}</div><div class="catch-counter">Answer ${CATCH_STREAK_NEEDED} to catch it! (${cs}/${CATCH_STREAK_NEEDED})</div>${pips}${balls}</div>`;
     const escaped=st.wildEscape;
     const caught=cs>=CATCH_STREAK_NEEDED;
-    const rm=escaped?`${wild.n} broke free and ran away!`:caught?`&#9889; Gotcha! ${wild.n} was caught!`:st.cor?`Great answer! Keep going!`:`${wild.n} broke free! ${st.q?.hint||'Try again!'}`;
-    const btn=escaped?'Continue &#8594;':caught?'Catch it! &#8594;':st.cor?'Next Question &#8594;':'Try Again &#8594;';
+    // A retried answer says "You got it!" rather than "Keep going!", since it
+    // moves him on without filling a pip -- only first-try answers do that.
+    const rm=escaped?`${wild.n} broke free and ran away!`:caught?`&#9889; Gotcha! ${wild.n} was caught!`
+      :st.cor?(st.tries>1?`You got it!`:`Great answer! Keep going!`):`${wild.n} broke free! ${st.q?.hint||'Try again!'}`;
+    // Only rendered once resolved, so there's no unsolved branch to label.
+    const btn=escaped?'Continue &#8594;':caught?'Catch it! &#8594;':'Next Question &#8594;';
     h+=qCardHTML(rm,btn);
   }
 
@@ -1298,10 +1346,11 @@ function chooseSubject(sub){
   st.subjectReturn=null;
   save();
   // Two cases put him back on the question he left rather than a new one:
-  // an answered question still has a result to resolve through onNext — a
-  // catch, an escape, an evolution — and picking the subject already selected
-  // is a cancel. Either way the choice applies from the next question on.
-  if(st.q&&(st.sel!==null||!changed))render();
+  // a resolved question still has a result to push through onNext — a catch, an
+  // escape, an evolution — and picking the subject already selected is a cancel.
+  // Either way the choice applies from the next question on. A question he's
+  // merely part-way through (one wrong pick, still open) is safe to replace.
+  if(st.q&&(st.cor||st.wildEscape||!changed))render();
   else loadQuestion();
 }
 
@@ -1313,6 +1362,7 @@ async function loadQuestion(){
   st.lvlUpMsg=null;
   const q=pickBuiltIn(sub,lv,pname);
   st.q=q;st.sel=null;st.cor=false;st.anim="";
+  st.tries=0;st.wrong=[];st.lastXp=0;st.armAt=Date.now()+ARM_MS;
   render();
 }
 
@@ -1579,27 +1629,46 @@ function onNext(){
 }
 
 function handleAnswer(i){
-  if(st.sel!==null)return;
+  if(st.cor||st.wildEscape)return;      // already resolved, waiting on Next
+  if(Date.now()<st.armAt)return;        // still arming: ignore the reflex tap
+  if(st.wrong.includes(i))return;       // already ruled out
   const ok=i===st.q.correctIndex;
-  st.sel=i;st.cor=ok;
-  updStats(st.q.subject,ok);
-  if(ok){
-    st.streak++;st.anim='bk';
-    if(st.phase==='play'){
-      const tm=activeTM();
-      if(tm){tm.xp+=XP_PER_ANSWER;applyLevelUps();}
-    } else if(st.phase==='wild'&&st.wild){
-      st.wild.correctStreak++;
+  const firstTry=st.tries===0;
+  st.tries++;
+  st.sel=i;st.cor=ok;st.anim=ok?'bk':'sk';
+  if(!ok)st.wrong.push(i);
+
+  // Only the first attempt scores -- XP, streak, difficulty and catch progress
+  // all key off it. A wrong answer used to deal a brand new question, which made
+  // guessing a free reroll and left the hint decorative. Now he has to land the
+  // question he missed, but landing it late doesn't pay like getting it first go.
+  if(firstTry){
+    updStats(st.q.subject,ok);
+    if(ok){
+      st.streak++;
+      if(st.phase==='play'){
+        const tm=activeTM();
+        if(tm){st.lastXp=xpForStreak(st.streak);tm.xp+=st.lastXp;applyLevelUps();}
+      } else if(st.phase==='wild'&&st.wild){
+        st.wild.correctStreak++;
+      }
+    } else {
+      st.streak=0;
+      // A miss spends a ball but leaves the catch progress intact; only the last
+      // ball running out lets it flee.
+      if(st.phase==='wild'&&st.wild){
+        st.wild.misses=(st.wild.misses||0)+1;
+        if(st.wild.misses>CATCH_MISSES_ALLOWED)st.wildEscape=true;
+      }
     }
-  } else {
-    st.streak=0;st.anim='sk';
-    // A miss spends a ball but leaves the catch progress intact; only the last
-    // ball running out lets it flee.
-    if(st.phase==='wild'&&st.wild){
-      st.wild.misses=(st.wild.misses||0)+1;
-      if(st.wild.misses>CATCH_MISSES_ALLOWED)st.wildEscape=true;
-    }
+  } else if(ok&&st.phase==='play'){
+    const tm=activeTM();
+    if(tm){st.lastXp=XP_AFTER_HINT;tm.xp+=st.lastXp;applyLevelUps();}
   }
+
+  // Re-arm before the retry: the hint needs reading anyway, and it's what stops
+  // a wrong answer from becoming a free rapid-fire second guess.
+  if(!ok)st.armAt=Date.now()+RETRY_ARM_MS;
   save();
   render();
 }
