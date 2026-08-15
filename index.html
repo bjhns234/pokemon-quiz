@@ -903,7 +903,20 @@ function pickBuiltIn(sub,level,pname){
   const idx=QUEUES[sub][level].shift();
   const raw=QB[sub][level][idx];
   const fill=s=>s.replace(/\{P\}/g,pname);
-  return{subject:sub,question:fill(raw[0]),answers:raw[1].map(fill),correctIndex:raw[2],encouragement:raw[3],hint:fill(raw[4])};
+  // Options are shuffled per serving. As authored, 95% of correct answers sit in
+  // slots 1 and 2 of the 2x2 grid, so always tapping bottom-left scored 52.7%
+  // first try (63.8% on math), and numeric options were sorted ascending with the
+  // answer third-smallest 77% of the time. Both made position a better strategy
+  // than reading. order[newSlot] is the index the option had as authored.
+  const order=shuffle(raw[1].map((_,i)=>i));
+  return{
+    subject:sub,
+    question:fill(raw[0]),
+    answers:order.map(i=>fill(raw[1][i])),
+    correctIndex:order.indexOf(raw[2]),
+    encouragement:raw[3],
+    hint:fill(raw[4]),
+  };
 }
 
 // Subjects are dealt from a shuffled bag rather than picked independently at
@@ -961,7 +974,7 @@ function xpForStreak(streak){return XP_BASE+XP_STREAK_STEP*Math.min(streak,XP_ST
 // new question; `retry` is longer both to tax the guess-again loop and to make
 // the hint actually get read. Grouped and mutable like SUBJECT_WEIGHTS so they
 // can be dialled in from the console mid-play: PAUSE.first=3000, then answer.
-const PAUSE={first:3000,retry:4000};
+const PAUSE={first:2500,retry:4000};
 const WILD_CHANCE=0.10;
 const STARTER_WILD_CHANCE=0.03;
 const CATCH_STREAK_NEEDED=3;
