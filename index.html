@@ -151,6 +151,17 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;min-heigh
 .sparkle{position:absolute;left:50%;bottom:38px;width:10px;height:10px;background:#FCD34D;border-radius:50%;box-shadow:0 0 14px 3px #FCD34D,0 0 30px 6px rgba(252,211,77,0.5);opacity:0;pointer-events:none;z-index:4}
 .sparkle.s2{background:#FFFFFF;box-shadow:0 0 14px 3px #FFFFFF,0 0 30px 6px rgba(255,255,255,0.6)}
 .sparkle.s3{background:#FCA5A5;box-shadow:0 0 14px 3px #FCA5A5,0 0 28px 6px rgba(252,165,165,0.5)}
+.starter-random{display:block;width:100%;margin:0 0 18px;background:linear-gradient(135deg,#6366F1,#8B5CF6);border:none;color:#fff;font-family:inherit;font-size:14px;font-weight:700;padding:12px;border-radius:12px;cursor:pointer;box-shadow:0 2px 10px rgba(99,102,241,0.32);transition:filter 0.15s}
+.starter-random:hover{filter:brightness(1.08)}
+/* Evolution. The shake is on the overlay so the whole screen moves, and it steps
+   up from small to large as the flashing accelerates. */
+#evo-burst{position:absolute;left:50%;top:50%;width:40px;height:40px;margin:-20px 0 0 -20px;border-radius:50%;border:8px solid rgba(255,255,255,0.9);opacity:0;pointer-events:none;z-index:3}
+@keyframes evo-burst-out{0%{opacity:0;transform:scale(0.15);border-width:12px}12%{opacity:1}100%{opacity:0;transform:scale(16);border-width:1px}}
+@keyframes evo-anticipate{0%,100%{transform:scale(1)}50%{transform:scale(1.07)}}
+@keyframes evo-shake-s{0%,100%{transform:translate(0,0)}25%{transform:translate(-3px,2px)}50%{transform:translate(3px,-2px)}75%{transform:translate(-2px,-3px)}}
+@keyframes evo-shake-l{0%,100%{transform:translate(0,0)}20%{transform:translate(-10px,6px)}40%{transform:translate(9px,-7px)}60%{transform:translate(-8px,-6px)}80%{transform:translate(7px,8px)}}
+@keyframes evo-reveal{0%{transform:scale(0.12) rotate(-240deg);opacity:0}40%{opacity:1}72%{transform:scale(1.2) rotate(10deg)}100%{transform:scale(1) rotate(0deg);opacity:1}}
+#evo-rays.fast{animation-duration:1.1s}
 </style>
 </head>
 <body>
@@ -174,6 +185,7 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;min-heigh
 
 <div id="evo-overlay">
   <div id="evo-rays"></div>
+  <div id="evo-burst"></div>
   <div id="evo-bg-white"></div>
   <div id="evo-sprite-wrap"><img id="evo-img" src="" alt=""></div>
   <div id="evo-label"></div>
@@ -1006,7 +1018,7 @@ function xpForStreak(streak){return XP_BASE+XP_STREAK_STEP*Math.min(streak,XP_ST
 // new question; `retry` is longer both to tax the guess-again loop and to make
 // the hint actually get read. Grouped and mutable like SUBJECT_WEIGHTS so they
 // can be dialled in from the console mid-play: PAUSE.first=3000, then answer.
-const PAUSE={first:2500,retry:4000};
+const PAUSE={first:2500,retry:2500};
 const WILD_CHANCE=0.10;
 const STARTER_WILD_CHANCE=0.03;
 const CATCH_STREAK_NEEDED=3;
@@ -1239,7 +1251,9 @@ function render(){
   let h=hdr;
 
   if(st.phase==='starter'){
-    h+=`<div class="starter-card"><div style="font-size:20px;font-weight:700;color:#1A1A2E;margin-bottom:3px;text-align:center">Choose your starter!</div><div style="font-size:13px;color:#6B7280;margin-bottom:16px;text-align:center">Pick your partner for this learning adventure</div>`;
+    h+=`<div class="starter-card"><div style="font-size:20px;font-weight:700;color:#1A1A2E;margin-bottom:3px;text-align:center">Choose your starter!</div><div style="font-size:13px;color:#6B7280;margin-bottom:14px;text-align:center">Pick your partner for this learning adventure</div>`;
+    // Sits above the list so it's reachable without scrolling past every generation.
+    h+=`<button class="starter-random" id="pick-random">&#127922; Surprise me!</button>`;
     GENS.forEach((genLines,gi)=>{
       h+=`<div class="gen-section"><div class="gen-label">Gen ${GEN_ROMAN[gi]} &mdash; ${GEN_NAMES[gi]}</div><div class="starter-row">`;
       genLines.forEach(li=>{
@@ -1251,6 +1265,7 @@ function render(){
     h+=`</div>`;
     gameEl.innerHTML=h;
     GENS.forEach(genLines=>{genLines.forEach(li=>{document.getElementById(`pick-${li}`).addEventListener('click',()=>pickStarter(li));});});
+    const pr=document.getElementById('pick-random');if(pr)pr.addEventListener('click',pickRandomStarter);
     return;
   }
 
@@ -1436,44 +1451,115 @@ async function loadQuestion(){
   render();
 }
 
+// Roughly 7.5s, in five beats: anticipation, accelerating flashes with an
+// escalating shake, a white-out burst, the reveal, then a celebration hold.
+// It's a rare moment -- only when a team member hits its evoAt level -- so it's
+// worth the length.
 function playEvolution(fromIdx,toIdx,onDone){
   const ov=document.getElementById('evo-overlay');
   const img=document.getElementById('evo-img');
   const lbl=document.getElementById('evo-label');
   const bgw=document.getElementById('evo-bg-white');
+  const rays=document.getElementById('evo-rays');
+  const burst=document.getElementById('evo-burst');
+  const wrap=document.getElementById('evo-sprite-wrap');
   const fromP=PKM[fromIdx],toP=PKM[toIdx];
   const fromId=parseInt(fromP.num.slice(1)),toId=parseInt(toP.num.slice(1));
+
+  // The overlay covers the screen and has no dismiss control, so if any step
+  // throws the game would hang with no way forward. finish() is idempotent and a
+  // watchdog forces it, guaranteeing onDone() runs exactly once.
+  let done=false,watchdog=null;
+  function finish(){
+    if(done)return;done=true;
+    if(watchdog)clearTimeout(watchdog);
+    ov.classList.remove('active');
+    ov.style.cssText='';ov.style.animation='';
+    img.style.cssText='';
+    wrap.style.animation='';
+    rays.classList.remove('fast');
+    burst.style.animation='';burst.style.opacity='0';
+    wrap.querySelectorAll('.sparkle').forEach(s=>s.remove());
+    lbl.style.animation='';
+    onDone();
+  }
+  const step=(fn,ms)=>setTimeout(()=>{try{fn();}catch(e){finish();}},ms);
+
+  // Half-cycle delays decaying geometrically: slow, ominous blinks accelerating
+  // into a strobe. Total flash time is ~2x their sum, since each index is
+  // rendered twice (white, then normal).
+  const halfCycles=[];
+  for(let i=0;i<16;i++)halfCycles.push(Math.max(26,Math.round(190*Math.pow(0.87,i))));
+  const FLASH_MS=2*halfCycles.reduce((a,b)=>a+b,0);
+  const TOTAL=1100+FLASH_MS+260+420+900+1500+500;
+  // Armed before anything can throw, including the synchronous setup below --
+  // that runs after the overlay is already showing, so a throw there would
+  // otherwise strand the player behind it.
+  watchdog=setTimeout(finish,TOTAL+2500);
+
+  try{
+
   ov.classList.add('active');
+  ov.style.opacity='1';
   img.style.cssText='display:block;object-fit:contain;width:200px;height:200px;filter:none;transition:none';
   img.src=`${BASE}${fromId}.png`;
   lbl.textContent=`What?! ${fromP.n} is evolving!`;
   bgw.style.cssText='position:absolute;inset:0;background:white;opacity:0;pointer-events:none;transition:none';
-  const halfCycles=[170,150,130,110,90,75,60,50,42,38];
+  burst.style.opacity='0';burst.style.animation='';
+  wrap.querySelectorAll('.sparkle').forEach(s=>s.remove());
+
+  // Beat 1 -- anticipation: the sprite breathes and the screen trembles.
+  wrap.style.animation='evo-anticipate 0.8s ease-in-out infinite';
+  ov.style.animation='evo-shake-s 0.5s linear infinite';
+  playSfx('evoStart');
+
   let hi=0,isWhite=false;
   function flash(){
-    if(hi>=halfCycles.length){
-      img.style.filter='brightness(0) invert(1)';
-      bgw.style.transition='opacity 0.22s ease';bgw.style.opacity='1';
-      setTimeout(()=>{
-        img.src=`${BASE}${toId}.png`;img.style.transition='none';img.style.filter='brightness(0) invert(1)';
-        lbl.textContent=`${toP.n}!`;
-        bgw.style.transition='opacity 0.35s ease';bgw.style.opacity='0';
-        setTimeout(()=>{
-          img.style.transition='filter 1.3s ease-out';img.offsetWidth;img.style.filter='brightness(1) saturate(1)';
-          setTimeout(()=>{
-            ov.style.transition='opacity 0.45s ease';ov.style.opacity='0';
-            setTimeout(()=>{ov.classList.remove('active');ov.style.cssText='';img.style.cssText='';onDone();},450);
-          },1400);
-        },380);
-      },250);
-      return;
-    }
+    if(hi>=halfCycles.length){climax();return;}
     isWhite=!isWhite;
     img.style.filter=isWhite?'brightness(0) invert(1)':'brightness(1) saturate(1)';
     if(!isWhite)hi++;
-    setTimeout(flash,halfCycles[Math.min(hi,halfCycles.length-1)]);
+    // Beat 2 escalation: bigger shake and faster rays once it's really going.
+    if(hi===6){ov.style.animation='evo-shake-l 0.28s linear infinite';rays.classList.add('fast');}
+    step(flash,halfCycles[Math.min(hi,halfCycles.length-1)]);
   }
-  flash();
+
+  function climax(){
+    // Beat 3 -- white-out and shockwave.
+    img.style.filter='brightness(0) invert(1)';
+    bgw.style.transition='opacity 0.25s ease';bgw.style.opacity='1';
+    burst.style.animation='evo-burst-out 0.75s ease-out forwards';
+    playSfx('evoBurst');
+    step(()=>{
+      // Beat 4 -- the reveal.
+      ov.style.animation='';
+      img.src=`${BASE}${toId}.png`;
+      img.style.transition='none';img.style.filter='brightness(0) invert(1)';
+      lbl.textContent=`${toP.n}!`;
+      wrap.style.animation='evo-reveal 0.9s cubic-bezier(.2,.9,.3,1.2)';
+      bgw.style.transition='opacity 0.45s ease';bgw.style.opacity='0';
+      step(()=>{
+        img.style.transition='filter 1.2s ease-out';img.offsetWidth;
+        img.style.filter='brightness(1) saturate(1)';
+        _spawnSparkles(wrap);
+        playSfx('evoDone');
+        step(()=>{
+          // Beat 5 -- celebration hold, then out.
+          lbl.textContent=`Congratulations! ${fromP.n} evolved into ${toP.n}!`;
+          lbl.style.animation='evo-label-in 0.4s ease';
+          _spawnSparkles(wrap);
+          step(()=>{
+            ov.style.transition='opacity 0.5s ease';ov.style.opacity='0';
+            step(finish,500);
+          },1500);
+        },900);
+      },420);
+    },260);
+  }
+
+  step(flash,1100);
+
+  }catch(e){finish();}
 }
 
 let _audioCtx=null;
@@ -1517,6 +1603,17 @@ function playSfx(name){
     _tone(659,0.13,'triangle',0.18,0.12);
     _tone(784,0.13,'triangle',0.18,0.24);
     _tone(1047,0.32,'triangle',0.2,0.36);
+  }
+  // A low swell under the anticipation beat, then a rising strobe tone that
+  // tracks the accelerating flashes, so the sound climbs with the picture.
+  else if(name==='evoStart'){_sweep(120,300,1.1,'sine',0.09);_sweep(200,760,3.4,'triangle',0.07);}
+  else if(name==='evoBurst'){_sweep(1400,220,0.55,'sawtooth',0.11);_tone(880,0.45,'triangle',0.15);}
+  else if(name==='evoDone'){
+    _tone(523,0.16,'triangle',0.17,0);
+    _tone(659,0.16,'triangle',0.17,0.14);
+    _tone(784,0.16,'triangle',0.17,0.28);
+    _tone(1047,0.22,'triangle',0.19,0.42);
+    _tone(1319,0.55,'triangle',0.2,0.58);
   }
 }
 
@@ -1580,6 +1677,14 @@ function playCatch(pkIdx,onDone){
       },550);
     },750);
   },500);
+}
+
+// Picks across every generation, not just the first -- GENS is a list of
+// generations, each holding the line indices offered for it.
+function pickRandomStarter(){
+  const all=GENS.reduce((a,g)=>a.concat(g),[]);
+  if(!all.length)return;
+  pickStarter(all[Math.floor(Math.random()*all.length)]);
 }
 
 function pickStarter(lineIdx){
