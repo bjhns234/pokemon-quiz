@@ -166,6 +166,21 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;min-heigh
 @keyframes evo-shake-l{0%,100%{transform:translate(0,0)}20%{transform:translate(-10px,6px)}40%{transform:translate(9px,-7px)}60%{transform:translate(-8px,-6px)}80%{transform:translate(7px,8px)}}
 @keyframes evo-reveal{0%{transform:scale(0.12) rotate(-240deg);opacity:0}40%{opacity:1}72%{transform:scale(1.2) rotate(10deg)}100%{transform:scale(1) rotate(0deg);opacity:1}}
 #evo-rays.fast{animation-duration:1.1s}
+/* Starter reveal. Deliberately a different colour from the evolution overlay so
+   the two big moments don't read as the same event. */
+#pick-overlay{display:none;position:fixed;inset:0;background:#0b0524;z-index:999;flex-direction:column;align-items:center;justify-content:center}
+#pick-overlay.active{display:flex}
+#pick-rays{position:absolute;width:160%;height:160%;top:-30%;left:-30%;background:repeating-conic-gradient(rgba(167,139,250,0.09) 0deg 6deg,transparent 6deg 12deg);animation:evo-spin 6s linear infinite;pointer-events:none}
+#pick-rays.fast{animation-duration:1.2s}
+/* Behind the sprite (z-index 1 vs the wrap's 2): the ring starts at the centre, so
+   above it, it briefly covers the Pokemon at the exact moment of the reveal. */
+#pick-burst{position:absolute;left:50%;top:50%;width:40px;height:40px;margin:-20px 0 0 -20px;border-radius:50%;border:8px solid rgba(196,181,253,0.95);opacity:0;pointer-events:none;z-index:1}
+#pick-sprite-wrap{position:relative;z-index:2;display:flex;align-items:center;justify-content:center;width:220px;height:220px}
+#pick-sprite-wrap img{display:block;object-fit:contain;width:200px;height:200px}
+#pick-label{position:relative;z-index:2;color:#fff;font-size:18px;font-weight:700;margin-top:28px;text-align:center;letter-spacing:0.02em;padding:0 24px;text-shadow:0 0 24px rgba(196,181,253,0.7);min-height:24px}
+/* Each swap gets a tiny kick, so the reel reads as landing rather than sliding. */
+@keyframes pick-tick{0%{transform:scale(0.9)}60%{transform:scale(1.06)}100%{transform:scale(1)}}
+@keyframes pick-land{0%{transform:scale(0.4) rotate(-30deg);opacity:0}55%{opacity:1}75%{transform:scale(1.22) rotate(6deg)}100%{transform:scale(1) rotate(0deg);opacity:1}}
 </style>
 </head>
 <body>
@@ -185,6 +200,13 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;min-heigh
 <div id="catch-overlay">
   <div id="catch-pkm"><img id="catch-pkm-img" src="" alt=""><div id="catch-ball"></div></div>
   <div id="catch-lbl"></div>
+</div>
+
+<div id="pick-overlay">
+  <div id="pick-rays"></div>
+  <div id="pick-burst"></div>
+  <div id="pick-sprite-wrap"><img id="pick-img" src="" alt=""></div>
+  <div id="pick-label"></div>
 </div>
 
 <div id="evo-overlay">
@@ -1637,6 +1659,15 @@ function playSfx(name){
   }
   // A low swell under the anticipation beat, then a rising strobe tone that
   // tracks the accelerating flashes, so the sound climbs with the picture.
+  // Ticks only fire over the last stretch of the reel, where they read as the
+  // wheel slowing down; one per swap from the start would just be noise.
+  else if(name==='pickTick'){_tone(760,0.05,'square',0.07);}
+  else if(name==='pickReveal'){
+    _sweep(300,1200,0.35,'triangle',0.12);
+    _tone(659,0.16,'triangle',0.17,0.16);
+    _tone(880,0.16,'triangle',0.17,0.3);
+    _tone(1319,0.5,'triangle',0.2,0.44);
+  }
   else if(name==='evoStart'){_sweep(120,300,1.1,'sine',0.09);_sweep(200,760,3.4,'triangle',0.07);}
   else if(name==='evoBurst'){_sweep(1400,220,0.55,'sawtooth',0.11);_tone(880,0.45,'triangle',0.15);}
   else if(name==='evoDone'){
@@ -1710,12 +1741,97 @@ function playCatch(pkIdx,onDone){
   },500);
 }
 
+// A slot-machine reveal: candidates flick past in colour, decelerating, then the
+// winner lands with a burst. The pick is decided before the animation starts --
+// the reel is theatre over an already-known result, never the thing choosing.
+function playStarterReveal(lineIdx,onDone){
+  const ov=document.getElementById('pick-overlay');
+  const img=document.getElementById('pick-img');
+  const lbl=document.getElementById('pick-label');
+  const rays=document.getElementById('pick-rays');
+  const burst=document.getElementById('pick-burst');
+  const wrap=document.getElementById('pick-sprite-wrap');
+  const winnerPi=LINES[lineIdx][0];
+  const pool=GENS.reduce((a,g)=>a.concat(g),[]).map(li=>LINES[li][0]);
+
+  // Same hazard as the evolution overlay: full screen, no dismiss control, so a
+  // throw would strand him behind it. Idempotent finish + watchdog + wrapped steps.
+  let done=false,watchdog=null;
+  function finish(){
+    if(done)return;done=true;
+    if(watchdog)clearTimeout(watchdog);
+    ov.classList.remove('active');
+    ov.style.cssText='';
+    img.style.cssText='';
+    wrap.style.animation='';
+    rays.classList.remove('fast');
+    burst.style.animation='';burst.style.opacity='0';
+    wrap.querySelectorAll('.sparkle').forEach(s=>s.remove());
+    onDone();
+  }
+  const step=(fn,ms)=>setTimeout(()=>{try{fn();}catch(e){finish();}},ms);
+
+  // Delays grow geometrically: a fast blur that visibly runs out of steam.
+  const ticks=[];for(let d=55;d<400;d*=1.16)ticks.push(Math.round(d));
+  const REEL_MS=ticks.reduce((a,b)=>a+b,0);
+  watchdog=setTimeout(finish,450+REEL_MS+450+850+1200+500+2500);
+
+  try{
+  ov.classList.add('active');
+  ov.style.opacity='1';
+  img.style.cssText='display:block;object-fit:contain;width:200px;height:200px;filter:none';
+  img.src=`${BASE}${parseInt(PKM[pool[0]].num.slice(1))}.png`;
+  lbl.textContent='Who will your partner be?';
+  burst.style.opacity='0';burst.style.animation='';
+  wrap.querySelectorAll('.sparkle').forEach(s=>s.remove());
+
+  let i=0,last=-1;
+  function reel(){
+    if(i>=ticks.length){land();return;}
+    // Never show the winner during the reel, or the landing is a non-event.
+    let pi;do{pi=pool[Math.floor(Math.random()*pool.length)];}while((pi===last||pi===winnerPi)&&pool.length>2);
+    last=pi;
+    img.src=`${BASE}${parseInt(PKM[pi].num.slice(1))}.png`;
+    wrap.style.animation='none';wrap.offsetWidth;wrap.style.animation='pick-tick 0.12s ease';
+    if(i>ticks.length-9)playSfx('pickTick');
+    if(i===Math.floor(ticks.length*0.45))rays.classList.add('fast');
+    i++;
+    step(reel,ticks[i-1]);
+  }
+
+  function land(){
+    // A beat of nothing before the reveal -- the pause is what sells it.
+    rays.classList.remove('fast');
+    lbl.textContent='...';
+    step(()=>{
+      img.src=`${BASE}${parseInt(PKM[winnerPi].num.slice(1))}.png`;
+      wrap.style.animation='pick-land 0.9s cubic-bezier(.2,.9,.3,1.2)';
+      burst.style.animation='evo-burst-out 0.75s ease-out forwards';
+      lbl.textContent=`It's ${PKM[winnerPi].n}!`;
+      playSfx('pickReveal');
+      _spawnSparkles(wrap);
+      step(()=>{
+        lbl.textContent=`${PKM[winnerPi].n} is your partner!`;
+        _spawnSparkles(wrap);
+        step(()=>{
+          ov.style.transition='opacity 0.5s ease';ov.style.opacity='0';
+          step(finish,500);
+        },1200);
+      },850);
+    },450);
+  }
+
+  step(reel,450);
+  }catch(e){finish();}
+}
+
 // Picks across every generation, not just the first -- GENS is a list of
 // generations, each holding the line indices offered for it.
 function pickRandomStarter(){
   const all=GENS.reduce((a,g)=>a.concat(g),[]);
   if(!all.length)return;
-  pickStarter(all[Math.floor(Math.random()*all.length)]);
+  const lineIdx=all[Math.floor(Math.random()*all.length)];
+  playStarterReveal(lineIdx,()=>pickStarter(lineIdx));
 }
 
 function pickStarter(lineIdx){
