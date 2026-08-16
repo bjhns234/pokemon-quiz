@@ -1375,7 +1375,13 @@ function render(){
     const canFlee=!escaped&&!caught&&(st.tries===0||st.cor);
     const flee=canFlee?`<button class="flee-btn" id="flee">Run away</button>`:'';
     h+=`<div class="wild-card"><div class="wild-badge">&#9889; Wild Encounter</div><div class="wild-name">A wild <strong>${wild.n}</strong> appeared! <span class="lvl-badge">Lv ${st.wild.level}</span></div><div class="psvg ${st.anim}">${wild.svg(140)}</div><div class="catch-counter">Answer ${CATCH_STREAK_NEEDED} to catch it! (${cs}/${CATCH_STREAK_NEEDED})</div>${pips}${balls}${flee}</div>`;
+    // Both toasts belong here too. A milestone bonus is paid during an encounter and
+    // can level him up, but the level-up toast only used to render in the play phase --
+    // so the level happened, the message was set, and loadQuestion() cleared it before
+    // he ever saw it. The active Pokemon's XP bar is hidden behind the wild card, so
+    // this toast is the only evidence the bonus landed anywhere.
     if(st.streakMsg)h+=`<div class="streak-toast">&#128293; ${st.streakMsg}</div>`;
+    if(st.lvlUpMsg)h+=`<div class="lvl-up-toast">&#11088; ${st.lvlUpMsg}</div>`;
     // A retried answer says "You got it!" rather than "Keep going!", since it
     // moves him on without filling a pip -- only first-try answers do that.
     const rm=escaped?`${wild.n} broke free and ran away!`:caught?`&#9889; Gotcha! ${wild.n} was caught!`
