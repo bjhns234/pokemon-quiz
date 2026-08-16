@@ -118,6 +118,10 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;min-heigh
 .wild-badge{font-size:11px;font-weight:700;color:#86efac;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:4px}
 .wild-name{font-size:18px;font-weight:700;color:white;margin-bottom:2px}
 .catch-counter{display:inline-block;background:rgba(255,255,255,0.15);color:white;font-size:12px;font-weight:600;padding:4px 14px;border-radius:20px;margin-top:8px}
+/* Deliberately quiet next to the answer buttons, and it sits up in the wild card
+   rather than beside them, so leaving an encounter is never a mis-tap. */
+.flee-btn{display:block;margin:14px auto 2px;background:transparent;border:1.5px solid rgba(255,255,255,0.3);color:rgba(255,255,255,0.8);font-family:inherit;font-size:12px;font-weight:700;padding:7px 20px;border-radius:20px;cursor:pointer;transition:background 0.15s,border-color 0.15s}
+.flee-btn:hover{background:rgba(255,255,255,0.12);border-color:rgba(255,255,255,0.55);color:#fff}
 #bottom-nav{display:none;position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:520px;flex-direction:row;background:white;border-top:1px solid #E5E7EB;z-index:100}
 .nav-tab{flex:1;background:none;border:none;border-top:2px solid transparent;padding:12px 8px 10px;font-size:14px;font-weight:600;color:#9CA3AF;cursor:pointer;font-family:inherit;transition:color 0.15s}
 .nav-tab.nav-active{color:#1A1A2E;border-top-color:#1A1A2E}
@@ -1295,9 +1299,16 @@ function render(){
     // spent balls drop off the right, so the ones still in hand stay left-aligned
     const balls='<div class="catch-balls"><span class="catch-balls-lbl">Pok&eacute; Balls</span>'+
       Array.from({length:totalBalls},(_,i)=>`<div class="miss-ball${i>=totalBalls-misses?' used':''}"></div>`).join('')+'</div>';
-    h+=`<div class="wild-card"><div class="wild-badge">&#9889; Wild Encounter</div><div class="wild-name">A wild <strong>${wild.n}</strong> appeared! <span class="lvl-badge">Lv ${st.wild.level}</span></div><div class="psvg ${st.anim}">${wild.svg(140)}</div><div class="catch-counter">Answer ${CATCH_STREAK_NEEDED} to catch it! (${cs}/${CATCH_STREAK_NEEDED})</div>${pips}${balls}</div>`;
     const escaped=st.wildEscape;
     const caught=cs>=CATCH_STREAK_NEEDED;
+    // Running away is offered only when no wrong answer is pending. A wrong answer
+    // re-serves the same question until it's solved, so letting him flee out of that
+    // would hand back exactly the reroll the anti-guessing work removed. Before he
+    // has committed an answer he's free to go -- skipping one unanswered question
+    // during an encounter isn't farmable, but escaping a wrong one would be.
+    const canFlee=!escaped&&!caught&&(st.tries===0||st.cor);
+    const flee=canFlee?`<button class="flee-btn" id="flee">Run away</button>`:'';
+    h+=`<div class="wild-card"><div class="wild-badge">&#9889; Wild Encounter</div><div class="wild-name">A wild <strong>${wild.n}</strong> appeared! <span class="lvl-badge">Lv ${st.wild.level}</span></div><div class="psvg ${st.anim}">${wild.svg(140)}</div><div class="catch-counter">Answer ${CATCH_STREAK_NEEDED} to catch it! (${cs}/${CATCH_STREAK_NEEDED})</div>${pips}${balls}${flee}</div>`;
     // A retried answer says "You got it!" rather than "Keep going!", since it
     // moves him on without filling a pip -- only first-try answers do that.
     const rm=escaped?`${wild.n} broke free and ran away!`:caught?`&#9889; Gotcha! ${wild.n} was caught!`
@@ -1313,6 +1324,7 @@ function render(){
   gameEl.querySelectorAll('[data-subj]').forEach(b=>b.addEventListener('click',()=>chooseSubject(b.dataset.subj)));
   const sb=gameEl.querySelector('#subj-btn');if(sb)sb.addEventListener('click',openSubjectPicker);
   const nb=gameEl.querySelector('#nxt');if(nb)nb.addEventListener('click',onNext);
+  const fb=gameEl.querySelector('#flee');if(fb)fb.addEventListener('click',fleeWild);
 }
 
 function renderPokedex(){
@@ -1643,6 +1655,19 @@ function triggerWildEncounter(){
   const wlev=Math.floor(Math.random()*(maxLv-minLv+1))+minLv;
   st.wild={pi:wpi,level:wlev,correctStreak:0,misses:0};
   st.phase='wild';
+  loadQuestion();
+}
+
+// Leaving a wild encounter he doesn't want. The guard is the same invariant the
+// button's visibility encodes -- a wrong answer is never escapable -- restated here
+// so it holds even if the button is reached some other way.
+function fleeWild(){
+  if(st.phase!=='wild'||!st.wild)return;
+  if(st.wildEscape||st.wild.correctStreak>=CATCH_STREAK_NEEDED)return;
+  if(st.tries>0&&!st.cor)return;
+  st.wild=null;
+  st.wildEscape=false;
+  st.phase='play';
   loadQuestion();
 }
 
