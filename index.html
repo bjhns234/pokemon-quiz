@@ -31,6 +31,10 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;min-heigh
 .streak-pill{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:#FEF3C7;color:#B45309;letter-spacing:0.03em;white-space:nowrap}
 .streak-pill.maxed{background:#FFEDD5;color:#C2410C}
 .streak-pill.bump{animation:streak-pop 0.45s ease}
+.streak-pill.record{background:linear-gradient(90deg,#FDE68A,#FCD34D);color:#92400E;box-shadow:0 0 0 1.5px #F59E0B}
+.best-pill{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:#F3F4F6;color:#6B7280;letter-spacing:0.03em;white-space:nowrap}
+/* Hotter than the level-up toast on purpose: a milestone run is rarer than a level. */
+.streak-toast{background:linear-gradient(90deg,#F97316,#EF4444);color:#fff;border-radius:12px;padding:11px 16px;font-size:15px;font-weight:700;margin-bottom:12px;text-align:center;box-shadow:0 4px 16px rgba(239,68,68,0.4);animation:lvl-up-flash 0.55s cubic-bezier(0.34,1.56,0.64,1)}
 @keyframes streak-pop{0%{transform:scale(1)}40%{transform:scale(1.28)}100%{transform:scale(1)}}
 .tagm{background:#DBEAFE;color:#1D4ED8}
 .tagr{background:#D1FAE5;color:#065F46}
@@ -1014,11 +1018,20 @@ const XP_STREAK_CAP=7;   // streak 7+ pays 45
 // working a question out from the hint still visibly pays.
 const XP_AFTER_HINT=2;
 function xpForStreak(streak){return XP_BASE+XP_STREAK_STEP*Math.min(streak,XP_STREAK_CAP);}
+
+// Per-answer XP flattens at streak 7, so a 20-run used to pay exactly the same as
+// a 7-run. Milestones give the long runs somewhere to go. Safe against guessing for
+// the same reason the streak ladder is: a run can't be farmed by tapping fast, it
+// can only be bought with accuracy -- reaching 10 at chance rate is 1-in-a-million.
+const STREAK_MILESTONES=[5,10,15,20,25,30,40,50,75,100];
+function milestoneBonus(streak){return STREAK_MILESTONES.includes(streak)?streak*10:0;}
+// Below this a "record" is meaningless -- everyone beats a best of 2 on day one.
+const BEST_STREAK_NOTE=3;
 // How long answers stay untappable, in ms. `first` breaks reflex tap-chains on a
 // new question; `retry` is longer both to tax the guess-again loop and to make
 // the hint actually get read. Grouped and mutable like SUBJECT_WEIGHTS so they
 // can be dialled in from the console mid-play: PAUSE.first=3000, then answer.
-const PAUSE={first:2500,retry:2500};
+const PAUSE={first:2500,retry:4000};
 const WILD_CHANCE=0.10;
 const STARTER_WILD_CHANCE=0.03;
 const CATCH_STREAK_NEEDED=3;
@@ -1039,6 +1052,9 @@ function mkState(saved){
     tries:0,wrong:[],armAt:0,lastXp:0,
     pdx:new Array(PKM.length).fill(false),
     streak:0,anim:'',
+    // The running streak is deliberately not restored (a session starts fresh),
+    // but the record it set is the one streak fact worth keeping.
+    bestStreak:0,newRecord:false,streakMsg:null,
     stats:{math:mkStat(),reading:mkStat(),science:mkStat()},
     wild:null,
     pendingEvo:null,
@@ -1053,6 +1069,7 @@ function mkState(saved){
     s.pdx=saved.pdx;
     s.stats=saved.stats;
     s.subject=saved.subject;
+    s.bestStreak=saved.bestStreak;
     // phase is derived, never restored: an interrupted wild encounter or
     // evolution is forfeited rather than resumed into a half-built state.
     s.phase=saved.team.length>0?'play':'starter';
@@ -1080,6 +1097,7 @@ function save(){
       dex:st.pdx.map((caught,i)=>caught?PKM[i].num:null).filter(Boolean),
       stats:st.stats,
       subject:st.subject,
+      bestStreak:st.bestStreak,
     }));
   }catch(e){/* storage full or unavailable — keep playing unsaved */}
 }
@@ -1124,6 +1142,9 @@ function loadSaved(){
       // Saves written before the chooser existed have no subject; falling back
       // to mix reproduces exactly how they used to behave, so SAVE_V holds.
       subject:SUBJ_CHOICES.includes(data.subject)?data.subject:SUBJ_MIX,
+      // Saves from before records existed have none; 0 just means "no record yet",
+      // so SAVE_V holds here the same way it did for the subject chooser.
+      bestStreak:Math.max(0,data.bestStreak|0),
       team,pdx,stats,
     };
   }catch(e){
@@ -1223,9 +1244,14 @@ function qCardHTML(resultMsg,btnLabel){
   // Shows from two upward: a run is only worth flagging once it's actually a run,
   // and a pill reading zero on every fresh question is just noise.
   const streakPill=st.streak>1
-    ?`<span class="streak-pill${maxed?' maxed':''}${grew?' bump':''}">&#128293; ${st.streak} in a row</span>`
+    ?`<span class="streak-pill${maxed?' maxed':''}${st.newRecord?' record':''}${grew?' bump':''}">&#128293; ${st.streak} in a row${st.newRecord?' &#127942; BEST!':''}</span>`
     :'';
-  let h=`<div class="card"><div class="q-head"><div class="subj-tag ${SCLS[q.subject]||'tagm'}">${SNAME[q.subject]}</div>${streakPill}</div><div class="qtext">${q.question}</div><div${gridAttrs}>`;
+  // The record only earns space once it's worth chasing, and it steps aside while
+  // he's actively beating it -- the streak pill is already saying so.
+  const bestPill=(st.bestStreak>=BEST_STREAK_NOTE&&!st.newRecord)
+    ?`<span class="best-pill">&#127942; Best ${st.bestStreak}</span>`
+    :'';
+  let h=`<div class="card"><div class="q-head"><div class="subj-tag ${SCLS[q.subject]||'tagm'}">${SNAME[q.subject]}</div>${streakPill}${bestPill}</div><div class="qtext">${q.question}</div><div${gridAttrs}>`;
   q.answers.forEach((a,i)=>{
     let c='ans-btn';
     const ruled=st.wrong.includes(i);
@@ -1283,6 +1309,9 @@ function render(){
     const xpMx=xpToNext(tm.level);
     const pct=Math.min(100,Math.round(tm.xp/xpMx*100));
     h+=`<div class="card pcard"><div class="pnum">${p.num} &bull; ${typeBadgesInline(p.type)} Type</div><div class="pname">${p.n} <span class="lvl-badge">Lv ${tm.level}</span></div><div class="psvg ${st.anim}">${p.svg(148)}</div><div class="xp-row"><span>XP</span><span>${tm.xp}/${xpMx}</span></div><div class="xp-track"><div class="xp-fill" style="width:${pct}%"></div></div></div>`;
+    if(st.streakMsg){
+      h+=`<div class="streak-toast">&#128293; ${st.streakMsg}</div>`;
+    }
     if(st.lvlUpMsg){
       h+=`<div class="lvl-up-toast">&#11088; ${st.lvlUpMsg}</div>`;
     }
@@ -1324,6 +1353,7 @@ function render(){
     const canFlee=!escaped&&!caught&&(st.tries===0||st.cor);
     const flee=canFlee?`<button class="flee-btn" id="flee">Run away</button>`:'';
     h+=`<div class="wild-card"><div class="wild-badge">&#9889; Wild Encounter</div><div class="wild-name">A wild <strong>${wild.n}</strong> appeared! <span class="lvl-badge">Lv ${st.wild.level}</span></div><div class="psvg ${st.anim}">${wild.svg(140)}</div><div class="catch-counter">Answer ${CATCH_STREAK_NEEDED} to catch it! (${cs}/${CATCH_STREAK_NEEDED})</div>${pips}${balls}${flee}</div>`;
+    if(st.streakMsg)h+=`<div class="streak-toast">&#128293; ${st.streakMsg}</div>`;
     // A retried answer says "You got it!" rather than "Keep going!", since it
     // moves him on without filling a pip -- only first-try answers do that.
     const rm=escaped?`${wild.n} broke free and ran away!`:caught?`&#9889; Gotcha! ${wild.n} was caught!`
@@ -1445,6 +1475,7 @@ async function loadQuestion(){
   const pname=st.phase==='wild'&&st.wild?PKM[st.wild.pi].n:PKM[activePi()].n;
   st.wildEscape=false;
   st.lvlUpMsg=null;
+  st.streakMsg=null;
   const q=pickBuiltIn(sub,lv,pname);
   st.q=q;st.sel=null;st.cor=false;st.anim="";
   st.tries=0;st.wrong=[];st.lastXp=0;st.armAt=Date.now()+PAUSE.first;
@@ -1737,20 +1768,22 @@ function processEvolution(){
   });
 }
 
+// Encounters are no longer walled off by region. Whichever starter he picked, wild
+// Pokemon and stray starters from every generation can turn up and be caught. This
+// also removes an old dead end: the pool used to be the 4 wild Pokemon of his own
+// generation, so once he had them all, encounters stopped happening entirely.
 function getAvailableOtherStarters(){
   const tm=activeTM();if(!tm)return[];
-  const genIdx=genFromPi(tm.pi);
-  const genLines=GENS[genIdx]||[];
+  const allLines=GENS.reduce((a,g)=>a.concat(g),[]);
   const teamPis=new Set(st.team.map(t=>t.pi));
-  return genLines.map(li=>LINES[li][0]).filter(pi=>{
+  return allLines.map(li=>LINES[li][0]).filter(pi=>{
     const line=LINES.find(ln=>ln.includes(pi))||[];
     return !line.some(lpi=>teamPis.has(lpi));
   });
 }
 function triggerWildEncounter(){
   const tm=activeTM();
-  const genIdx=genFromPi(tm.pi);
-  const allWild=WILD_BY_GEN[genIdx]||[];
+  const allWild=WILD_BY_GEN.reduce((a,g)=>a.concat(g),[]);
   const teamPis=new Set(st.team.map(t=>t.pi));
   const available=allWild.filter(pi=>!teamPis.has(pi));
   if(available.length===0){loadQuestion();return;}
@@ -1834,14 +1867,23 @@ function handleAnswer(i){
     updStats(st.q.subject,ok);
     if(ok){
       st.streak++;
+      if(st.streak>st.bestStreak){st.bestStreak=st.streak;if(st.streak>=BEST_STREAK_NOTE)st.newRecord=true;}
+      const bonus=milestoneBonus(st.streak);
       if(st.phase==='play'){
         const tm=activeTM();
-        if(tm){st.lastXp=xpForStreak(st.streak);tm.xp+=st.lastXp;applyLevelUps();}
+        if(tm){st.lastXp=xpForStreak(st.streak)+bonus;tm.xp+=st.lastXp;applyLevelUps();}
       } else if(st.phase==='wild'&&st.wild){
         st.wild.correctStreak++;
+        // A milestone shouldn't be worth less because a wild Pokemon happened to
+        // turn up, so the bonus is paid in either phase -- unlike per-answer XP,
+        // which stays a play-phase reward.
+        const tm=activeTM();
+        if(tm&&bonus){tm.xp+=bonus;applyLevelUps();}
       }
+      if(bonus)st.streakMsg=`${st.streak} in a row! +${bonus} bonus XP!`;
     } else {
       st.streak=0;
+      st.newRecord=false;
       // A miss spends a ball but leaves the catch progress intact; only the last
       // ball running out lets it flee.
       if(st.phase==='wild'&&st.wild){
