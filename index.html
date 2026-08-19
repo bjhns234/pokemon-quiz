@@ -1059,13 +1059,22 @@ const STARTER_WILD_CHANCE=0.03;
 const CATCH_STREAK_NEEDED=3;
 // Wild Pokemon used to appear at (active level - 3 .. active level). That read fine
 // at level 12 and became nonsense at level 100: every Pokemon in the grass was a
-// level-100 veteran, and every one he caught joined the team already maxed, with no
-// evolution left to earn. Wild levels are now their own thing and stop climbing at
-// the cap, so a catch is always something small he gets to raise. The cap sits below
-// the earliest evoAt (14) on purpose: every wild Pokemon has BOTH of its evolutions
-// still ahead of it, which is the best content in the game. Nothing depends on the
-// number -- catching always takes CATCH_STREAK_NEEDED right answers -- so a low wild
-// level costs him nothing and buys back the whole raising arc.
+// level-100 veteran, and since a catch joins the team AT the wild's level, it arrived
+// already past both of its evoAt thresholds -- so it evolved on its next level-up and
+// again on the one after, spending both evolution sequences inside a dozen questions.
+//
+// Level stays the whole evolution gate, deliberately: a Pokemon evolves at its evoAt,
+// always, so "Bulbasaur becomes Ivysaur at 16" is a fact he can learn and predict.
+// That makes this cap the only thing standing between a catch and a free evolution,
+// so it MUST stay below the catchable pool's evoAt floor -- then a wild Pokemon has
+// both of its evolutions still ahead of it, which is the best content in the game.
+// The floor is 14 (Cyndaquil, Chimchar, Starly, Pikipek) with two deliberate
+// exceptions: Caterpie and Wurmple evolve at 7, exactly as they do in the real games,
+// so those two genuinely do pop straight away. A test pins that list -- if anything
+// else ever appears in it, the cap has drifted too high.
+//
+// Nothing else reads the number -- catching always costs CATCH_STREAK_NEEDED right
+// answers -- so a low wild level costs him nothing and buys back the raising arc.
 const WILD_LEVEL_CAP=12;
 const WILD_LEVEL_SPREAD=6;
 function wildLevel(){
@@ -1076,15 +1085,6 @@ function wildLevel(){
   const lo=Math.max(2,top-WILD_LEVEL_SPREAD);
   return lo+Math.floor(Math.random()*(top-lo+1));
 }
-// An evolution has to be earned under his care, not inherited. Level alone was the
-// whole gate, so a Pokemon caught above its evoAt evolved on its very next level-up
-// -- and then again on the one after that, spending both of its evolutions inside a
-// dozen questions. This makes every evolution cost the same thing it costs the
-// starter: real levels, gained by him, since this Pokemon joined or last evolved.
-// The starter's classic arc is untouched (it joins at 5 and evolves at 16, and each
-// stage is more than this far apart anyway) -- the rule only bites on a Pokemon that
-// showed up already past the threshold.
-const EVO_MIN_LEVELS=8;
 // A wrong answer during an encounter costs a ball rather than ending it outright;
 // the Pokemon only flees once the balls run out.
 const CATCH_MISSES_ALLOWED=1;
@@ -1143,7 +1143,7 @@ function save(){
       activeIdx:st.activeIdx,
       // keyed by dex number, not array index, so PKM can grow without
       // silently remapping someone's team onto the wrong Pokemon
-      team:st.team.map(t=>({num:PKM[t.pi].num,level:t.level,xp:t.xp,joinLv:t.joinLv})),
+      team:st.team.map(t=>({num:PKM[t.pi].num,level:t.level,xp:t.xp})),
       dex:st.pdx.map((caught,i)=>caught?PKM[i].num:null).filter(Boolean),
       stats:st.stats,
       subject:st.subject,
@@ -1166,13 +1166,7 @@ function loadSaved(){
     const team=(data.team||[]).map(t=>{
       const pi=NUM_TO_PI[t&&t.num];
       if(pi===undefined)return null;
-      const level=Math.max(1,t.level|0);
-      // A save written before evolutions had to be earned has no joinLv. Reading it
-      // as "joined at the level it's on now" is the safe answer: a Pokemon already
-      // sitting above its evoAt has to earn the next EVO_MIN_LEVELS like any other,
-      // instead of evolving the instant it's switched to.
-      const joinLv=t.joinLv==null?level:Math.max(1,t.joinLv|0);
-      return{pi,level,xp:Math.max(0,t.xp|0),joinLv:Math.min(joinLv,level)};
+      return{pi,level:Math.max(1,t.level|0),xp:Math.max(0,t.xp|0)};
     }).filter(Boolean);
     if(team.length===0)return null;
 
@@ -1877,7 +1871,7 @@ function pickRandomStarter(){
 function pickStarter(lineIdx){
   st.starter=lineIdx;
   const startPi=LINES[lineIdx][0];
-  st.team=[{pi:startPi,level:STARTER_START_LEVEL,xp:0,joinLv:STARTER_START_LEVEL}];
+  st.team=[{pi:startPi,level:STARTER_START_LEVEL,xp:0}];
   st.activeIdx=0;
   st.pdx[startPi]=true;
   // Straight into the subject chooser; chooseSubject is what drops him into play.
@@ -1901,7 +1895,7 @@ function applyLevelUps(){
     tm.xp-=xpToNext(tm.level);
     tm.level++;
     const evoAt=PKM[tm.pi].evoAt;
-    if(evoAt&&tm.level>=evoAt&&tm.level-(tm.joinLv|0)>=EVO_MIN_LEVELS){
+    if(evoAt&&tm.level>=evoAt){
       st.pendingEvo={fromPi:tm.pi,toPi:tm.pi+1};
       return;
     }
@@ -1916,8 +1910,6 @@ function processEvolution(){
   playEvolution(fromPi,toPi,()=>{
     const tm=activeTM();
     tm.pi=toPi;
-    // Restart the clock, or the second evolution lands on the very next level-up.
-    tm.joinLv=tm.level;
     st.pdx[toPi]=true;
     applyLevelUps();
     save();
@@ -1986,7 +1978,7 @@ function onNext(){
     if(st.wild&&st.wild.correctStreak>=CATCH_STREAK_NEEDED){
       const wp=st.wild.pi;const wlev=st.wild.level;
       playCatch(wp,()=>{
-        st.team.push({pi:wp,level:wlev,xp:0,joinLv:wlev});
+        st.team.push({pi:wp,level:wlev,xp:0});
         st.pdx[wp]=true;
         st.wild=null;
         st.phase='play';
