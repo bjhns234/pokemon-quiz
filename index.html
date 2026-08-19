@@ -1057,6 +1057,34 @@ const PAUSE={first:2500,retry:4000};
 const WILD_CHANCE=0.10;
 const STARTER_WILD_CHANCE=0.03;
 const CATCH_STREAK_NEEDED=3;
+// Wild Pokemon used to appear at (active level - 3 .. active level). That read fine
+// at level 12 and became nonsense at level 100: every Pokemon in the grass was a
+// level-100 veteran, and every one he caught joined the team already maxed, with no
+// evolution left to earn. Wild levels are now their own thing and stop climbing at
+// the cap, so a catch is always something small he gets to raise. The cap sits below
+// the earliest evoAt (14) on purpose: every wild Pokemon has BOTH of its evolutions
+// still ahead of it, which is the best content in the game. Nothing depends on the
+// number -- catching always takes CATCH_STREAK_NEEDED right answers -- so a low wild
+// level costs him nothing and buys back the whole raising arc.
+const WILD_LEVEL_CAP=12;
+const WILD_LEVEL_SPREAD=6;
+function wildLevel(){
+  // Best in the team, not the active one, so switching to a freshly caught level-6
+  // Pokemon can't drag the whole band down with it.
+  const best=st.team.reduce((m,t)=>Math.max(m,t.level|0),STARTER_START_LEVEL);
+  const top=Math.min(WILD_LEVEL_CAP,best);
+  const lo=Math.max(2,top-WILD_LEVEL_SPREAD);
+  return lo+Math.floor(Math.random()*(top-lo+1));
+}
+// An evolution has to be earned under his care, not inherited. Level alone was the
+// whole gate, so a Pokemon caught above its evoAt evolved on its very next level-up
+// -- and then again on the one after that, spending both of its evolutions inside a
+// dozen questions. This makes every evolution cost the same thing it costs the
+// starter: real levels, gained by him, since this Pokemon joined or last evolved.
+// The starter's classic arc is untouched (it joins at 5 and evolves at 16, and each
+// stage is more than this far apart anyway) -- the rule only bites on a Pokemon that
+// showed up already past the threshold.
+const EVO_MIN_LEVELS=8;
 // A wrong answer during an encounter costs a ball rather than ending it outright;
 // the Pokemon only flees once the balls run out.
 const CATCH_MISSES_ALLOWED=1;
@@ -1115,7 +1143,7 @@ function save(){
       activeIdx:st.activeIdx,
       // keyed by dex number, not array index, so PKM can grow without
       // silently remapping someone's team onto the wrong Pokemon
-      team:st.team.map(t=>({num:PKM[t.pi].num,level:t.level,xp:t.xp})),
+      team:st.team.map(t=>({num:PKM[t.pi].num,level:t.level,xp:t.xp,joinLv:t.joinLv})),
       dex:st.pdx.map((caught,i)=>caught?PKM[i].num:null).filter(Boolean),
       stats:st.stats,
       subject:st.subject,
@@ -1138,7 +1166,13 @@ function loadSaved(){
     const team=(data.team||[]).map(t=>{
       const pi=NUM_TO_PI[t&&t.num];
       if(pi===undefined)return null;
-      return{pi,level:Math.max(1,t.level|0),xp:Math.max(0,t.xp|0)};
+      const level=Math.max(1,t.level|0);
+      // A save written before evolutions had to be earned has no joinLv. Reading it
+      // as "joined at the level it's on now" is the safe answer: a Pokemon already
+      // sitting above its evoAt has to earn the next EVO_MIN_LEVELS like any other,
+      // instead of evolving the instant it's switched to.
+      const joinLv=t.joinLv==null?level:Math.max(1,t.joinLv|0);
+      return{pi,level,xp:Math.max(0,t.xp|0),joinLv:Math.min(joinLv,level)};
     }).filter(Boolean);
     if(team.length===0)return null;
 
@@ -1843,7 +1877,7 @@ function pickRandomStarter(){
 function pickStarter(lineIdx){
   st.starter=lineIdx;
   const startPi=LINES[lineIdx][0];
-  st.team=[{pi:startPi,level:STARTER_START_LEVEL,xp:0}];
+  st.team=[{pi:startPi,level:STARTER_START_LEVEL,xp:0,joinLv:STARTER_START_LEVEL}];
   st.activeIdx=0;
   st.pdx[startPi]=true;
   // Straight into the subject chooser; chooseSubject is what drops him into play.
@@ -1867,7 +1901,7 @@ function applyLevelUps(){
     tm.xp-=xpToNext(tm.level);
     tm.level++;
     const evoAt=PKM[tm.pi].evoAt;
-    if(evoAt&&tm.level>=evoAt){
+    if(evoAt&&tm.level>=evoAt&&tm.level-(tm.joinLv|0)>=EVO_MIN_LEVELS){
       st.pendingEvo={fromPi:tm.pi,toPi:tm.pi+1};
       return;
     }
@@ -1882,6 +1916,8 @@ function processEvolution(){
   playEvolution(fromPi,toPi,()=>{
     const tm=activeTM();
     tm.pi=toPi;
+    // Restart the clock, or the second evolution lands on the very next level-up.
+    tm.joinLv=tm.level;
     st.pdx[toPi]=true;
     applyLevelUps();
     save();
@@ -1904,16 +1940,12 @@ function getAvailableOtherStarters(){
   });
 }
 function triggerWildEncounter(){
-  const tm=activeTM();
   const allWild=WILD_BY_GEN.reduce((a,g)=>a.concat(g),[]);
   const teamPis=new Set(st.team.map(t=>t.pi));
   const available=allWild.filter(pi=>!teamPis.has(pi));
   if(available.length===0){loadQuestion();return;}
   const wpi=available[Math.floor(Math.random()*available.length)];
-  const minLv=Math.max(2,tm.level-3);
-  const maxLv=Math.max(minLv,tm.level);
-  const wlev=Math.floor(Math.random()*(maxLv-minLv+1))+minLv;
-  st.wild={pi:wpi,level:wlev,correctStreak:0,misses:0};
+  st.wild={pi:wpi,level:wildLevel(),correctStreak:0,misses:0};
   st.phase='wild';
   loadQuestion();
 }
@@ -1936,9 +1968,7 @@ function afterTurn(){
     const starterCands=getAvailableOtherStarters();
     if(starterCands.length>0&&Math.random()<STARTER_WILD_CHANCE){
       const wpi=starterCands[Math.floor(Math.random()*starterCands.length)];
-      const tm=activeTM();
-      const minLv=Math.max(2,tm.level-3),maxLv=Math.max(minLv,tm.level);
-      st.wild={pi:wpi,level:Math.floor(Math.random()*(maxLv-minLv+1))+minLv,correctStreak:0,misses:0};
+      st.wild={pi:wpi,level:wildLevel(),correctStreak:0,misses:0};
       st.phase='wild';
       loadQuestion();return;
     }
@@ -1956,7 +1986,7 @@ function onNext(){
     if(st.wild&&st.wild.correctStreak>=CATCH_STREAK_NEEDED){
       const wp=st.wild.pi;const wlev=st.wild.level;
       playCatch(wp,()=>{
-        st.team.push({pi:wp,level:wlev,xp:0});
+        st.team.push({pi:wp,level:wlev,xp:0,joinLv:wlev});
         st.pdx[wp]=true;
         st.wild=null;
         st.phase='play';
