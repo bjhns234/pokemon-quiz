@@ -408,6 +408,88 @@ const WILD_PKM=[
 {n:"Arboliva",num:"#930",type:["Grass","Normal"],evoAt:null,isEvo:true,svg:s=>pkImg(930,s),fact:"Arboliva spreads rich olive oil everywhere it walks to help plants around it grow!",gen:8},
 {n:"Fidough",num:"#926",type:"Fairy",evoAt:26,svg:s=>pkImg(926,s),fact:"Fidough's puffy body is squishy and stretchy — just like a ball of bread dough!",gen:8},
 {n:"Dachsbun",num:"#927",type:"Fairy",evoAt:null,isEvo:true,svg:s=>pkImg(927,s),fact:"Dachsbun's warm bread-like body smells amazing and helps dry out everything around it!",gen:8},
+
+// A second wave, four more lines per generation, doubling the catchable wild
+// pool from 36 to 72. Appended rather than slotted in beside their gen-mates
+// because evolution is positional -- PKM[pi+1] IS the next stage -- so inserting
+// mid-array would silently make some Pokemon evolve into a stranger. The two
+// grouping arrays key off the `gen` field, not array order, so these still land
+// in the right Pokedex sections; they just sort after the originals within one.
+// Every base form here has evoAt >= 15, comfortably above WILD_LEVEL_CAP, so a
+// fresh catch still has all of its evolutions ahead of it.
+{n:"Rattata",num:"#019",type:"Normal",evoAt:20,svg:s=>pkImg(19,s),fact:"Rattata's front teeth never stop growing, so it nibbles on hard things all day long!",gen:0},
+{n:"Raticate",num:"#020",type:"Normal",evoAt:null,isEvo:true,svg:s=>pkImg(20,s),fact:"Raticate's whiskers help it keep its balance, and it can swim across a wide river!",gen:0},
+{n:"Meowth",num:"#052",type:"Normal",evoAt:28,svg:s=>pkImg(52,s),fact:"Meowth loves shiny round coins and keeps the sparkliest one right on its forehead!",gen:0},
+{n:"Persian",num:"#053",type:"Normal",evoAt:null,isEvo:true,svg:s=>pkImg(53,s),fact:"Persian's smooth fur and proud stride make it one of the most elegant Pokémon around!",gen:0},
+{n:"Growlithe",num:"#058",type:"Fire",evoAt:30,svg:s=>pkImg(58,s),fact:"Growlithe has an amazing nose and can remember any smell it has ever sniffed!",gen:0},
+{n:"Arcanine",num:"#059",type:"Fire",evoAt:null,isEvo:true,svg:s=>pkImg(59,s),fact:"Arcanine can run for a whole day and night without ever stopping to rest!",gen:0},
+{n:"Psyduck",num:"#054",type:"Water",evoAt:33,svg:s=>pkImg(54,s),fact:"Psyduck always has a headache, and when it gets bad its hidden powers burst out!",gen:0},
+{n:"Golduck",num:"#055",type:"Water",evoAt:null,isEvo:true,svg:s=>pkImg(55,s),fact:"Golduck is a champion swimmer whose webbed hands slice through water like paddles!",gen:0},
+{n:"Mareep",num:"#179",type:"Electric",evoAt:15,svg:s=>pkImg(179,s),fact:"Mareep's fluffy wool stores up static electricity until it crackles and glows!",gen:1},
+{n:"Flaaffy",num:"#180",type:"Electric",evoAt:30,isEvo:true,svg:s=>pkImg(180,s),fact:"Flaaffy's smooth pink skin holds so much electricity that its wool puffs right up!",gen:1},
+{n:"Ampharos",num:"#181",type:"Electric",evoAt:null,isEvo:true,svg:s=>pkImg(181,s),fact:"Ampharos glows so brightly that sailors far out at sea use it as a lighthouse!",gen:1},
+{n:"Togepi",num:"#175",type:"Fairy",evoAt:20,svg:s=>pkImg(175,s),fact:"Togepi's shell is packed full of happiness that it shares with kind people!",gen:1},
+{n:"Togetic",num:"#176",type:["Fairy","Flying"],evoAt:null,isEvo:true,svg:s=>pkImg(176,s),fact:"Togetic floats down to share joy with anyone who has a gentle, caring heart!",gen:1},
+{n:"Wooper",num:"#194",type:["Water","Ground"],evoAt:20,svg:s=>pkImg(194,s),fact:"Wooper walks along the bottom of rivers looking for a tasty snack to eat!",gen:1},
+{n:"Quagsire",num:"#195",type:["Water","Ground"],evoAt:null,isEvo:true,svg:s=>pkImg(195,s),fact:"Quagsire waits with its mouth wide open and just lets dinner swim right in!",gen:1},
+{n:"Phanpy",num:"#231",type:"Ground",evoAt:25,svg:s=>pkImg(231,s),fact:"Phanpy is so strong it can carry a grown-up on its back without getting tired!",gen:1},
+{n:"Donphan",num:"#232",type:"Ground",evoAt:null,isEvo:true,svg:s=>pkImg(232,s),fact:"Donphan curls into a wheel and rolls downhill fast enough to knock over a tree!",gen:1},
+{n:"Poochyena",num:"#261",type:"Dark",evoAt:18,svg:s=>pkImg(261,s),fact:"Poochyena never gives up a chase and follows a scent trail for hours and hours!",gen:2},
+{n:"Mightyena",num:"#262",type:"Dark",evoAt:null,isEvo:true,svg:s=>pkImg(262,s),fact:"Mightyena works together in a pack and understands every signal its friends give!",gen:2},
+{n:"Taillow",num:"#276",type:["Normal","Flying"],evoAt:22,svg:s=>pkImg(276,s),fact:"Taillow is tiny but brave, and it will face a much bigger Pokémon without flinching!",gen:2},
+{n:"Swellow",num:"#277",type:["Normal","Flying"],evoAt:null,isEvo:true,svg:s=>pkImg(277,s),fact:"Swellow keeps its glossy wings perfectly clean so it can dive at amazing speed!",gen:2},
+{n:"Wingull",num:"#278",type:["Water","Flying"],evoAt:25,svg:s=>pkImg(278,s),fact:"Wingull rides the ocean wind with its wings held still, barely flapping at all!",gen:2},
+{n:"Pelipper",num:"#279",type:["Water","Flying"],evoAt:null,isEvo:true,svg:s=>pkImg(279,s),fact:"Pelipper's enormous beak can scoop up food, water, and even small Pokémon!",gen:2},
+{n:"Shroomish",num:"#285",type:"Grass",evoAt:23,svg:s=>pkImg(285,s),fact:"Shroomish hides in damp forest leaves and lives on the goodness it finds there!",gen:2},
+{n:"Breloom",num:"#286",type:["Grass","Fighting"],evoAt:null,isEvo:true,svg:s=>pkImg(286,s),fact:"Breloom's stretchy arms snap out so fast that they are almost impossible to see!",gen:2},
+{n:"Riolu",num:"#447",type:"Fighting",evoAt:20,svg:s=>pkImg(447,s),fact:"Riolu can sense the feelings of people nearby, even when they say nothing at all!",gen:3},
+{n:"Lucario",num:"#448",type:["Fighting","Steel"],evoAt:null,isEvo:true,svg:s=>pkImg(448,s),fact:"Lucario reads waves of energy called aura and can tell what others are thinking!",gen:3},
+{n:"Buizel",num:"#418",type:"Water",evoAt:26,svg:s=>pkImg(418,s),fact:"Buizel spins its two tails around like a propeller to zoom through the water!",gen:3},
+{n:"Floatzel",num:"#419",type:"Water",evoAt:null,isEvo:true,svg:s=>pkImg(419,s),fact:"Floatzel puffs up its flotation sac and uses it to help rescue Pokémon in trouble!",gen:3},
+{n:"Pachirisu",num:"#417",type:"Electric",evoAt:null,svg:s=>pkImg(417,s),fact:"Pachirisu stuffs berries and crackling electric fluff into its cheeks to save for later!",gen:3},
+{n:"Cherubi",num:"#420",type:"Grass",evoAt:25,svg:s=>pkImg(420,s),fact:"Cherubi keeps a little ball of sweet nutrients tucked beside it, ready for growing time!",gen:3},
+{n:"Cherrim",num:"#421",type:"Grass",evoAt:null,isEvo:true,svg:s=>pkImg(421,s),fact:"Cherrim stays folded up tight until the sun comes out, then it blooms wide open!",gen:3},
+{n:"Purrloin",num:"#509",type:"Dark",evoAt:20,svg:s=>pkImg(509,s),fact:"Purrloin looks so adorable that people forget to notice it borrowing their things!",gen:4},
+{n:"Liepard",num:"#510",type:"Dark",evoAt:null,isEvo:true,svg:s=>pkImg(510,s),fact:"Liepard moves without making a single sound, slipping through the night unseen!",gen:4},
+{n:"Blitzle",num:"#522",type:"Electric",evoAt:27,svg:s=>pkImg(522,s),fact:"Blitzle's mane flashes with lightning whenever a thunderstorm rolls in!",gen:4},
+{n:"Zebstrika",num:"#523",type:"Electric",evoAt:null,isEvo:true,svg:s=>pkImg(523,s),fact:"Zebstrika gallops so fast that thunder seems to rumble along behind it!",gen:4},
+{n:"Sewaddle",num:"#540",type:["Bug","Grass"],evoAt:20,svg:s=>pkImg(540,s),fact:"Sewaddle sews itself a leafy coat and makes a brand new one as it grows!",gen:4},
+{n:"Swadloon",num:"#541",type:["Bug","Grass"],evoAt:30,isEvo:true,svg:s=>pkImg(541,s),fact:"Swadloon wraps up in leaves, and the ground it rests on turns rich and healthy!",gen:4},
+{n:"Leavanny",num:"#542",type:["Bug","Grass"],evoAt:null,isEvo:true,svg:s=>pkImg(542,s),fact:"Leavanny cuts leaves with its arms and stitches warm clothes for smaller Pokémon!",gen:4},
+{n:"Minccino",num:"#572",type:"Normal",evoAt:25,svg:s=>pkImg(572,s),fact:"Minccino uses its fluffy tail like a broom and tidies up everything it finds!",gen:4},
+{n:"Cinccino",num:"#573",type:"Normal",evoAt:null,isEvo:true,svg:s=>pkImg(573,s),fact:"Cinccino's silky white coat is so slippery that dust just slides straight off!",gen:4},
+{n:"Espurr",num:"#677",type:"Psychic",evoAt:25,svg:s=>pkImg(677,s),fact:"Espurr holds enormous psychic power inside and flattens its ears to keep it in!",gen:5},
+{n:"Meowstic",num:"#678",type:"Psychic",evoAt:null,isEvo:true,svg:s=>pkImg(678,s),fact:"Meowstic keeps its eyeball-patterned ears folded until it truly needs their power!",gen:5},
+{n:"Pancham",num:"#674",type:"Fighting",evoAt:32,svg:s=>pkImg(674,s),fact:"Pancham tries hard to look tough, but its wobbly glare just makes it look sweet!",gen:5},
+{n:"Pangoro",num:"#675",type:["Fighting","Dark"],evoAt:null,isEvo:true,svg:s=>pkImg(675,s),fact:"Pangoro looks fierce, yet it will never let a bully pick on a smaller Pokémon!",gen:5},
+{n:"Dedenne",num:"#702",type:["Electric","Fairy"],evoAt:null,svg:s=>pkImg(702,s),fact:"Dedenne sends messages to faraway friends using its whiskers like tiny antennas!",gen:5},
+{n:"Swirlix",num:"#684",type:"Fairy",evoAt:30,svg:s=>pkImg(684,s),fact:"Swirlix eats so many sweet things that its fur turned into sticky white candy floss!",gen:5},
+{n:"Slurpuff",num:"#685",type:"Fairy",evoAt:null,isEvo:true,svg:s=>pkImg(685,s),fact:"Slurpuff's nose is so sharp it can smell exactly what someone had for breakfast!",gen:5},
+{n:"Grubbin",num:"#736",type:"Bug",evoAt:20,svg:s=>pkImg(736,s),fact:"Grubbin uses its big jaws to dig tunnels and to snip through tough tree bark!",gen:6},
+{n:"Charjabug",num:"#737",type:["Bug","Electric"],evoAt:30,isEvo:true,svg:s=>pkImg(737,s),fact:"Charjabug stores electricity inside its body and can share it like a living battery!",gen:6},
+{n:"Vikavolt",num:"#738",type:["Bug","Electric"],evoAt:null,isEvo:true,svg:s=>pkImg(738,s),fact:"Vikavolt zips between the trees and fires electric beams from its enormous jaws!",gen:6},
+{n:"Bounsweet",num:"#761",type:"Grass",evoAt:18,svg:s=>pkImg(761,s),fact:"Bounsweet smells so sweet and fruity that other Pokémon keep trying to gobble it up!",gen:6},
+{n:"Steenee",num:"#762",type:"Grass",evoAt:29,isEvo:true,svg:s=>pkImg(762,s),fact:"Steenee spins its leafy cap like a propeller and bonks anything that bothers it!",gen:6},
+{n:"Tsareena",num:"#763",type:"Grass",evoAt:null,isEvo:true,svg:s=>pkImg(763,s),fact:"Tsareena has beautiful long legs and kicks with more power than almost anyone!",gen:6},
+{n:"Mudbray",num:"#749",type:"Ground",evoAt:30,svg:s=>pkImg(749,s),fact:"Mudbray eats mud and stomps it into the ground to make a path it can grip!",gen:6},
+{n:"Mudsdale",num:"#750",type:"Ground",evoAt:null,isEvo:true,svg:s=>pkImg(750,s),fact:"Mudsdale can pull a very heavy load for three whole days without ever slowing down!",gen:6},
+{n:"Mimikyu",num:"#778",type:["Ghost","Fairy"],evoAt:null,svg:s=>pkImg(778,s),fact:"Mimikyu sewed itself a costume because all it has ever wanted is to make a friend!",gen:6},
+{n:"Chewtle",num:"#833",type:"Water",evoAt:22,svg:s=>pkImg(833,s),fact:"Chewtle bites down on anything nearby to soothe its itchy, growing horn!",gen:7},
+{n:"Drednaw",num:"#834",type:["Water","Rock"],evoAt:null,isEvo:true,svg:s=>pkImg(834,s),fact:"Drednaw's jaws are so strong that it can bite straight through a solid rock!",gen:7},
+{n:"Nickit",num:"#827",type:"Dark",evoAt:18,svg:s=>pkImg(827,s),fact:"Nickit pads along on soft paws and wipes away its own footprints with its tail!",gen:7},
+{n:"Thievul",num:"#828",type:"Dark",evoAt:null,isEvo:true,svg:s=>pkImg(828,s),fact:"Thievul marks a hiding spot with its scent so it can find its treasures again later!",gen:7},
+{n:"Gossifleur",num:"#829",type:"Grass",evoAt:20,svg:s=>pkImg(829,s),fact:"Gossifleur spins in the wind and scatters healing pollen wherever it lands!",gen:7},
+{n:"Eldegoss",num:"#830",type:"Grass",evoAt:null,isEvo:true,svg:s=>pkImg(830,s),fact:"Eldegoss drops cottony seeds that make the soil rich for everything growing nearby!",gen:7},
+{n:"Applin",num:"#840",type:["Grass","Dragon"],evoAt:30,svg:s=>pkImg(840,s),fact:"Applin lives its whole young life tucked snugly inside a single sweet apple!",gen:7},
+{n:"Flapple",num:"#841",type:["Grass","Dragon"],evoAt:null,isEvo:true,svg:s=>pkImg(841,s),fact:"Flapple flies on wings made from the very apple skin it grew up inside!",gen:7},
+{n:"Tandemaus",num:"#924",type:"Normal",evoAt:25,svg:s=>pkImg(924,s),fact:"Tandemaus is always a pair of mice who share every single crumb they find!",gen:8},
+{n:"Maushold",num:"#925",type:"Normal",evoAt:null,isEvo:true,svg:s=>pkImg(925,s),fact:"Maushold is a whole little family who look after each other wherever they go!",gen:8},
+{n:"Tarountula",num:"#917",type:"Bug",evoAt:15,svg:s=>pkImg(917,s),fact:"Tarountula spins thread far stronger than it looks and bundles it into a soft ball!",gen:8},
+{n:"Spidops",num:"#918",type:"Bug",evoAt:null,isEvo:true,svg:s=>pkImg(918,s),fact:"Spidops lays clever traps out of sticky thread all over its favourite tree!",gen:8},
+{n:"Maschiff",num:"#942",type:"Dark",evoAt:30,svg:s=>pkImg(942,s),fact:"Maschiff practises a fierce face in puddles, but it is really quite a softy!",gen:8},
+{n:"Mabosstiff",num:"#943",type:"Dark",evoAt:null,isEvo:true,svg:s=>pkImg(943,s),fact:"Mabosstiff guards the people it loves and will stand its ground against anything!",gen:8},
+{n:"Nymble",num:"#919",type:"Bug",evoAt:24,svg:s=>pkImg(919,s),fact:"Nymble folds its powerful legs up like springs and leaps away from any danger!",gen:8},
+{n:"Lokix",num:"#920",type:["Bug","Dark"],evoAt:null,isEvo:true,svg:s=>pkImg(920,s),fact:"Lokix moves in a flash, striking once and vanishing before anyone can react!",gen:8},
 ];
 PKM.push(...WILD_PKM);
 const WILD_BY_GEN=[[],[],[],[],[],[],[],[],[]];
@@ -1406,10 +1488,10 @@ function updStats(sub,ok){
   if(ok){s.cor++;s.cs++;s.ws=0;if(s.cs>=LEVEL_UP_STREAK&&s.level<maxLevel(sub)){s.level++;s.cs=0;}}
   else{s.ws++;s.cs=0;if(s.ws>=LEVEL_DOWN_STREAK&&s.level>1){s.level--;s.ws=0;}}
 }
-const TYPE_COLOR={Fire:'#FF5722',Water:'#1976D2',Grass:'#16A34A',Electric:'#EAB308',Normal:'#6B7280',Flying:'#0EA5E9',Bug:'#84CC16',Fairy:'#EC4899',Poison:'#9C27B0',Fighting:'#D32F2F',Ground:'#795548',Steel:'#607D8B',Psychic:'#E91E63',Dark:'#424242',Ghost:'#512DA8'};
-const TYPE_CLASS={Fire:'fire-type',Water:'water-type',Grass:'grass-type',Electric:'electric-type',Normal:'normal-type',Flying:'flying-type',Bug:'bug-type',Fairy:'fairy-type',Poison:'normal-type',Fighting:'normal-type',Ground:'normal-type',Steel:'normal-type',Psychic:'normal-type',Dark:'normal-type',Ghost:'normal-type'};
+const TYPE_COLOR={Fire:'#FF5722',Water:'#1976D2',Grass:'#16A34A',Electric:'#EAB308',Normal:'#6B7280',Flying:'#0EA5E9',Bug:'#84CC16',Fairy:'#EC4899',Poison:'#9C27B0',Fighting:'#D32F2F',Ground:'#795548',Steel:'#607D8B',Psychic:'#E91E63',Dark:'#424242',Ghost:'#512DA8',Rock:'#A16207',Dragon:'#6D28D9',Ice:'#0891B2'};
+const TYPE_CLASS={Fire:'fire-type',Water:'water-type',Grass:'grass-type',Electric:'electric-type',Normal:'normal-type',Flying:'flying-type',Bug:'bug-type',Fairy:'fairy-type',Poison:'normal-type',Fighting:'normal-type',Ground:'normal-type',Steel:'normal-type',Psychic:'normal-type',Dark:'normal-type',Ghost:'normal-type',Rock:'normal-type',Dragon:'normal-type',Ice:'water-type'};
 const TYPE_OPT_CLASS={Fire:'fire-opt',Water:'water-opt',Grass:'grass-opt'};
-const TYPE_EMOJI={Fire:'&#128293;',Water:'&#128167;',Grass:'&#127807;',Electric:'&#9889;',Normal:'&#11088;',Flying:'&#128038;',Bug:'&#128027;',Fairy:'&#10024;',Poison:'&#128156;',Fighting:'&#128170;',Ground:'&#127759;',Steel:'&#9881;',Psychic:'&#128302;',Dark:'&#127769;',Ghost:'&#128123;'};
+const TYPE_EMOJI={Fire:'&#128293;',Water:'&#128167;',Grass:'&#127807;',Electric:'&#9889;',Normal:'&#11088;',Flying:'&#128038;',Bug:'&#128027;',Fairy:'&#10024;',Poison:'&#128156;',Fighting:'&#128170;',Ground:'&#127759;',Steel:'&#9881;',Psychic:'&#128302;',Dark:'&#127769;',Ghost:'&#128123;',Rock:'&#129704;',Dragon:'&#128009;',Ice:'&#10052;'};
 function typeArr(t){return Array.isArray(t)?t:[t];}
 function typeLabel(t){return typeArr(t).join('/');}
 function typeClass(t){return TYPE_CLASS[typeArr(t)[0]]||'normal-type';}
