@@ -243,6 +243,13 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;min-heigh
    above it, it briefly covers the Pokemon at the exact moment of the reveal. */
 #pick-burst{position:absolute;left:50%;top:50%;width:40px;height:40px;margin:-20px 0 0 -20px;border-radius:50%;border:8px solid rgba(196,181,253,0.95);opacity:0;pointer-events:none;z-index:1}
 #pick-sprite-wrap{position:relative;z-index:2;display:flex;align-items:center;justify-content:center;width:220px;height:220px}
+/* Bigger than the catch overlay's ball: there it flies into a scene, here it IS
+   the scene for two seconds. Scaled on the inner svg rather than with a transform
+   on the container, because ball-wobble-seq owns that transform and would drop
+   any scale expressed there. top = (220 wrap - 96 ball) / 2, so it shakes on the
+   spot the Pokemon will appear. */
+#pick-ball{position:absolute;top:62px;left:50%;transform:translateX(-50%);z-index:3;display:none}
+#pick-ball svg{width:96px;height:96px;display:block;filter:drop-shadow(0 6px 16px rgba(0,0,0,0.45))}
 #pick-sprite-wrap img{display:block;object-fit:contain;width:200px;height:200px}
 #pick-label{position:relative;z-index:2;color:#fff;font-size:18px;font-weight:700;margin-top:28px;text-align:center;letter-spacing:0.02em;padding:0 24px;text-shadow:0 0 24px rgba(196,181,253,0.7);min-height:24px}
 /* Each swap gets a tiny kick, so the reel reads as landing rather than sliding. */
@@ -272,7 +279,7 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;min-heigh
 <div id="pick-overlay">
   <div id="pick-rays"></div>
   <div id="pick-burst"></div>
-  <div id="pick-sprite-wrap"><img id="pick-img" src="" alt=""></div>
+  <div id="pick-sprite-wrap"><div id="pick-ball"></div><img id="pick-img" src="" alt=""></div>
   <div id="pick-label"></div>
 </div>
 
@@ -2092,11 +2099,8 @@ function playSfx(name){
     _tone(784,0.13,'triangle',0.18,0.24);
     _tone(1047,0.32,'triangle',0.2,0.36);
   }
-  // A low swell under the anticipation beat, then a rising strobe tone that
-  // tracks the accelerating flashes, so the sound climbs with the picture.
-  // Ticks only fire over the last stretch of the reel, where they read as the
-  // wheel slowing down; one per swap from the start would just be noise.
-  else if(name==='pickTick'){_tone(760,0.05,'square',0.07);}
+  // The ball's three shakes borrow the catch overlay's 'wobble'; what is left
+  // here is the burst when it opens.
   else if(name==='pickReveal'){
     _sweep(300,1200,0.35,'triangle',0.12);
     _tone(659,0.16,'triangle',0.17,0.16);
@@ -2174,8 +2178,14 @@ function _clearFanfare(overlay){
   overlay.querySelectorAll('.shiny-fanfare,.shiny-wash').forEach(n=>n.remove());
 }
 
+// One ball, drawn by both overlays: the catch throws it and the starter reveal
+// opens it. They are the same object in the fiction, so they are the same markup.
+const BALL_SVG=`<svg width="56" height="56" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"><circle cx="30" cy="30" r="28" fill="#EF4444" stroke="#1A1A2E" stroke-width="3"/><rect x="2" y="27" width="56" height="6" fill="#1A1A2E"/><circle cx="30" cy="30" r="28" fill="none" stroke="#1A1A2E" stroke-width="3"/><circle cx="30" cy="30" r="10" fill="white" stroke="#1A1A2E" stroke-width="3"/><circle cx="30" cy="30" r="5" fill="#F3F4F6"/></svg>`;
+// The wobble keyframes settle three times; the sound has to land on those beats.
+const BALL_SHAKE_MS=1900;
+const BALL_SHAKE_BEATS=[140,780,1410];
+
 function playCatch(pkIdx,shiny,onDone){
-  const ballSVG=`<svg width="56" height="56" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"><circle cx="30" cy="30" r="28" fill="#EF4444" stroke="#1A1A2E" stroke-width="3"/><rect x="2" y="27" width="56" height="6" fill="#1A1A2E"/><circle cx="30" cy="30" r="28" fill="none" stroke="#1A1A2E" stroke-width="3"/><circle cx="30" cy="30" r="10" fill="white" stroke="#1A1A2E" stroke-width="3"/><circle cx="30" cy="30" r="5" fill="#F3F4F6"/></svg>`;
   const ov=document.getElementById('catch-overlay');
   const pkmImg=document.getElementById('catch-pkm-img');
   const ball=document.getElementById('catch-ball');
@@ -2187,7 +2197,7 @@ function playCatch(pkIdx,shiny,onDone){
   _clearFanfare(ov);
   pkmImg.src=spriteURL(pkId,shiny);
   pkmImg.style.cssText='display:block;object-fit:contain;width:180px;height:180px;filter:none;transition:none;transform:none;opacity:1;animation:none';
-  ball.innerHTML=ballSVG;ball.style.display='none';ball.style.animation='none';
+  ball.innerHTML=BALL_SVG;ball.style.display='none';ball.style.animation='none';
   lbl.textContent=`A wild ${shiny?'SHINY ':''}${PKM[pkIdx].n} appeared!`;
   setTimeout(()=>{
     ball.style.display='block';ball.offsetWidth;
@@ -2224,24 +2234,26 @@ function playCatch(pkIdx,shiny,onDone){
   },500);
 }
 
-// A slot-machine reveal: candidates flick past in colour, decelerating, then the
-// winner lands with a burst. The pick is decided before the animation starts --
-// the reel is theatre over an already-known result, never the thing choosing.
-// `noReel` drops the spin and goes straight to the hold-then-burst, for the case
-// where he PICKED the Pokemon himself: spinning a wheel over a choice he already
-// made suggests it might land somewhere else. The hold does the reel's job there.
-function playStarterReveal(lineIdx,shiny,onDone,noReel){
+// The reveal is a Poke Ball, not a slot machine. The old version flicked candidate
+// sprites past like a fruit machine, which made sense only for "Surprise me!" --
+// on a deliberate pick it showed other starters after he had already chosen one,
+// reading as the game reconsidering. A ball that shakes and bursts open works for
+// both: the suspense is the same whether or not he knows what is inside, and it is
+// the gesture the whole game is built on. The wobble and the pop are literally the
+// catch overlay's, so being given a Pokemon and catching one look like one act.
+function playStarterReveal(lineIdx,shiny,onDone){
   const ov=document.getElementById('pick-overlay');
   const img=document.getElementById('pick-img');
+  const ball=document.getElementById('pick-ball');
   const lbl=document.getElementById('pick-label');
   const rays=document.getElementById('pick-rays');
   const burst=document.getElementById('pick-burst');
   const wrap=document.getElementById('pick-sprite-wrap');
   const winnerPi=LINES[lineIdx][0];
-  const pool=GENS.reduce((a,g)=>a.concat(g),[]).map(li=>LINES[li][0]);
+  const name=PKM[winnerPi].n;
 
-  // Same hazard as the evolution overlay: full screen, no dismiss control, so a
-  // throw would strand him behind it. Idempotent finish + watchdog + wrapped steps.
+  // Same hazard as the other overlays: full screen, no dismiss control, so a throw
+  // would strand him behind it. Idempotent finish + watchdog + wrapped steps.
   let done=false,watchdog=null;
   function finish(){
     if(done)return;done=true;
@@ -2249,6 +2261,7 @@ function playStarterReveal(lineIdx,shiny,onDone,noReel){
     ov.classList.remove('active');
     ov.style.cssText='';
     img.style.cssText='';
+    ball.style.display='none';ball.style.animation='';
     wrap.style.animation='';
     rays.classList.remove('fast');
     burst.style.animation='';burst.style.opacity='0';
@@ -2257,67 +2270,56 @@ function playStarterReveal(lineIdx,shiny,onDone,noReel){
     onDone();
   }
   const step=(fn,ms)=>setTimeout(()=>{try{fn();}catch(e){finish();}},ms);
-
-  // Delays grow geometrically: a fast blur that visibly runs out of steam.
-  const ticks=[];for(let d=55;d<400;d*=1.16)ticks.push(Math.round(d));
-  const REEL_MS=ticks.reduce((a,b)=>a+b,0);
-  // The watchdog has to outlast the longest possible run: the reel (or the
-  // no-reel hold that replaces it) plus the landing beats plus, on a shiny, the
-  // extra celebration hold. Fire it too early and it tears down the overlay
-  // mid-fanfare.
-  watchdog=setTimeout(finish,450+(noReel?900:REEL_MS)+450+850+(shiny?2800:1200)+500+2500);
+  watchdog=setTimeout(finish,700+BALL_SHAKE_MS+260+900+(shiny?2800:1200)+500+2500);
 
   try{
   ov.classList.add('active');
   ov.style.opacity='1';
-  img.style.cssText='display:block;object-fit:contain;width:200px;height:200px;filter:none';
-  // Both paths open on the REGULAR sprite -- the colour is the surprise, so it
-  // is never shown before the landing, in the reel or in the hold.
-  img.src=`${BASE}${dexId(noReel?winnerPi:pool[0])}.png`;
-  lbl.textContent=noReel?'Your partner is...':'Who will your partner be?';
+  // The ball holds the screen by itself. Showing the Pokemon under this line would
+  // be the reveal happening before the reveal -- which is what the old version did
+  // on a deliberate pick, where the sprite was up before anything opened.
+  img.style.cssText='display:none';
+  ball.innerHTML=BALL_SVG;
+  ball.style.display='block';
+  ball.style.animation='none';ball.offsetWidth;
   burst.style.opacity='0';burst.style.animation='';
+  rays.classList.remove('fast');
   wrap.querySelectorAll('.sparkle').forEach(s=>s.remove());
+  _clearFanfare(ov);
+  lbl.textContent='Your Pok\u00e9mon is...';
 
-  let i=0,last=-1;
-  function reel(){
-    if(i>=ticks.length){land();return;}
-    // Never show the winner during the reel, or the landing is a non-event.
-    let pi;do{pi=pool[Math.floor(Math.random()*pool.length)];}while((pi===last||pi===winnerPi)&&pool.length>2);
-    last=pi;
-    img.src=`${BASE}${parseInt(PKM[pi].num.slice(1))}.png`;
-    wrap.style.animation='none';wrap.offsetWidth;wrap.style.animation='pick-tick 0.12s ease';
-    if(i>ticks.length-9)playSfx('pickTick');
-    if(i===Math.floor(ticks.length*0.45))rays.classList.add('fast');
-    i++;
-    step(reel,ticks[i-1]);
-  }
+  step(()=>{
+    ball.style.animation=`ball-wobble-seq ${BALL_SHAKE_MS}ms ease-in-out forwards`;
+    rays.classList.add('fast');
+    BALL_SHAKE_BEATS.forEach(t=>setTimeout(()=>playSfx('wobble'),t));
+    step(open,BALL_SHAKE_MS);
+  },700);
 
-  function land(){
-    // A beat of nothing before the reveal -- the pause is what sells it.
+  function open(){
+    ball.style.animation='ball-pop 0.45s ease forwards';
+    burst.style.animation='evo-burst-out 0.75s ease-out forwards';
     rays.classList.remove('fast');
-    lbl.textContent='...';
+    playSfx('pickReveal');
+    // Swapped at the top of the pop, not after it, so the Pokemon comes OUT of the
+    // ball instead of appearing once the ball has finished and gone.
     step(()=>{
-      // Only the landing switches sprite root -- the reel's decoys stay regular,
-      // so an unusual colour never flickers past before the reveal spoils it.
+      ball.style.display='none';
+      img.style.cssText='display:block;object-fit:contain;width:200px;height:200px;filter:none';
       img.src=spriteURL(dexId(winnerPi),shiny);
       wrap.style.animation='pick-land 0.9s cubic-bezier(.2,.9,.3,1.2)';
-      burst.style.animation='evo-burst-out 0.75s ease-out forwards';
-      lbl.textContent=`It's ${shiny?'a SHINY ':''}${PKM[winnerPi].n}!`;
-      playSfx('pickReveal');
+      lbl.textContent=`${shiny?'SHINY ':''}${name}!`;
       if(shiny)_shinyFanfare(ov,wrap,'&#10024; SHINY! &#10024;');
       else _spawnSparkles(wrap);
       step(()=>{
-        lbl.textContent=`${shiny?'Shiny ':''}${PKM[winnerPi].n} is your partner!`;
+        lbl.textContent=`${shiny?'Shiny ':''}${name} is your Pok\u00e9mon!`;
         if(!shiny)_spawnSparkles(wrap);
         step(()=>{
           ov.style.transition='opacity 0.5s ease';ov.style.opacity='0';
           step(finish,500);
         },shiny?2800:1200);
-      },850);
-    },450);
+      },900);
+    },260);
   }
-
-  step(noReel?land:reel,noReel?900:450);
   }catch(e){finish();}
 }
 
@@ -2333,7 +2335,7 @@ function playStarterReveal(lineIdx,shiny,onDone,noReel){
 // whether he is about to get Squirtle.
 function choosePickedStarter(lineIdx){
   const shiny=rollShiny();
-  playStarterReveal(lineIdx,shiny,()=>pickStarter(lineIdx,shiny),true);
+  playStarterReveal(lineIdx,shiny,()=>pickStarter(lineIdx,shiny));
 }
 
 // Picks across every generation, not just the first -- GENS is a list of
