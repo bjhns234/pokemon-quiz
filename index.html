@@ -1376,7 +1376,30 @@ const CATCH_MISSES_ALLOWED=1;
 // Symmetric on purpose: falling a level should be no easier than climbing one.
 const LEVEL_UP_STREAK=3;
 const LEVEL_DOWN_STREAK=3;
-function xpToNext(level){return 20+level*2;}
+// Quadratic, not linear. At 20+level*2 a level cost 30 XP at level 5 and only 120
+// at level 50 -- a 4x rise across 45 levels -- while income is FLAT at 45 XP per
+// answer once the streak caps at 7. So every level cost roughly one to three
+// answers forever, and levels never came to mean more than they did at the start:
+// the starter evolved at ~13 correct answers and finished its line at ~37, burning
+// the best content in the game inside a single sitting, and reached level 124 by
+// 400 answers.
+//
+// Measured before changing it, the streak milestones were NOT the cause -- removing
+// every bonus outright moved the second evolution only from 37 to 49 and still left
+// him at level 105. The flat curve was. So the milestone rewards are untouched and
+// keep working exactly as designed; they now buy meaningful progress instead of
+// trivialising it.
+//
+// level*level/3 was picked against two competing measurements, not one: it puts the
+// second evolution at ~93 correct answers (about three sessions -- a milestone
+// rather than an afternoon) while a level still costs only ~8 answers there, so the
+// XP bar visibly moves. Steeper curves stretch the evolution nicely but stall the
+// bar right before the payoff -- level*level*level/40 reaches ~19 answers per level
+// at that same threshold and 70 by level 50.
+//
+// The first evolution deliberately stays fast (~18 answers). Early levels are cheap
+// under every curve, and evolving his starter in the first session is the hook.
+function xpToNext(level){return Math.round(20+level*level/3);}
 function mkState(saved){
   const s={
     phase:'starter',
