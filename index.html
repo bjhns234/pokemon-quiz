@@ -175,6 +175,29 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;min-heigh
 .sparkle{position:absolute;left:50%;bottom:38px;width:10px;height:10px;background:#FCD34D;border-radius:50%;box-shadow:0 0 14px 3px #FCD34D,0 0 30px 6px rgba(252,211,77,0.5);opacity:0;pointer-events:none;z-index:4}
 .sparkle.s2{background:#FFFFFF;box-shadow:0 0 14px 3px #FFFFFF,0 0 30px 6px rgba(255,255,255,0.6)}
 .sparkle.s3{background:#FCA5A5;box-shadow:0 0 14px 3px #FCA5A5,0 0 28px 6px rgba(252,165,165,0.5)}
+/* The shiny fanfare. Everything below fires ONLY on a shiny, which is the whole
+   point: a 1-in-1000 event that reuses the ordinary catch celebration reads as
+   nothing more than a recoloured sprite. The banner, the gold wash and the
+   denser sparkle storm are what make it land as an event. */
+.sparkle.s4{background:#FDE68A;box-shadow:0 0 18px 5px #FDE68A,0 0 42px 10px rgba(251,191,36,0.75)}
+.shiny-fanfare{position:absolute;left:50%;top:11%;transform:translateX(-50%) scale(0.4);background:linear-gradient(135deg,#F59E0B,#FDE68A 45%,#FBBF24);color:#1A1A2E;font-size:clamp(19px,6.5vw,32px);font-weight:900;letter-spacing:0.07em;padding:10px 22px;border-radius:16px;white-space:nowrap;opacity:0;z-index:6;pointer-events:none;box-shadow:0 0 32px 8px rgba(251,191,36,0.55),0 6px 20px rgba(0,0,0,0.35);text-shadow:0 1px 0 rgba(255,255,255,0.45)}
+.shiny-fanfare.in{animation:shiny-fanfare-in 2.5s cubic-bezier(.2,.9,.3,1.3) forwards}
+@keyframes shiny-fanfare-in{
+  0%{opacity:0;transform:translateX(-50%) scale(0.4) rotate(-7deg)}
+  12%{opacity:1;transform:translateX(-50%) scale(1.14) rotate(3deg)}
+  20%{transform:translateX(-50%) scale(0.96) rotate(-2deg)}
+  28%{transform:translateX(-50%) scale(1.05) rotate(1deg)}
+  36%{transform:translateX(-50%) scale(1) rotate(0deg)}
+  84%{opacity:1;transform:translateX(-50%) scale(1) rotate(0deg)}
+  100%{opacity:0;transform:translateX(-50%) scale(1.07) rotate(0deg)}
+}
+/* z-index 1, deliberately BELOW the sprite wrappers and labels, which all sit at
+   2. The wash is a glow behind the Pokemon, not a veil over it -- at 2 it would
+   tie with them and, being appended last, paint over the one thing he is meant
+   to be looking at. */
+.shiny-wash{position:absolute;inset:0;pointer-events:none;z-index:1;opacity:0;background:radial-gradient(circle at 50% 52%,rgba(253,230,138,0.5),rgba(251,191,36,0.16) 45%,transparent 72%)}
+.shiny-wash.in{animation:shiny-wash-in 2.3s ease-out forwards}
+@keyframes shiny-wash-in{0%{opacity:0}10%{opacity:1}68%{opacity:0.7}100%{opacity:0}}
 .starter-random{display:block;width:100%;margin:0 0 18px;background:linear-gradient(135deg,#6366F1,#8B5CF6);border:none;color:#fff;font-family:inherit;font-size:14px;font-weight:700;padding:12px;border-radius:12px;cursor:pointer;box-shadow:0 2px 10px rgba(99,102,241,0.32);transition:filter 0.15s}
 .starter-random:hover{filter:brightness(1.08)}
 /* Evolution. The shake is on the overlay so the whole screen moves, and it steps
@@ -1621,7 +1644,7 @@ function render(){
     });
     h+=`</div>`;
     gameEl.innerHTML=h;
-    GENS.forEach(genLines=>{genLines.forEach(li=>{document.getElementById(`pick-${li}`).addEventListener('click',()=>pickStarter(li,rollShiny()));});});
+    GENS.forEach(genLines=>{genLines.forEach(li=>{document.getElementById(`pick-${li}`).addEventListener('click',()=>choosePickedStarter(li));});});
     const pr=document.getElementById('pick-random');if(pr)pr.addEventListener('click',pickRandomStarter);
     return;
   }
@@ -1858,6 +1881,7 @@ function playEvolution(fromIdx,toIdx,shiny,onDone){
     rays.classList.remove('fast');
     burst.style.animation='';burst.style.opacity='0';
     wrap.querySelectorAll('.sparkle').forEach(s=>s.remove());
+    _clearFanfare(ov);
     lbl.style.animation='';
     onDone();
   }
@@ -1885,6 +1909,7 @@ function playEvolution(fromIdx,toIdx,shiny,onDone){
   bgw.style.cssText='position:absolute;inset:0;background:white;opacity:0;pointer-events:none;transition:none';
   burst.style.opacity='0';burst.style.animation='';
   wrap.querySelectorAll('.sparkle').forEach(s=>s.remove());
+  _clearFanfare(ov);
 
   // Beat 1 -- anticipation: the sprite breathes and the screen trembles.
   wrap.style.animation='evo-anticipate 0.8s ease-in-out infinite';
@@ -1926,7 +1951,11 @@ function playEvolution(fromIdx,toIdx,shiny,onDone){
           const pre=shiny?'Shiny ':'';
           lbl.textContent=`Congratulations! ${pre}${fromP.n} evolved into ${pre}${toP.n}!`;
           lbl.style.animation='evo-label-in 0.4s ease';
-          _spawnSparkles(wrap);
+          // Only on the celebration beat, not on the reveal: the evolution
+          // already has its own white-out burst there, and stacking the gold
+          // wash on top of it would just muddy both.
+          if(shiny)_shinyFanfare(ov,wrap,'&#10024; SHINY! &#10024;');
+          else _spawnSparkles(wrap);
           step(()=>{
             ov.style.transition='opacity 0.5s ease';ov.style.opacity='0';
             step(finish,500);
@@ -1994,6 +2023,17 @@ function playSfx(name){
     _tone(880,0.16,'triangle',0.17,0.3);
     _tone(1319,0.5,'triangle',0.2,0.44);
   }
+  // The shiny chime. Pitched above 'gotcha' and 'pickReveal' and roughly twice
+  // as long, because it plays ON TOP of whichever of them is already sounding --
+  // it has to be audible as something extra, not blend into the jingle under it.
+  else if(name==='shiny'){
+    _sweep(700,2600,0.5,'triangle',0.10);
+    _tone(1319,0.20,'triangle',0.15,0.06);
+    _tone(1760,0.20,'triangle',0.15,0.20);
+    _tone(2093,0.24,'triangle',0.15,0.34);
+    _tone(2637,0.70,'triangle',0.17,0.50);
+    _tone(3136,0.70,'sine',0.09,0.54);
+  }
   else if(name==='evoStart'){_sweep(120,300,1.1,'sine',0.09);_sweep(200,760,3.4,'triangle',0.07);}
   else if(name==='evoBurst'){_sweep(1400,220,0.55,'sawtooth',0.11);_tone(880,0.45,'triangle',0.15);}
   else if(name==='evoDone'){
@@ -2005,24 +2045,53 @@ function playSfx(name){
   }
 }
 
-function _spawnSparkles(host){
+// `big` is the shiny storm: nearly twice the sparkles, thrown further, in gold
+// and white only. Trailing and optional, so the six existing calls keep meaning
+// the ordinary burst with no edit.
+function _spawnSparkles(host,big){
   host.querySelectorAll('.sparkle').forEach(s=>s.remove());
-  const N=14;
+  const N=big?26:14;
   for(let i=0;i<N;i++){
     const angle=(i/N)*Math.PI*2+(Math.random()*0.4-0.2);
-    const dist=70+Math.random()*60;
+    const dist=(big?110:70)+Math.random()*(big?90:60);
     const dx=Math.cos(angle)*dist;
     const dy=-Math.sin(angle)*dist;
     const s=document.createElement('div');
-    const variant=i%3===0?' s2':i%3===1?' s3':'';
+    const variant=big?(i%2?' s4':' s2'):(i%3===0?' s2':i%3===1?' s3':'');
     s.className='sparkle'+variant;
     s.style.setProperty('--dx',dx+'px');
     s.style.setProperty('--dy',dy+'px');
-    const dur=(0.7+Math.random()*0.45).toFixed(2);
+    const dur=((big?0.95:0.7)+Math.random()*0.45).toFixed(2);
     const delay=(Math.random()*0.12).toFixed(2);
     s.style.animation=`sparkle-fly ${dur}s ease-out ${delay}s forwards`;
     host.appendChild(s);
   }
+}
+
+// One helper for all three shiny moments -- the starter reveal, the catch and
+// the evolution -- so they read as the same event rather than three unrelated
+// animations that happen to use gold. `overlay` hosts the wash and banner
+// (every overlay is position:fixed, so absolute children anchor to it);
+// `host` is the sprite wrapper the sparkles fly out of.
+function _shinyFanfare(overlay,host,text){
+  _clearFanfare(overlay);
+  const wash=document.createElement('div');
+  wash.className='shiny-wash';
+  overlay.appendChild(wash);
+  const banner=document.createElement('div');
+  banner.className='shiny-fanfare';
+  banner.innerHTML=text;
+  overlay.appendChild(banner);
+  banner.offsetWidth; // force layout so the animation runs from its start state
+  wash.classList.add('in');
+  banner.classList.add('in');
+  playSfx('shiny');
+  _spawnSparkles(host,true);
+}
+// Every overlay's finish() is idempotent and can fire from a watchdog, so the
+// fanfare has to be removable the same way the sparkles are.
+function _clearFanfare(overlay){
+  overlay.querySelectorAll('.shiny-fanfare,.shiny-wash').forEach(n=>n.remove());
 }
 
 function playCatch(pkIdx,shiny,onDone){
@@ -2035,6 +2104,7 @@ function playCatch(pkIdx,shiny,onDone){
   const pkId=parseInt(PKM[pkIdx].num.slice(1));
   ov.style.cssText='';ov.style.opacity='1';ov.classList.add('active');
   sparkleHost.querySelectorAll('.sparkle').forEach(s=>s.remove());
+  _clearFanfare(ov);
   pkmImg.src=spriteURL(pkId,shiny);
   pkmImg.style.cssText='display:block;object-fit:contain;width:180px;height:180px;filter:none;transition:none;transform:none;opacity:1;animation:none';
   ball.innerHTML=ballSVG;ball.style.display='none';ball.style.animation='none';
@@ -2054,13 +2124,20 @@ function playCatch(pkIdx,shiny,onDone){
         setTimeout(()=>playSfx('wobble'),1410);
         setTimeout(()=>{
           ball.style.animation='ball-pop 0.45s ease forwards';
-          _spawnSparkles(sparkleHost);
           playSfx('gotcha');
           lbl.textContent=`Gotcha! ${shiny?'SHINY ':''}${PKM[pkIdx].n} was caught!`;
+          // The shiny storm replaces the ordinary burst rather than joining it:
+          // both would clear each other's sparkles anyway, since _spawnSparkles
+          // wipes the host first.
+          if(shiny)_shinyFanfare(ov,sparkleHost,'&#10024; SHINY! &#10024;');
+          else _spawnSparkles(sparkleHost);
+          // A shiny needs the overlay held open long enough for the banner to
+          // finish; at the regular pace it would be cut off mid-animation on the
+          // one catch that most deserves to be seen.
           setTimeout(()=>{
             ov.style.transition='opacity 0.4s ease';ov.style.opacity='0';
-            setTimeout(()=>{ov.classList.remove('active');ov.style.cssText='';onDone();},400);
-          },1200);
+            setTimeout(()=>{_clearFanfare(ov);ov.classList.remove('active');ov.style.cssText='';onDone();},400);
+          },shiny?2600:1200);
         },1900);
       },550);
     },750);
@@ -2070,7 +2147,10 @@ function playCatch(pkIdx,shiny,onDone){
 // A slot-machine reveal: candidates flick past in colour, decelerating, then the
 // winner lands with a burst. The pick is decided before the animation starts --
 // the reel is theatre over an already-known result, never the thing choosing.
-function playStarterReveal(lineIdx,shiny,onDone){
+// `noReel` drops the spin and goes straight to the hold-then-burst, for the case
+// where he PICKED the Pokemon himself: spinning a wheel over a choice he already
+// made suggests it might land somewhere else. The hold does the reel's job there.
+function playStarterReveal(lineIdx,shiny,onDone,noReel){
   const ov=document.getElementById('pick-overlay');
   const img=document.getElementById('pick-img');
   const lbl=document.getElementById('pick-label');
@@ -2093,6 +2173,7 @@ function playStarterReveal(lineIdx,shiny,onDone){
     rays.classList.remove('fast');
     burst.style.animation='';burst.style.opacity='0';
     wrap.querySelectorAll('.sparkle').forEach(s=>s.remove());
+    _clearFanfare(ov);
     onDone();
   }
   const step=(fn,ms)=>setTimeout(()=>{try{fn();}catch(e){finish();}},ms);
@@ -2100,14 +2181,20 @@ function playStarterReveal(lineIdx,shiny,onDone){
   // Delays grow geometrically: a fast blur that visibly runs out of steam.
   const ticks=[];for(let d=55;d<400;d*=1.16)ticks.push(Math.round(d));
   const REEL_MS=ticks.reduce((a,b)=>a+b,0);
-  watchdog=setTimeout(finish,450+REEL_MS+450+850+1200+500+2500);
+  // The watchdog has to outlast the longest possible run: the reel (or the
+  // no-reel hold that replaces it) plus the landing beats plus, on a shiny, the
+  // extra celebration hold. Fire it too early and it tears down the overlay
+  // mid-fanfare.
+  watchdog=setTimeout(finish,450+(noReel?900:REEL_MS)+450+850+(shiny?2800:1200)+500+2500);
 
   try{
   ov.classList.add('active');
   ov.style.opacity='1';
   img.style.cssText='display:block;object-fit:contain;width:200px;height:200px;filter:none';
-  img.src=`${BASE}${parseInt(PKM[pool[0]].num.slice(1))}.png`;
-  lbl.textContent='Who will your partner be?';
+  // Both paths open on the REGULAR sprite -- the colour is the surprise, so it
+  // is never shown before the landing, in the reel or in the hold.
+  img.src=`${BASE}${dexId(noReel?winnerPi:pool[0])}.png`;
+  lbl.textContent=noReel?'Your partner is...':'Who will your partner be?';
   burst.style.opacity='0';burst.style.animation='';
   wrap.querySelectorAll('.sparkle').forEach(s=>s.remove());
 
@@ -2137,20 +2224,32 @@ function playStarterReveal(lineIdx,shiny,onDone){
       burst.style.animation='evo-burst-out 0.75s ease-out forwards';
       lbl.textContent=`It's ${shiny?'a SHINY ':''}${PKM[winnerPi].n}!`;
       playSfx('pickReveal');
-      _spawnSparkles(wrap);
+      if(shiny)_shinyFanfare(ov,wrap,'&#10024; SHINY! &#10024;');
+      else _spawnSparkles(wrap);
       step(()=>{
         lbl.textContent=`${shiny?'Shiny ':''}${PKM[winnerPi].n} is your partner!`;
-        _spawnSparkles(wrap);
+        if(!shiny)_spawnSparkles(wrap);
         step(()=>{
           ov.style.transition='opacity 0.5s ease';ov.style.opacity='0';
           step(finish,500);
-        },1200);
+        },shiny?2800:1200);
       },850);
     },450);
   }
 
-  step(reel,450);
+  step(noReel?land:reel,noReel?900:450);
   }catch(e){finish();}
+}
+
+// A deliberate pick drops straight into the game, as it always has -- unless the
+// roll comes up shiny. A 1-in-1000 starter used to arrive with nothing but a gold
+// badge on the card: the rarest thing in the game, and the only one of its three
+// moments with no celebration at all. It gets the reveal now, minus the reel --
+// he chose it, so there is nothing to spin for, only something to show him.
+function choosePickedStarter(lineIdx){
+  const shiny=rollShiny();
+  if(!shiny){pickStarter(lineIdx,false);return;}
+  playStarterReveal(lineIdx,true,()=>pickStarter(lineIdx,true),true);
 }
 
 // Picks across every generation, not just the first -- GENS is a list of
