@@ -102,18 +102,32 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;min-heigh
 .bug-type{background:#ECFCCB;color:#3F6212}
 .fairy-type{background:#FCE7F3;color:#9D174D}
 .lvl-badge{display:inline-block;background:#1A1A2E;color:white;font-size:11px;font-weight:700;padding:3px 9px;border-radius:10px;margin-left:6px;letter-spacing:0.04em;vertical-align:middle}
-.team-row{display:flex;gap:8px;background:#fff;border-radius:14px;padding:10px;margin-bottom:12px;box-shadow:0 2px 8px rgba(0,0,0,0.06);overflow-x:auto;align-items:center}
-.team-label{font-size:11px;font-weight:700;color:#9CA3AF;letter-spacing:0.06em;text-transform:uppercase;flex-shrink:0;padding:0 4px 0 2px}
-.team-slot{position:relative;flex:0 0 auto;width:54px;height:54px;border-radius:12px;border:2px solid #E5E7EB;background:#F9FAFB;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.15s;padding:0;font-family:inherit}
-.team-slot:hover{border-color:#FF5722}
-.team-slot.active{border-color:#FF5722;background:#FFF3E0;box-shadow:0 0 0 3px rgba(255,87,34,0.15)}
-.team-slot img{width:44px;height:44px;object-fit:contain;display:block;pointer-events:none}
-.team-slot-lvl{position:absolute;bottom:-4px;right:-5px;background:#1A1A2E;color:white;font-size:9px;font-weight:700;padding:1px 5px;border-radius:8px;line-height:1.4}
+/* Switching lives on its own screen rather than in a strip beside the Pokemon
+   card. The roster runs to dozens -- ~45 after 500 correct answers -- and a
+   horizontally scrolling row put most of the team behind a sideways swipe, which
+   is not a gesture a 5-year-old thinks to try on a row that looks complete. */
+.switch-btn{width:100%;background:#fff;border:2px solid #E5E7EB;border-radius:14px;padding:11px 14px;margin-bottom:12px;cursor:pointer;font-family:inherit;font-size:14px;font-weight:700;color:#374151;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 2px 8px rgba(0,0,0,0.06);transition:all 0.15s}
+.switch-btn:hover{border-color:#FF5722;color:#1A1A2E}
+.switch-count{font-size:11px;font-weight:700;color:#9CA3AF;background:#F3F4F6;border-radius:10px;padding:2px 8px}
+.switch-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.switch-opt{position:relative;background:#F9FAFB;border:2px solid #E5E7EB;border-radius:14px;padding:12px 6px 8px;cursor:pointer;transition:all 0.18s;text-align:center;display:flex;flex-direction:column;align-items:center;gap:3px;font-family:inherit}
+.switch-opt:hover{border-color:#FF5722;background:#FFF7ED}
+.switch-opt img{width:56px;height:56px;object-fit:contain;display:block;pointer-events:none}
+.switch-opt-name{font-size:12px;font-weight:700;color:#1A1A2E;line-height:1.15}
+.switch-opt-lvl{font-size:10px;font-weight:700;color:#6B7280}
+.switch-opt.current{border-color:#FF5722;background:#FFF3E0;cursor:default}
+.switch-opt.current:hover{background:#FFF3E0}
+.switch-opt-out{position:absolute;top:-7px;left:50%;transform:translateX(-50%);background:#FF5722;color:#fff;font-size:9px;font-weight:800;letter-spacing:0.05em;padding:2px 8px;border-radius:8px;white-space:nowrap}
+.switch-opt.shiny{border-color:#F59E0B;background:#FFFBEB}
+.switch-opt.shiny:hover{background:#FEF3C7}
+.switch-opt-star{position:absolute;top:5px;right:6px;font-size:12px;line-height:1;pointer-events:none;filter:drop-shadow(0 1px 1px rgba(0,0,0,0.2))}
+/* Above the grid, not below it: at 13 Pokemon the bottom of this screen is
+   already off the fold and at 45 it is a long scroll, and the way out of a screen
+   should never be something you have to go looking for. */
+.switch-back{background:#F3F4F6;border:none;border-radius:10px;padding:7px 12px;font-size:13px;font-weight:700;color:#6B7280;cursor:pointer;font-family:inherit;margin-bottom:10px}
+.switch-back:hover{background:#E5E7EB;color:#374151}
 /* Shiny markers. A rare catch has to be unmistakable at a glance, so it
    reads three ways at once: a different sprite, a gold star, and a gold frame. */
-.team-slot.shiny{border-color:#F59E0B;background:#FFFBEB}
-.team-slot.shiny.active{border-color:#F59E0B;background:#FEF3C7;box-shadow:0 0 0 3px rgba(245,158,11,0.3)}
-.team-slot-shiny{position:absolute;top:-6px;left:-5px;font-size:11px;line-height:1;pointer-events:none;filter:drop-shadow(0 1px 1px rgba(0,0,0,0.25))}
 .shiny-badge{display:inline-block;background:linear-gradient(135deg,#F59E0B,#FBBF24);color:#1A1A2E;font-size:11px;font-weight:800;padding:3px 9px;border-radius:10px;margin-left:6px;letter-spacing:0.04em;vertical-align:middle}
 .wild-card.shiny{box-shadow:0 0 0 3px rgba(245,158,11,0.55),0 8px 24px rgba(245,158,11,0.25)}
 .wild-card.shiny .wild-badge{color:#FCD34D}
@@ -1422,6 +1436,7 @@ function mkState(saved){
     lvlUpMsg:null,
     subject:SUBJ_MIX,
     subjectReturn:null,
+    switchReturn:null,
   };
   if(saved){
     s.starter=saved.starter;
@@ -1691,6 +1706,28 @@ function render(){
     h+=`</div></div>`;
   }
 
+  if(st.phase==='switch'){
+    h+=`<div class="starter-card">`+
+       `<button class="switch-back" id="switch-cancel">&#8592; Never mind</button>`+
+       `<div style="font-size:20px;font-weight:700;color:#1A1A2E;margin-bottom:3px;text-align:center">Choose your Pok&eacute;mon!</div>`+
+       `<div style="font-size:13px;color:#6B7280;margin-bottom:16px;text-align:center">Tap one to bring it out</div>`+
+       `<div class="switch-grid">`;
+    // Team order, which is the order he caught them, and deliberately not sorted
+    // by level: a grid that reorders itself every time a Pokemon levels up means
+    // he can never learn where his favourite lives.
+    st.team.forEach((mem,i)=>{
+      const mp=PKM[mem.pi];
+      const cur=i===st.activeIdx;
+      h+=`<button class="switch-opt${cur?' current':''}${mem.shiny?' shiny':''}" data-switch-idx="${i}">`+
+         `${cur?'<span class="switch-opt-out">OUT NOW</span>':''}`+
+         `${mem.shiny?`<span class="switch-opt-star">${SHINY_STAR}</span>`:''}`+
+         `${pkSprite(mem.pi,56,mem.shiny)}`+
+         `<div class="switch-opt-name">${mem.shiny?'Shiny ':''}${mp.n}</div>`+
+         `<div class="switch-opt-lvl">Lv ${mem.level}</div></button>`;
+    });
+    h+=`</div></div>`;
+  }
+
   if(st.phase==='play'){
     const tm=activeTM();
     const p=PKM[tm.pi];
@@ -1703,13 +1740,11 @@ function render(){
     if(st.lvlUpMsg){
       h+=`<div class="lvl-up-toast">&#11088; ${st.lvlUpMsg}</div>`;
     }
-    if(st.team.length>1){
-      h+=`<div class="team-row"><span class="team-label">Team</span>`;
-      st.team.forEach((mem,i)=>{
-        const mp=PKM[mem.pi];
-        h+=`<button class="team-slot${i===st.activeIdx?' active':''}${mem.shiny?' shiny':''}" data-team-idx="${i}" title="${mem.shiny?'Shiny ':''}${mp.n} Lv ${mem.level}">${pkSprite(mem.pi,44,mem.shiny)}${mem.shiny?`<span class="team-slot-shiny">${SHINY_STAR}</span>`:''}<span class="team-slot-lvl">${mem.level}</span></button>`;
-      });
-      h+=`</div>`;
+    // Hidden once a wrong answer is pending, for exactly the reason Run away is:
+    // switching re-serves a fresh question, so leaving it reachable mid-question
+    // would hand back the reroll the anti-guessing work removed.
+    if(st.team.length>1&&(st.tries===0||st.cor)){
+      h+=`<button class="switch-btn" id="switch-btn"><span>&#128260;</span><span>Switch Pok&eacute;mon</span><span class="switch-count">${st.team.length}</span></button>`;
     }
     // The XP badge is what makes the streak reward legible -- without seeing the
     // number climb there's no felt reason to slow down and get a run going.
@@ -1760,7 +1795,9 @@ function render(){
 
   gameEl.innerHTML=h;
   gameEl.querySelectorAll('[data-i]').forEach(b=>b.addEventListener('click',()=>handleAnswer(+b.dataset.i)));
-  gameEl.querySelectorAll('[data-team-idx]').forEach(b=>b.addEventListener('click',()=>switchPokemon(+b.dataset.teamIdx)));
+  gameEl.querySelectorAll('[data-switch-idx]').forEach(b=>b.addEventListener('click',()=>switchPokemon(+b.dataset.switchIdx)));
+  const swb=gameEl.querySelector('#switch-btn');if(swb)swb.addEventListener('click',openSwitchPicker);
+  const swc=gameEl.querySelector('#switch-cancel');if(swc)swc.addEventListener('click',closeSwitchPicker);
   gameEl.querySelectorAll('[data-subj]').forEach(b=>b.addEventListener('click',()=>chooseSubject(b.dataset.subj)));
   const sb=gameEl.querySelector('#subj-btn');if(sb)sb.addEventListener('click',openSubjectPicker);
   const nb=gameEl.querySelector('#nxt');if(nb)nb.addEventListener('click',onNext);
@@ -2312,11 +2349,33 @@ function pickStarter(lineIdx,shiny){
   render();
 }
 
+// Mirrors openSubjectPicker: remember where he came from, take over the screen,
+// and hand it back on either exit. The phase is never persisted -- loadSaved
+// derives it from whether a team exists -- so quitting mid-switch reopens on the
+// game, not on a picker with no question behind it.
+function openSwitchPicker(){
+  if(st.phase==='switch')return;
+  st.switchReturn=st.phase;
+  st.phase='switch';
+  render();
+}
+function closeSwitchPicker(){
+  st.phase=st.switchReturn||'play';
+  st.switchReturn=null;
+  render();
+}
 function switchPokemon(idx){
-  if(idx===st.activeIdx)return;
-  if(st.phase!=='play')return;
+  const back=st.switchReturn||'play';
+  st.phase=back;
+  st.switchReturn=null;
+  // Tapping the one already out is a cancel, not a switch: no new question.
+  if(!st.team[idx]||idx===st.activeIdx){render();return;}
   st.activeIdx=idx;
   save();
+  // 187 questions bake the active Pokemon's name in through {P} at serve time, so
+  // the question on screen would still be talking about the one he just put away.
+  // Re-serving is the only honest way to redraw it, and is why the button that
+  // opens this picker disappears once he has an answer wrong.
   loadQuestion();
 }
 
