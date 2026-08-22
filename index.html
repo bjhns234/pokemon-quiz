@@ -109,7 +109,7 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;min-heigh
 .team-slot.active{border-color:#FF5722;background:#FFF3E0;box-shadow:0 0 0 3px rgba(255,87,34,0.15)}
 .team-slot img{width:44px;height:44px;object-fit:contain;display:block;pointer-events:none}
 .team-slot-lvl{position:absolute;bottom:-4px;right:-5px;background:#1A1A2E;color:white;font-size:9px;font-weight:700;padding:1px 5px;border-radius:8px;line-height:1.4}
-/* Shiny markers. A 1-in-1000 catch has to be unmistakable at a glance, so it
+/* Shiny markers. A rare catch has to be unmistakable at a glance, so it
    reads three ways at once: a different sprite, a gold star, and a gold frame. */
 .team-slot.shiny{border-color:#F59E0B;background:#FFFBEB}
 .team-slot.shiny.active{border-color:#F59E0B;background:#FEF3C7;box-shadow:0 0 0 3px rgba(245,158,11,0.3)}
@@ -176,7 +176,7 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;min-heigh
 .sparkle.s2{background:#FFFFFF;box-shadow:0 0 14px 3px #FFFFFF,0 0 30px 6px rgba(255,255,255,0.6)}
 .sparkle.s3{background:#FCA5A5;box-shadow:0 0 14px 3px #FCA5A5,0 0 28px 6px rgba(252,165,165,0.5)}
 /* The shiny fanfare. Everything below fires ONLY on a shiny, which is the whole
-   point: a 1-in-1000 event that reuses the ordinary catch celebration reads as
+   point: a rare event that reuses the ordinary catch celebration reads as
    nothing more than a recoloured sprite. The banner, the gold wash and the
    denser sparkle storm are what make it land as an event. */
 .sparkle.s4{background:#FDE68A;box-shadow:0 0 18px 5px #FDE68A,0 0 42px 10px rgba(251,191,36,0.75)}
@@ -567,7 +567,7 @@ const GEN_ROMAN=["I","II","III","IV","V","VI","VII","VIII","IX"];
 
 PKM.forEach(p=>{const i=new Image();i.src=`${BASE}${parseInt(p.num.slice(1))}.png`;});
 // Shiny sprites are deliberately NOT preloaded: 237 extra fetches to cover a
-// 1-in-1000 event would cost every player bandwidth so a handful ever see one.
+// comparatively rare event would cost every player bandwidth up front.
 // They load on demand, which is also why the overlays set .src before animating.
 
 function dexId(pi){return parseInt(PKM[pi].num.slice(1));}
@@ -1326,10 +1326,21 @@ const PAUSE={first:2500,retry:4000};
 const WILD_CHANCE=0.10;
 const STARTER_WILD_CHANCE=0.03;
 const CATCH_STREAK_NEEDED=3;
-// 1 in 1000 encounters. Rolled once per encounter, before the pool is filtered,
-// because WHICH Pokemon are still catchable depends on the answer: a regular
-// Pikachu on the team blocks another regular Pikachu but not a shiny one.
-const SHINY_CHANCE=0.001;
+// 1 in 30 ENCOUNTERS -- which is not the same as 1 in 30 answers, and is why
+// this is not the 1/1000 the real games use. An encounter here is already a rare
+// event in its own right: it fires on about 12.7% of correct answers (a 3% roll
+// for a stray starter, then 10% on what survives that). So an encounter-level
+// rate gets multiplied by that gate before he ever sees it. At 1/1000 the real
+// frequency worked out to one shiny per ~7,900 correct answers -- a median wait
+// of roughly 182 sessions, i.e. most likely never. 1/30 puts it at ~236 correct
+// answers, about one every five sessions. Borrowing the canonical rate without
+// accounting for the gate in front of it stacks two rarities and hides the
+// feature completely.
+//
+// Rolled once per encounter, BEFORE the pool is filtered, because which Pokemon
+// are still catchable depends on the answer: a regular Pikachu on the team
+// blocks another regular Pikachu but not a shiny one.
+const SHINY_CHANCE=0.0333;
 function rollShiny(){return Math.random()<SHINY_CHANCE;}
 // Wild Pokemon used to appear at (active level - 3 .. active level). That read fine
 // at level 12 and became nonsense at level 100: every Pokemon in the grass was a
@@ -2242,7 +2253,7 @@ function playStarterReveal(lineIdx,shiny,onDone,noReel){
 }
 
 // A deliberate pick drops straight into the game, as it always has -- unless the
-// roll comes up shiny. A 1-in-1000 starter used to arrive with nothing but a gold
+// roll comes up shiny. A shiny starter used to arrive with nothing but a gold
 // badge on the card: the rarest thing in the game, and the only one of its three
 // moments with no celebration at all. It gets the reveal now, minus the reel --
 // he chose it, so there is nothing to spin for, only something to show him.
