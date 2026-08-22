@@ -2321,15 +2321,19 @@ function playStarterReveal(lineIdx,shiny,onDone,noReel){
   }catch(e){finish();}
 }
 
-// A deliberate pick drops straight into the game, as it always has -- unless the
-// roll comes up shiny. A shiny starter used to arrive with nothing but a gold
-// badge on the card: the rarest thing in the game, and the only one of its three
-// moments with no celebration at all. It gets the reveal now, minus the reel --
-// he chose it, so there is nothing to spin for, only something to show him.
+// Choosing a starter is the first thing that happens in the game and it happens
+// exactly once, so it gets the reveal whether or not the roll came up shiny --
+// it used to drop him straight into a question with no acknowledgement at all.
+//
+// Minus the reel, though. "Surprise me!" spins because the result is genuinely
+// unknown to him; spinning here would flick other starters past a choice he just
+// made deliberately, which reads as the game reconsidering it. The hold before
+// the burst does the reel's job: he gets the same landing, the same sparkles and
+// the same "Squirtle is your partner!" -- just without being asked to wonder
+// whether he is about to get Squirtle.
 function choosePickedStarter(lineIdx){
   const shiny=rollShiny();
-  if(!shiny){pickStarter(lineIdx,false);return;}
-  playStarterReveal(lineIdx,true,()=>pickStarter(lineIdx,true),true);
+  playStarterReveal(lineIdx,shiny,()=>pickStarter(lineIdx,shiny),true);
 }
 
 // Picks across every generation, not just the first -- GENS is a list of
