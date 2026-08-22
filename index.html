@@ -109,6 +109,26 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;min-heigh
 .team-slot.active{border-color:#FF5722;background:#FFF3E0;box-shadow:0 0 0 3px rgba(255,87,34,0.15)}
 .team-slot img{width:44px;height:44px;object-fit:contain;display:block;pointer-events:none}
 .team-slot-lvl{position:absolute;bottom:-4px;right:-5px;background:#1A1A2E;color:white;font-size:9px;font-weight:700;padding:1px 5px;border-radius:8px;line-height:1.4}
+/* Shiny markers. A 1-in-1000 catch has to be unmistakable at a glance, so it
+   reads three ways at once: a different sprite, a gold star, and a gold frame. */
+.team-slot.shiny{border-color:#F59E0B;background:#FFFBEB}
+.team-slot.shiny.active{border-color:#F59E0B;background:#FEF3C7;box-shadow:0 0 0 3px rgba(245,158,11,0.3)}
+.team-slot-shiny{position:absolute;top:-6px;left:-5px;font-size:11px;line-height:1;pointer-events:none;filter:drop-shadow(0 1px 1px rgba(0,0,0,0.25))}
+.shiny-badge{display:inline-block;background:linear-gradient(135deg,#F59E0B,#FBBF24);color:#1A1A2E;font-size:11px;font-weight:800;padding:3px 9px;border-radius:10px;margin-left:6px;letter-spacing:0.04em;vertical-align:middle}
+.wild-card.shiny{box-shadow:0 0 0 3px rgba(245,158,11,0.55),0 8px 24px rgba(245,158,11,0.25)}
+.wild-card.shiny .wild-badge{color:#FCD34D}
+.shiny-name{color:#FCD34D}
+.pdx-entry.shiny{background:linear-gradient(160deg,#FFFBEB,#FEF3C7);box-shadow:0 0 0 2px #FBBF24,0 1px 4px rgba(0,0,0,0.06)}
+/* On the img, not on .psvg: .psvg already owns an `animation` (float, and
+   bounce/shake on answer feedback), and a rule here would outrank .psvg.bk and
+   silently eat that feedback on exactly the rarest encounter. */
+@media (prefers-reduced-motion:no-preference){
+  .wild-card.shiny .psvg img{animation:shiny-glow 1.6s ease-in-out infinite}
+}
+@keyframes shiny-glow{
+  0%,100%{filter:drop-shadow(0 0 2px rgba(251,191,36,0.55))}
+  50%{filter:drop-shadow(0 0 14px rgba(251,191,36,0.95))}
+}
 .catch-pips{display:flex;justify-content:center;gap:8px;margin-top:10px}
 .catch-pip{width:14px;height:14px;border-radius:50%;background:rgba(255,255,255,0.18);border:1.5px solid rgba(255,255,255,0.4);transition:all 0.2s ease}
 .catch-pip.filled{background:#86efac;border-color:#86efac;box-shadow:0 0 8px rgba(134,239,172,0.6)}
@@ -219,7 +239,15 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;min-heigh
 
 <script>
 const BASE="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/";
-function pkImg(id,s){return`<img src="${BASE}${id}.png" width="${s}" height="${s}" alt="" style="object-fit:contain;display:block">`}
+// Shiny artwork lives in a parallel folder keyed by the same dex id, so a shiny
+// is never a separate PKM entry -- it is the same entry drawn from a different
+// sprite root. That is what keeps evolution (which is POSITIONAL: PKM[pi+1] is
+// the next stage) working untouched for shinies.
+const SHINY_BASE=BASE+"shiny/";
+function spriteURL(id,shiny){return`${shiny?SHINY_BASE:BASE}${id}.png`}
+// `shiny` is trailing and optional, so the 237 `svg:s=>pkImg(n,s)` closures in
+// PKM keep meaning "the regular sprite" with no edit.
+function pkImg(id,s,shiny){return`<img src="${spriteURL(id,shiny)}" width="${s}" height="${s}" alt="" style="object-fit:contain;display:block">`}
 
 const PKM=[
 // Gen 1 — Kanto
@@ -515,6 +543,16 @@ const GEN_NAMES=["Kanto","Johto","Hoenn","Sinnoh","Unova","Kalos","Alola","Galar
 const GEN_ROMAN=["I","II","III","IV","V","VI","VII","VIII","IX"];
 
 PKM.forEach(p=>{const i=new Image();i.src=`${BASE}${parseInt(p.num.slice(1))}.png`;});
+// Shiny sprites are deliberately NOT preloaded: 237 extra fetches to cover a
+// 1-in-1000 event would cost every player bandwidth so a handful ever see one.
+// They load on demand, which is also why the overlays set .src before animating.
+
+function dexId(pi){return parseInt(PKM[pi].num.slice(1));}
+// The shiny-aware way to draw a Pokemon. `p.svg(size)` still exists and still
+// means the regular sprite; every render site that can show a shiny goes
+// through here instead.
+function pkSprite(pi,size,shiny){return pkImg(dexId(pi),size,shiny);}
+const SHINY_STAR='&#10024;';
 
 const SUBS=["math","reading","science"];
 const SNAME={math:"Math",reading:"Reading",science:"Science"};
@@ -1265,6 +1303,11 @@ const PAUSE={first:2500,retry:4000};
 const WILD_CHANCE=0.10;
 const STARTER_WILD_CHANCE=0.03;
 const CATCH_STREAK_NEEDED=3;
+// 1 in 1000 encounters. Rolled once per encounter, before the pool is filtered,
+// because WHICH Pokemon are still catchable depends on the answer: a regular
+// Pikachu on the team blocks another regular Pikachu but not a shiny one.
+const SHINY_CHANCE=0.001;
+function rollShiny(){return Math.random()<SHINY_CHANCE;}
 // Wild Pokemon used to appear at (active level - 3 .. active level). That read fine
 // at level 12 and became nonsense at level 100: every Pokemon in the grass was a
 // level-100 veteran, and since a catch joins the team AT the wild's level, it arrived
@@ -1309,6 +1352,9 @@ function mkState(saved){
     q:null,sel:null,cor:false,
     tries:0,wrong:[],armAt:0,lastXp:0,
     pdx:new Array(PKM.length).fill(false),
+    // A second, parallel Pokedex. Shinies are tracked apart from regulars so
+    // one Pokemon can be recorded twice -- once in each colour.
+    sdx:new Array(PKM.length).fill(false),
     streak:0,anim:'',
     // The running streak is deliberately not restored (a session starts fresh),
     // but the record it set is the one streak fact worth keeping.
@@ -1325,6 +1371,7 @@ function mkState(saved){
     s.team=saved.team;
     s.activeIdx=saved.activeIdx;
     s.pdx=saved.pdx;
+    s.sdx=saved.sdx;
     s.stats=saved.stats;
     s.subject=saved.subject;
     s.bestStreak=saved.bestStreak;
@@ -1342,6 +1389,9 @@ const SAVE_KEY='pkq-save';
 const SAVE_V=1;
 const NUM_TO_PI={};PKM.forEach((p,i)=>{NUM_TO_PI[p.num]=i;});
 
+// The one place that decides which of the two Pokedexes an entry lands in.
+function markDex(pi,shiny){(shiny?st.sdx:st.pdx)[pi]=true;}
+
 function save(){
   if(st.team.length===0)return; // nothing to restore yet; don't write a stub save
   try{
@@ -1351,8 +1401,9 @@ function save(){
       activeIdx:st.activeIdx,
       // keyed by dex number, not array index, so PKM can grow without
       // silently remapping someone's team onto the wrong Pokemon
-      team:st.team.map(t=>({num:PKM[t.pi].num,level:t.level,xp:t.xp})),
+      team:st.team.map(t=>({num:PKM[t.pi].num,level:t.level,xp:t.xp,shiny:!!t.shiny})),
       dex:st.pdx.map((caught,i)=>caught?PKM[i].num:null).filter(Boolean),
+      shinyDex:st.sdx.map((caught,i)=>caught?PKM[i].num:null).filter(Boolean),
       stats:st.stats,
       subject:st.subject,
       bestStreak:st.bestStreak,
@@ -1374,13 +1425,15 @@ function loadSaved(){
     const team=(data.team||[]).map(t=>{
       const pi=NUM_TO_PI[t&&t.num];
       if(pi===undefined)return null;
-      return{pi,level:Math.max(1,t.level|0),xp:Math.max(0,t.xp|0)};
+      return{pi,level:Math.max(1,t.level|0),xp:Math.max(0,t.xp|0),shiny:!!(t&&t.shiny)};
     }).filter(Boolean);
     if(team.length===0)return null;
 
     const pdx=new Array(PKM.length).fill(false);
     (data.dex||[]).forEach(n=>{const pi=NUM_TO_PI[n];if(pi!==undefined)pdx[pi]=true;});
-    team.forEach(t=>{pdx[t.pi]=true;});
+    const sdx=new Array(PKM.length).fill(false);
+    (data.shinyDex||[]).forEach(n=>{const pi=NUM_TO_PI[n];if(pi!==undefined)sdx[pi]=true;});
+    team.forEach(t=>{(t.shiny?sdx:pdx)[t.pi]=true;});
 
     const stats={};
     SUBS.forEach(sub=>{
@@ -1403,7 +1456,11 @@ function loadSaved(){
       // Saves from before records existed have none; 0 just means "no record yet",
       // so SAVE_V holds here the same way it did for the subject chooser.
       bestStreak:Math.max(0,data.bestStreak|0),
-      team,pdx,stats,
+      // Saves from before shinies existed carry no `shiny` on team members and
+      // no shinyDex; both default to "nothing is shiny", which is exactly what
+      // those saves meant. SAVE_V holds again -- bumping it would wipe every
+      // existing Pokedex to add a feature almost no save has yet used.
+      team,pdx,sdx,stats,
     };
   }catch(e){
     // corrupt or half-written save: start fresh rather than fail to a blank screen
@@ -1564,7 +1621,7 @@ function render(){
     });
     h+=`</div>`;
     gameEl.innerHTML=h;
-    GENS.forEach(genLines=>{genLines.forEach(li=>{document.getElementById(`pick-${li}`).addEventListener('click',()=>pickStarter(li));});});
+    GENS.forEach(genLines=>{genLines.forEach(li=>{document.getElementById(`pick-${li}`).addEventListener('click',()=>pickStarter(li,rollShiny()));});});
     const pr=document.getElementById('pick-random');if(pr)pr.addEventListener('click',pickRandomStarter);
     return;
   }
@@ -1582,7 +1639,7 @@ function render(){
     const p=PKM[tm.pi];
     const xpMx=xpToNext(tm.level);
     const pct=Math.min(100,Math.round(tm.xp/xpMx*100));
-    h+=`<div class="card pcard"><div class="pnum">${p.num} &bull; ${typeBadgesInline(p.type)} Type</div><div class="pname">${p.n} <span class="lvl-badge">Lv ${tm.level}</span></div><div class="psvg ${st.anim}">${p.svg(148)}</div><div class="xp-row"><span>XP</span><span>${tm.xp}/${xpMx}</span></div><div class="xp-track"><div class="xp-fill" style="width:${pct}%"></div></div></div>`;
+    h+=`<div class="card pcard"><div class="pnum">${p.num} &bull; ${typeBadgesInline(p.type)} Type</div><div class="pname">${p.n}${tm.shiny?` <span class="shiny-badge">${SHINY_STAR} Shiny</span>`:''} <span class="lvl-badge">Lv ${tm.level}</span></div><div class="psvg ${st.anim}">${pkSprite(tm.pi,148,tm.shiny)}</div><div class="xp-row"><span>XP</span><span>${tm.xp}/${xpMx}</span></div><div class="xp-track"><div class="xp-fill" style="width:${pct}%"></div></div></div>`;
     if(st.streakMsg){
       h+=`<div class="streak-toast">&#128293; ${st.streakMsg}</div>`;
     }
@@ -1593,7 +1650,7 @@ function render(){
       h+=`<div class="team-row"><span class="team-label">Team</span>`;
       st.team.forEach((mem,i)=>{
         const mp=PKM[mem.pi];
-        h+=`<button class="team-slot${i===st.activeIdx?' active':''}" data-team-idx="${i}" title="${mp.n} Lv ${mem.level}">${mp.svg(44)}<span class="team-slot-lvl">${mem.level}</span></button>`;
+        h+=`<button class="team-slot${i===st.activeIdx?' active':''}${mem.shiny?' shiny':''}" data-team-idx="${i}" title="${mem.shiny?'Shiny ':''}${mp.n} Lv ${mem.level}">${pkSprite(mem.pi,44,mem.shiny)}${mem.shiny?`<span class="team-slot-shiny">${SHINY_STAR}</span>`:''}<span class="team-slot-lvl">${mem.level}</span></button>`;
       });
       h+=`</div>`;
     }
@@ -1626,7 +1683,8 @@ function render(){
     // during an encounter isn't farmable, but escaping a wrong one would be.
     const canFlee=!escaped&&!caught&&(st.tries===0||st.cor);
     const flee=canFlee?`<button class="flee-btn" id="flee">Run away</button>`:'';
-    h+=`<div class="wild-card"><div class="wild-badge">&#9889; Wild Encounter</div><div class="wild-name">A wild <strong>${wild.n}</strong> appeared! <span class="lvl-badge">Lv ${st.wild.level}</span></div><div class="psvg ${st.anim}">${wild.svg(140)}</div><div class="catch-counter">Answer ${CATCH_STREAK_NEEDED} to catch it! (${cs}/${CATCH_STREAK_NEEDED})</div>${pips}${balls}${flee}</div>`;
+    const wsh=!!st.wild.shiny;
+    h+=`<div class="wild-card${wsh?' shiny':''}"><div class="wild-badge">${wsh?`${SHINY_STAR} Shiny Encounter! ${SHINY_STAR}`:'&#9889; Wild Encounter'}</div><div class="wild-name">A wild ${wsh?`<strong class="shiny-name">shiny ${wild.n}</strong>`:`<strong>${wild.n}</strong>`} appeared! <span class="lvl-badge">Lv ${st.wild.level}</span></div><div class="psvg ${st.anim}">${pkSprite(st.wild.pi,140,wsh)}</div><div class="catch-counter">Answer ${CATCH_STREAK_NEEDED} to catch it! (${cs}/${CATCH_STREAK_NEEDED})</div>${pips}${balls}${flee}</div>`;
     // Both toasts belong here too. A milestone bonus is paid during an encounter and
     // can level him up, but the level-up toast only used to render in the play phase --
     // so the level happened, the message was set, and loadQuestion() cleared it before
@@ -1652,19 +1710,28 @@ function render(){
   const fb=gameEl.querySelector('#flee');if(fb)fb.addEventListener('click',fleeWild);
 }
 
+// A shiny slot is rendered only once it has actually been caught. Carrying 237
+// permanently-locked "???" shiny twins would bury the real Pokedex under a grid
+// that is 99.9% noise, so a shiny appears beside its regular form on earning it
+// -- and the two are independent, so either can be filled first.
+function pdxEntryHTML(pi,shiny){
+  const pk=PKM[pi];const u=(shiny?st.sdx:st.pdx)[pi];
+  if(shiny&&!u)return'';
+  const name=u?(shiny?`Shiny ${pk.n}`:pk.n):'???';
+  return`<div class="pdx-entry${u?'':' locked'}${shiny?' shiny':''}">${pkSprite(pi,52,shiny)}<div class="pdx-num">${pk.num}${shiny?` ${SHINY_STAR}`:''}</div><div class="pdx-name">${name}</div>${u?`<div class="pdx-fact">${pk.fact}</div>`:''}</div>`;
+}
+
 function renderPokedex(){
   let h=`<div class="hdr"><span class="app-name">Pokédex</span><button class="reset-btn" id="reset-btn"><span class="reset-fill" id="reset-fill"></span><span class="reset-lbl" id="reset-lbl">Hold to start over</span></button></div>`;
   GENS.forEach((genLines,gi)=>{
     h+=`<div class="pdx-gen-section"><div class="pdx-gen-label">Gen ${GEN_ROMAN[gi]} &mdash; ${GEN_NAMES[gi]}</div><div class="pdx-grid">`;
     genLines.forEach(li=>{
       LINES[li].forEach(pi=>{
-        const pk=PKM[pi];const u=st.pdx[pi];
-        h+=`<div class="pdx-entry${u?'':' locked'}">${pk.svg(52)}<div class="pdx-num">${pk.num}</div><div class="pdx-name">${u?pk.n:'???'}</div>${u?`<div class="pdx-fact">${pk.fact}</div>`:''}</div>`;
+        h+=pdxEntryHTML(pi,false)+pdxEntryHTML(pi,true);
       });
     });
     (WILD_PDX_BY_GEN[gi]||[]).forEach(pi=>{
-      const pk=PKM[pi];const u=st.pdx[pi];
-      h+=`<div class="pdx-entry${u?'':' locked'}">${pk.svg(52)}<div class="pdx-num">${pk.num}</div><div class="pdx-name">${u?pk.n:'???'}</div>${u?`<div class="pdx-fact">${pk.fact}</div>`:''}</div>`;
+      h+=pdxEntryHTML(pi,false)+pdxEntryHTML(pi,true);
     });
     h+=`</div></div>`;
   });
@@ -1766,7 +1833,7 @@ async function loadQuestion(){
 // escalating shake, a white-out burst, the reveal, then a celebration hold.
 // It's a rare moment -- only when a team member hits its evoAt level -- so it's
 // worth the length.
-function playEvolution(fromIdx,toIdx,onDone){
+function playEvolution(fromIdx,toIdx,shiny,onDone){
   const ov=document.getElementById('evo-overlay');
   const img=document.getElementById('evo-img');
   const lbl=document.getElementById('evo-label');
@@ -1813,8 +1880,8 @@ function playEvolution(fromIdx,toIdx,onDone){
   ov.classList.add('active');
   ov.style.opacity='1';
   img.style.cssText='display:block;object-fit:contain;width:200px;height:200px;filter:none;transition:none';
-  img.src=`${BASE}${fromId}.png`;
-  lbl.textContent=`What?! ${fromP.n} is evolving!`;
+  img.src=spriteURL(fromId,shiny);
+  lbl.textContent=`What?! ${shiny?'Shiny ':''}${fromP.n} is evolving!`;
   bgw.style.cssText='position:absolute;inset:0;background:white;opacity:0;pointer-events:none;transition:none';
   burst.style.opacity='0';burst.style.animation='';
   wrap.querySelectorAll('.sparkle').forEach(s=>s.remove());
@@ -1844,9 +1911,9 @@ function playEvolution(fromIdx,toIdx,onDone){
     step(()=>{
       // Beat 4 -- the reveal.
       ov.style.animation='';
-      img.src=`${BASE}${toId}.png`;
+      img.src=spriteURL(toId,shiny);
       img.style.transition='none';img.style.filter='brightness(0) invert(1)';
-      lbl.textContent=`${toP.n}!`;
+      lbl.textContent=`${shiny?'Shiny ':''}${toP.n}!`;
       wrap.style.animation='evo-reveal 0.9s cubic-bezier(.2,.9,.3,1.2)';
       bgw.style.transition='opacity 0.45s ease';bgw.style.opacity='0';
       step(()=>{
@@ -1856,7 +1923,8 @@ function playEvolution(fromIdx,toIdx,onDone){
         playSfx('evoDone');
         step(()=>{
           // Beat 5 -- celebration hold, then out.
-          lbl.textContent=`Congratulations! ${fromP.n} evolved into ${toP.n}!`;
+          const pre=shiny?'Shiny ':'';
+          lbl.textContent=`Congratulations! ${pre}${fromP.n} evolved into ${pre}${toP.n}!`;
           lbl.style.animation='evo-label-in 0.4s ease';
           _spawnSparkles(wrap);
           step(()=>{
@@ -1957,7 +2025,7 @@ function _spawnSparkles(host){
   }
 }
 
-function playCatch(pkIdx,onDone){
+function playCatch(pkIdx,shiny,onDone){
   const ballSVG=`<svg width="56" height="56" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"><circle cx="30" cy="30" r="28" fill="#EF4444" stroke="#1A1A2E" stroke-width="3"/><rect x="2" y="27" width="56" height="6" fill="#1A1A2E"/><circle cx="30" cy="30" r="28" fill="none" stroke="#1A1A2E" stroke-width="3"/><circle cx="30" cy="30" r="10" fill="white" stroke="#1A1A2E" stroke-width="3"/><circle cx="30" cy="30" r="5" fill="#F3F4F6"/></svg>`;
   const ov=document.getElementById('catch-overlay');
   const pkmImg=document.getElementById('catch-pkm-img');
@@ -1967,10 +2035,10 @@ function playCatch(pkIdx,onDone){
   const pkId=parseInt(PKM[pkIdx].num.slice(1));
   ov.style.cssText='';ov.style.opacity='1';ov.classList.add('active');
   sparkleHost.querySelectorAll('.sparkle').forEach(s=>s.remove());
-  pkmImg.src=`${BASE}${pkId}.png`;
+  pkmImg.src=spriteURL(pkId,shiny);
   pkmImg.style.cssText='display:block;object-fit:contain;width:180px;height:180px;filter:none;transition:none;transform:none;opacity:1;animation:none';
   ball.innerHTML=ballSVG;ball.style.display='none';ball.style.animation='none';
-  lbl.textContent=`A wild ${PKM[pkIdx].n} appeared!`;
+  lbl.textContent=`A wild ${shiny?'SHINY ':''}${PKM[pkIdx].n} appeared!`;
   setTimeout(()=>{
     ball.style.display='block';ball.offsetWidth;
     ball.style.animation='ball-fly 0.75s cubic-bezier(0.15,0.5,0.5,1) forwards';
@@ -1988,7 +2056,7 @@ function playCatch(pkIdx,onDone){
           ball.style.animation='ball-pop 0.45s ease forwards';
           _spawnSparkles(sparkleHost);
           playSfx('gotcha');
-          lbl.textContent=`Gotcha! ${PKM[pkIdx].n} was caught!`;
+          lbl.textContent=`Gotcha! ${shiny?'SHINY ':''}${PKM[pkIdx].n} was caught!`;
           setTimeout(()=>{
             ov.style.transition='opacity 0.4s ease';ov.style.opacity='0';
             setTimeout(()=>{ov.classList.remove('active');ov.style.cssText='';onDone();},400);
@@ -2002,7 +2070,7 @@ function playCatch(pkIdx,onDone){
 // A slot-machine reveal: candidates flick past in colour, decelerating, then the
 // winner lands with a burst. The pick is decided before the animation starts --
 // the reel is theatre over an already-known result, never the thing choosing.
-function playStarterReveal(lineIdx,onDone){
+function playStarterReveal(lineIdx,shiny,onDone){
   const ov=document.getElementById('pick-overlay');
   const img=document.getElementById('pick-img');
   const lbl=document.getElementById('pick-label');
@@ -2062,14 +2130,16 @@ function playStarterReveal(lineIdx,onDone){
     rays.classList.remove('fast');
     lbl.textContent='...';
     step(()=>{
-      img.src=`${BASE}${parseInt(PKM[winnerPi].num.slice(1))}.png`;
+      // Only the landing switches sprite root -- the reel's decoys stay regular,
+      // so an unusual colour never flickers past before the reveal spoils it.
+      img.src=spriteURL(dexId(winnerPi),shiny);
       wrap.style.animation='pick-land 0.9s cubic-bezier(.2,.9,.3,1.2)';
       burst.style.animation='evo-burst-out 0.75s ease-out forwards';
-      lbl.textContent=`It's ${PKM[winnerPi].n}!`;
+      lbl.textContent=`It's ${shiny?'a SHINY ':''}${PKM[winnerPi].n}!`;
       playSfx('pickReveal');
       _spawnSparkles(wrap);
       step(()=>{
-        lbl.textContent=`${PKM[winnerPi].n} is your partner!`;
+        lbl.textContent=`${shiny?'Shiny ':''}${PKM[winnerPi].n} is your partner!`;
         _spawnSparkles(wrap);
         step(()=>{
           ov.style.transition='opacity 0.5s ease';ov.style.opacity='0';
@@ -2089,15 +2159,19 @@ function pickRandomStarter(){
   const all=GENS.reduce((a,g)=>a.concat(g),[]);
   if(!all.length)return;
   const lineIdx=all[Math.floor(Math.random()*all.length)];
-  playStarterReveal(lineIdx,()=>pickStarter(lineIdx));
+  // Rolled up front so the reveal can land on the shiny sprite -- the reel stays
+  // theatre over an already-decided result, colour included.
+  const shiny=rollShiny();
+  playStarterReveal(lineIdx,shiny,()=>pickStarter(lineIdx,shiny));
 }
 
-function pickStarter(lineIdx){
+function pickStarter(lineIdx,shiny){
   st.starter=lineIdx;
   const startPi=LINES[lineIdx][0];
-  st.team=[{pi:startPi,level:STARTER_START_LEVEL,xp:0}];
+  shiny=!!shiny;
+  st.team=[{pi:startPi,level:STARTER_START_LEVEL,xp:0,shiny}];
   st.activeIdx=0;
-  st.pdx[startPi]=true;
+  markDex(startPi,shiny);
   // Straight into the subject chooser; chooseSubject is what drops him into play.
   st.subjectReturn='play';
   st.phase='subject';
@@ -2131,10 +2205,14 @@ function processEvolution(){
   if(!st.pendingEvo){afterTurn();return;}
   const {fromPi,toPi}=st.pendingEvo;
   st.pendingEvo=null;
-  playEvolution(fromPi,toPi,()=>{
+  // The shiny flag lives on the team member, not on the PKM entry, so evolving
+  // only moves `pi` forward and the colour rides along untouched. That is what
+  // makes a shiny evolve into a shiny with no separate shiny evolution table.
+  const shiny=!!(activeTM()&&activeTM().shiny);
+  playEvolution(fromPi,toPi,shiny,()=>{
     const tm=activeTM();
     tm.pi=toPi;
-    st.pdx[toPi]=true;
+    markDex(toPi,!!tm.shiny);
     applyLevelUps();
     save();
     if(st.pendingEvo){processEvolution();}
@@ -2146,22 +2224,28 @@ function processEvolution(){
 // Pokemon and stray starters from every generation can turn up and be caught. This
 // also removes an old dead end: the pool used to be the 4 wild Pokemon of his own
 // generation, so once he had them all, encounters stopped happening entirely.
-function getAvailableOtherStarters(){
+// Ownership is per colour. A regular Growlithe on the team rules out another
+// regular Growlithe but says nothing about a shiny one, so both can be caught.
+function ownedPis(shiny){
+  return new Set(st.team.filter(t=>!!t.shiny===!!shiny).map(t=>t.pi));
+}
+function getAvailableOtherStarters(shiny){
   const tm=activeTM();if(!tm)return[];
   const allLines=GENS.reduce((a,g)=>a.concat(g),[]);
-  const teamPis=new Set(st.team.map(t=>t.pi));
+  const teamPis=ownedPis(shiny);
   return allLines.map(li=>LINES[li][0]).filter(pi=>{
     const line=LINES.find(ln=>ln.includes(pi))||[];
     return !line.some(lpi=>teamPis.has(lpi));
   });
 }
-function triggerWildEncounter(){
+function triggerWildEncounter(shiny){
+  if(shiny===undefined)shiny=rollShiny();
   const allWild=WILD_BY_GEN.reduce((a,g)=>a.concat(g),[]);
-  const teamPis=new Set(st.team.map(t=>t.pi));
+  const teamPis=ownedPis(shiny);
   const available=allWild.filter(pi=>!teamPis.has(pi));
   if(available.length===0){loadQuestion();return;}
   const wpi=available[Math.floor(Math.random()*available.length)];
-  st.wild={pi:wpi,level:wildLevel(),correctStreak:0,misses:0};
+  st.wild={pi:wpi,level:wildLevel(),shiny,correctStreak:0,misses:0};
   st.phase='wild';
   loadQuestion();
 }
@@ -2181,14 +2265,17 @@ function fleeWild(){
 
 function afterTurn(){
   if(st.cor&&st.phase==='play'){
-    const starterCands=getAvailableOtherStarters();
+    // One roll, shared by whichever of the two encounter kinds fires -- so the
+    // rate is 0.1% per encounter, not per encounter kind.
+    const shiny=rollShiny();
+    const starterCands=getAvailableOtherStarters(shiny);
     if(starterCands.length>0&&Math.random()<STARTER_WILD_CHANCE){
       const wpi=starterCands[Math.floor(Math.random()*starterCands.length)];
-      st.wild={pi:wpi,level:wildLevel(),correctStreak:0,misses:0};
+      st.wild={pi:wpi,level:wildLevel(),shiny,correctStreak:0,misses:0};
       st.phase='wild';
       loadQuestion();return;
     }
-    if(Math.random()<WILD_CHANCE){triggerWildEncounter();return;}
+    if(Math.random()<WILD_CHANCE){triggerWildEncounter(shiny);return;}
   }
   loadQuestion();
 }
@@ -2200,10 +2287,10 @@ function onNext(){
       loadQuestion();return;
     }
     if(st.wild&&st.wild.correctStreak>=CATCH_STREAK_NEEDED){
-      const wp=st.wild.pi;const wlev=st.wild.level;
-      playCatch(wp,()=>{
-        st.team.push({pi:wp,level:wlev,xp:0});
-        st.pdx[wp]=true;
+      const wp=st.wild.pi;const wlev=st.wild.level;const wsh=!!st.wild.shiny;
+      playCatch(wp,wsh,()=>{
+        st.team.push({pi:wp,level:wlev,xp:0,shiny:wsh});
+        markDex(wp,wsh);
         st.wild=null;
         st.phase='play';
         save();
