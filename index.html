@@ -14,7 +14,13 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;min-heigh
 .hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
 .app-name{font-size:15px;font-weight:600;color:#1A1A2E}
 .card{background:#fff;border-radius:16px;padding:18px;margin-bottom:12px;box-shadow:0 2px 8px rgba(0,0,0,0.06)}
-.pcard{text-align:center}
+/* The extra top padding is only applied when the corner button is actually there.
+   Without it the button overlaps the centred dex line: at a 1440px viewport the
+   line clears it comfortably, but at 320-360px -- the width this is actually
+   played at -- "#001 - Grass / Poison Type" runs under the button. Measured, not
+   guessed; a card with no button keeps its original spacing. */
+.pcard{text-align:center;position:relative}
+.pcard.has-switch{padding-top:42px}
 .pnum{font-size:11px;color:#9CA3AF;margin-bottom:2px;font-weight:500}
 .pname{font-size:22px;font-weight:700;color:#1A1A2E}
 .psvg{display:flex;justify-content:center;align-items:center;margin:8px 0;animation:float 3s ease-in-out infinite}
@@ -106,9 +112,13 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;min-heigh
    card. The roster runs to dozens -- ~45 after 500 correct answers -- and a
    horizontally scrolling row put most of the team behind a sideways swipe, which
    is not a gesture a 5-year-old thinks to try on a row that looks complete. */
-.switch-btn{width:100%;background:#fff;border:2px solid #E5E7EB;border-radius:14px;padding:11px 14px;margin-bottom:12px;cursor:pointer;font-family:inherit;font-size:14px;font-weight:700;color:#374151;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 2px 8px rgba(0,0,0,0.06);transition:all 0.15s}
-.switch-btn:hover{border-color:#FF5722;color:#1A1A2E}
-.switch-count{font-size:11px;font-weight:700;color:#9CA3AF;background:#F3F4F6;border-radius:10px;padding:2px 8px}
+/* A quiet control in the card's own top-left corner rather than a full-width bar
+   under it. Switching is occasional -- the question is the thing on this screen --
+   and a button as loud as the card it sits on kept pulling the eye off it. Matches
+   .switch-back so the two ends of the same trip look like each other. */
+.switch-btn{position:absolute;top:10px;left:10px;background:#F3F4F6;border:none;border-radius:10px;padding:6px 10px;cursor:pointer;font-family:inherit;font-size:12px;font-weight:700;color:#6B7280;display:inline-flex;align-items:center;gap:5px;line-height:1;transition:all 0.15s;z-index:2}
+.switch-btn:hover{background:#E5E7EB;color:#374151}
+.switch-count{font-size:10px;font-weight:700;color:#9CA3AF}
 .switch-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
 .switch-opt{position:relative;background:#F9FAFB;border:2px solid #E5E7EB;border-radius:14px;padding:12px 6px 8px;cursor:pointer;transition:all 0.18s;text-align:center;display:flex;flex-direction:column;align-items:center;gap:3px;font-family:inherit}
 .switch-opt:hover{border-color:#FF5722;background:#FFF7ED}
@@ -1733,18 +1743,17 @@ function render(){
     const p=PKM[tm.pi];
     const xpMx=xpToNext(tm.level);
     const pct=Math.min(100,Math.round(tm.xp/xpMx*100));
-    h+=`<div class="card pcard"><div class="pnum">${p.num} &bull; ${typeBadgesInline(p.type)} Type</div><div class="pname">${p.n}${tm.shiny?` <span class="shiny-badge">${SHINY_STAR} Shiny</span>`:''} <span class="lvl-badge">Lv ${tm.level}</span></div><div class="psvg ${st.anim}">${pkSprite(tm.pi,148,tm.shiny)}</div><div class="xp-row"><span>XP</span><span>${tm.xp}/${xpMx}</span></div><div class="xp-track"><div class="xp-fill" style="width:${pct}%"></div></div></div>`;
+    // Inside the card, so it reads as a control ON this Pokemon rather than a
+    // separate thing between the Pokemon and the question. Same visibility rule as
+    // before: hidden once a wrong answer is pending, since switching re-serves.
+    const canSwitch=st.team.length>1&&(st.tries===0||st.cor);
+    const switchBtn=canSwitch?`<button class="switch-btn" id="switch-btn"><span>&#128260;</span><span>Switch</span><span class="switch-count">${st.team.length}</span></button>`:'';
+    h+=`<div class="card pcard${canSwitch?' has-switch':''}">${switchBtn}<div class="pnum">${p.num} &bull; ${typeBadgesInline(p.type)} Type</div><div class="pname">${p.n}${tm.shiny?` <span class="shiny-badge">${SHINY_STAR} Shiny</span>`:''} <span class="lvl-badge">Lv ${tm.level}</span></div><div class="psvg ${st.anim}">${pkSprite(tm.pi,148,tm.shiny)}</div><div class="xp-row"><span>XP</span><span>${tm.xp}/${xpMx}</span></div><div class="xp-track"><div class="xp-fill" style="width:${pct}%"></div></div></div>`;
     if(st.streakMsg){
       h+=`<div class="streak-toast">&#128293; ${st.streakMsg}</div>`;
     }
     if(st.lvlUpMsg){
       h+=`<div class="lvl-up-toast">&#11088; ${st.lvlUpMsg}</div>`;
-    }
-    // Hidden once a wrong answer is pending, for exactly the reason Run away is:
-    // switching re-serves a fresh question, so leaving it reachable mid-question
-    // would hand back the reroll the anti-guessing work removed.
-    if(st.team.length>1&&(st.tries===0||st.cor)){
-      h+=`<button class="switch-btn" id="switch-btn"><span>&#128260;</span><span>Switch Pok&eacute;mon</span><span class="switch-count">${st.team.length}</span></button>`;
     }
     // The XP badge is what makes the streak reward legible -- without seeing the
     // number climb there's no felt reason to slow down and get a run going.
