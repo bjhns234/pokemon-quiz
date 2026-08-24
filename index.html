@@ -30,7 +30,10 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;min-heigh
 .xp-row{display:flex;justify-content:space-between;font-size:11px;color:#9CA3AF;margin-bottom:5px;font-weight:500}
 .xp-track{height:10px;background:#F3F4F6;border-radius:999px;overflow:hidden}
 .xp-fill{height:100%;border-radius:999px;background:linear-gradient(90deg,#FF5722,#FF8A65);transition:width 0.7s cubic-bezier(0.4,0,0.2,1)}
-.q-head{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+/* Wraps because the shiny-odds pill can make this a four-pill row, which overflows
+   a phone width on one line -- and every pill is white-space:nowrap, so without this
+   the last one is simply clipped off the right edge rather than moving down. */
+.q-head{display:flex;align-items:center;flex-wrap:wrap;gap:6px 8px;margin-bottom:10px}
 .subj-tag{display:inline-block;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;letter-spacing:0.03em}
 /* Sits beside the subject pill rather than up in the header: the streak is what
    the XP ladder pays for, so it has to be in his eyeline while he reads. */
@@ -39,6 +42,10 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;min-heigh
 .streak-pill.bump{animation:streak-pop 0.45s ease}
 .streak-pill.record{background:linear-gradient(90deg,#FDE68A,#FCD34D);color:#92400E;box-shadow:0 0 0 1.5px #F59E0B}
 .best-pill{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:#F3F4F6;color:#6B7280;letter-spacing:0.03em;white-space:nowrap}
+/* Gold, to match the shiny badge and frame elsewhere -- the colour is the tell. */
+.shiny-pill{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:800;padding:3px 10px;border-radius:20px;background:linear-gradient(90deg,#FDE68A,#FBBF24);color:#7C2D12;letter-spacing:0.03em;white-space:nowrap}
+.shiny-pill.maxed{background:linear-gradient(90deg,#FBBF24,#F59E0B);color:#fff;box-shadow:0 0 0 1.5px #D97706}
+.shiny-pill.bump{animation:streak-pop 0.45s ease}
 /* Hotter than the level-up toast on purpose: a milestone run is rarer than a level. */
 .streak-toast{background:linear-gradient(90deg,#F97316,#EF4444);color:#fff;border-radius:12px;padding:11px 16px;font-size:15px;font-weight:700;margin-bottom:12px;text-align:center;box-shadow:0 4px 16px rgba(239,68,68,0.4);animation:lvl-up-flash 0.55s cubic-bezier(0.34,1.56,0.64,1)}
 @keyframes streak-pop{0%{transform:scale(1)}40%{transform:scale(1.28)}100%{transform:scale(1)}}
@@ -1371,8 +1378,38 @@ const CATCH_STREAK_NEEDED=3;
 // Rolled once per encounter, BEFORE the pool is filtered, because which Pokemon
 // are still catchable depends on the answer: a regular Pikachu on the team
 // blocks another regular Pikachu but not a shiny one.
-const SHINY_CHANCE=0.0333;
-function rollShiny(){return Math.random()<SHINY_CHANCE;}
+//
+// The rate is no longer flat, because a flat one made accuracy almost irrelevant:
+// simulated over 1000 answers, a 60%-correct player got a shiny every ~506 answers
+// and a 95% player every ~319 -- barely a 1.6x spread for a huge skill gap, since
+// the only thing a flat rate rewards is volume. Scaling with the streak turns the
+// shiny from a lottery played by showing up into something accuracy actually buys:
+// the same simulation gives ~332 answers at 60% and ~89 at 95%, a 3.7x spread.
+//
+// Same shape as xpForStreak -- base + step*min(streak,cap) -- so the two ladders
+// read alike. The cap is 20 rather than XP_STREAK_CAP's 7 ON PURPOSE: per-answer XP
+// deliberately flattens at 7, which is exactly why streaks 8-20 had nothing left to
+// earn between milestones. This is what fills that stretch.
+//
+// Strictly additive: SHINY_BASE_CHANCE is the floor, so breaking a run never leaves
+// him worse off than the old flat rate -- he only stops earning the bonus. A miss
+// costs a streak already; it shouldn't also owe a penalty.
+const SHINY_BASE_CHANCE=0.0333;  // 1 in 30, the floor -- the old flat rate
+const SHINY_STREAK_STEP=0.0067;
+const SHINY_STREAK_CAP=20;       // 1 in 6 at the top
+function shinyChance(streak){
+  return SHINY_BASE_CHANCE+SHINY_STREAK_STEP*Math.min(Math.max(0,streak|0),SHINY_STREAK_CAP);
+}
+// Reads st.streak rather than taking it as an argument so all four call sites keep
+// working unchanged -- including the two starter picks, which happen at streak 0 and
+// so correctly get the floor.
+function rollShiny(){return Math.random()<shinyChance(st.streak);}
+// How many times the floor the current streak is worth. Shown to the player, because
+// an invisible buff is the same mistake 1/1000 was: real odds nobody can feel.
+function shinyMult(streak){return shinyChance(streak)/SHINY_BASE_CHANCE;}
+// Appears at the first milestone, where the multiplier is exactly 2x -- so the pill
+// arriving and the first "5 in a row!" bonus land on the same answer.
+const SHINY_PILL_MIN=5;
 // Wild Pokemon used to appear at (active level - 3 .. active level). That read fine
 // at level 12 and became nonsense at level 100: every Pokemon in the grass was a
 // level-100 veteran, and since a catch joins the team AT the wild's level, it arrived
@@ -1671,7 +1708,15 @@ function qCardHTML(resultMsg,btnLabel){
   const bestPill=(st.bestStreak>=BEST_STREAK_NOTE&&!st.newRecord)
     ?`<span class="best-pill">&#127942; Best ${st.bestStreak}</span>`
     :'';
-  let h=`<div class="card"><div class="q-head"><div class="subj-tag ${SCLS[q.subject]||'tagm'}">${SNAME[q.subject]}</div>${streakPill}${bestPill}</div><div class="qtext">${q.question}</div><div${gridAttrs}>`;
+  // Play phase only. The odds apply to the NEXT encounter roll, but showing "5x
+  // shiny luck" underneath a wild Pokemon whose colour was already decided reads
+  // like a broken promise -- so it steps aside while one is on screen.
+  const mult=shinyMult(st.streak);
+  const multLabel=mult.toFixed(1).replace(/\.0$/,'');
+  const shinyPill=(st.phase==='play'&&st.streak>=SHINY_PILL_MIN)
+    ?`<span class="shiny-pill${st.streak>=SHINY_STREAK_CAP?' maxed':''}${grew?' bump':''}">&#10024; ${multLabel}&#215; shiny luck</span>`
+    :'';
+  let h=`<div class="card"><div class="q-head"><div class="subj-tag ${SCLS[q.subject]||'tagm'}">${SNAME[q.subject]}</div>${streakPill}${bestPill}${shinyPill}</div><div class="qtext">${q.question}</div><div${gridAttrs}>`;
   q.answers.forEach((a,i)=>{
     let c='ans-btn';
     const ruled=st.wrong.includes(i);
