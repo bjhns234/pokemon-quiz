@@ -27,7 +27,10 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;min-heigh
 .psvg img{display:block}
 .psvg.bk{animation:bounce 0.5s ease forwards}
 .psvg.sk{animation:shake 0.45s ease forwards}
-.xp-row{display:flex;justify-content:space-between;font-size:11px;color:#9CA3AF;margin-bottom:5px;font-weight:500}
+/* min-height reserves the badge's height so the bar doesn't hop down 2px every time
+   one lands and back up on the next question. */
+.xp-row{display:flex;justify-content:space-between;align-items:center;min-height:17px;font-size:11px;color:#9CA3AF;margin-bottom:5px;font-weight:500}
+.xp-right{display:inline-flex;align-items:center;gap:6px}
 .xp-track{height:10px;background:#F3F4F6;border-radius:999px;overflow:hidden}
 .xp-fill{height:100%;border-radius:999px;background:linear-gradient(90deg,#FF5722,#FF8A65);transition:width 0.7s cubic-bezier(0.4,0,0.2,1)}
 /* Wraps because the shiny-odds pill can make this a four-pill row, which overflows
@@ -71,7 +74,12 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;min-heigh
    tap, so a stalled animation in a backgrounded tab can never lock him out. */
 .ans-grid.arming .ans-btn{animation:ans-arm var(--arm,1500ms) ease}
 @keyframes ans-arm{0%{opacity:0.25}70%{opacity:0.55}100%{opacity:1}}
-.xp-gain{display:inline-block;background:#065F46;color:#fff;font-size:12px;font-weight:700;padding:1px 8px;border-radius:20px;margin-left:6px;vertical-align:middle}
+/* Sits beside the running total now, not in a message under the answers: the number
+   that just landed is next to the number it landed in, directly above the bar it
+   moved. It pops so the eye catches it arriving -- a badge that merely appears in a
+   grey row is easy to miss entirely, which was the whole risk of moving it here. */
+.xp-gain{display:inline-block;background:#065F46;color:#fff;font-size:11px;font-weight:700;padding:1px 7px;border-radius:20px;animation:xp-gain-pop 0.5s cubic-bezier(0.34,1.56,0.64,1)}
+@keyframes xp-gain-pop{0%{transform:translateY(5px) scale(0.7);opacity:0}60%{transform:translateY(0) scale(1.12);opacity:1}100%{transform:translateY(0) scale(1);opacity:1}}
 .result-msg{text-align:center;padding:11px 14px;border-radius:10px;font-size:14px;margin-bottom:8px;font-weight:500}
 .result-msg.ok{background:#ECFDF5;color:#065F46}
 .result-msg.no{background:#FEF2F2;color:#991B1B}
@@ -1741,7 +1749,9 @@ function qCardHTML(resultMsg,btnLabel){
   });
   h+=`</div>`;
   if(st.tries>0){
-    h+=`<div class="result-msg ${st.cor?'ok':'no'}">${resultMsg}</div>`;
+    // Empty is a real case now -- a correct play-phase answer says nothing here -- and
+    // an empty .result-msg would still paint its padding as a green stripe.
+    if(resultMsg)h+=`<div class="result-msg ${st.cor?'ok':'no'}">${resultMsg}</div>`;
     if(resolved)h+=`<button class="nxt-btn" id="nxt">${btnLabel}</button>`;
   }
   return h+`</div>`;
@@ -1815,18 +1825,21 @@ function render(){
     // before: hidden once a wrong answer is pending, since switching re-serves.
     const canSwitch=st.team.length>1&&(st.tries===0||st.cor);
     const switchBtn=canSwitch?`<button class="switch-btn" id="switch-btn"><span>&#128260;</span><span>Switch</span><span class="switch-count">${st.team.length}</span></button>`:'';
-    h+=`<div class="card pcard${canSwitch?' has-switch':''}">${switchBtn}<div class="pnum">${p.num} &bull; ${typeBadgesInline(p.type)} Type</div><div class="pname">${p.n}${tm.shiny?` <span class="shiny-badge">${SHINY_STAR} Shiny</span>`:''} <span class="lvl-badge">Lv ${tm.level}</span></div><div class="psvg ${st.anim}">${pkSprite(tm.pi,148,tm.shiny)}</div><div class="xp-row"><span>XP</span><span>${tm.xp}/${xpMx}</span></div><div class="xp-track"><div class="xp-fill" style="width:${pct}%"></div></div></div>`;
+    h+=`<div class="card pcard${canSwitch?' has-switch':''}">${switchBtn}<div class="pnum">${p.num} &bull; ${typeBadgesInline(p.type)} Type</div><div class="pname">${p.n}${tm.shiny?` <span class="shiny-badge">${SHINY_STAR} Shiny</span>`:''} <span class="lvl-badge">Lv ${tm.level}</span></div><div class="psvg ${st.anim}">${pkSprite(tm.pi,148,tm.shiny)}</div><div class="xp-row"><span>XP</span><span class="xp-right">${st.lastXp?`<span class="xp-gain">+${st.lastXp} XP</span>`:''}${tm.xp}/${xpMx}</span></div><div class="xp-track"><div class="xp-fill" style="width:${pct}%"></div></div></div>`;
     if(st.streakMsg){
       h+=`<div class="streak-toast">&#128293; ${st.streakMsg}</div>`;
     }
     if(st.lvlUpMsg){
       h+=`<div class="lvl-up-toast">&#11088; ${st.lvlUpMsg}</div>`;
     }
-    // The XP badge is what makes the streak reward legible -- without seeing the
-    // number climb there's no felt reason to slow down and get a run going.
-    const rm=st.cor
-      ?`${st.q?.encouragement||'Amazing!'}${st.lastXp?`<span class="xp-gain">+${st.lastXp} XP</span>`:''}`
-      :(st.q?.hint||'Good try!');
+    // Nothing under the answers when he gets it right. The XP badge moved up onto the
+    // bar it actually fills, and everything else the message said was already being
+    // said louder: the button goes green, the Pokemon bounces, the bar grows.
+    //
+    // A wrong answer still gets one, because that branch is not encouragement -- it is
+    // the hint, and it is the only thing standing between him and the same question
+    // he just missed.
+    const rm=st.cor?'':(st.q?.hint||'Good try!');
     const willEvolve=!!st.pendingEvo;
     const btn=willEvolve?`What's happening to ${p.n}?! &#8594;`:'Next Question &#8594;';
     h+=qCardHTML(rm,btn);
