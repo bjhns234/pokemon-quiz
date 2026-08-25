@@ -80,9 +80,9 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;min-heigh
    grey row is easy to miss entirely, which was the whole risk of moving it here. */
 .xp-gain{display:inline-block;background:#065F46;color:#fff;font-size:11px;font-weight:700;padding:1px 7px;border-radius:20px;animation:xp-gain-pop 0.5s cubic-bezier(0.34,1.56,0.64,1)}
 @keyframes xp-gain-pop{0%{transform:translateY(5px) scale(0.7);opacity:0}60%{transform:translateY(0) scale(1.12);opacity:1}100%{transform:translateY(0) scale(1);opacity:1}}
-.result-msg{text-align:center;padding:11px 14px;border-radius:10px;font-size:14px;margin-bottom:8px;font-weight:500}
-.result-msg.ok{background:#ECFDF5;color:#065F46}
-.result-msg.no{background:#FEF2F2;color:#991B1B}
+/* Only ever a wrong answer or an escape now -- no phase renders one on a correct
+   answer -- so there is no longer a .ok variant to pair with this. */
+.result-msg{text-align:center;padding:11px 14px;border-radius:10px;font-size:14px;margin-bottom:8px;font-weight:500;background:#FEF2F2;color:#991B1B}
 .nxt-btn{width:100%;background:#1A1A2E;color:white;border:none;border-radius:12px;padding:13px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit}
 .nxt-btn:hover{opacity:0.85}
 .pdx-gen-section{margin-bottom:16px}
@@ -1749,9 +1749,9 @@ function qCardHTML(resultMsg,btnLabel){
   });
   h+=`</div>`;
   if(st.tries>0){
-    // Empty is a real case now -- a correct play-phase answer says nothing here -- and
-    // an empty .result-msg would still paint its padding as a green stripe.
-    if(resultMsg)h+=`<div class="result-msg ${st.cor?'ok':'no'}">${resultMsg}</div>`;
+    // Empty is the common case now -- no phase says anything here on a correct answer
+    // -- and an empty .result-msg would still paint its padding as a bare stripe.
+    if(resultMsg)h+=`<div class="result-msg">${resultMsg}</div>`;
     if(resolved)h+=`<button class="nxt-btn" id="nxt">${btnLabel}</button>`;
   }
   return h+`</div>`;
@@ -1873,10 +1873,18 @@ function render(){
     // this toast is the only evidence the bonus landed anywhere.
     if(st.streakMsg)h+=`<div class="streak-toast">&#128293; ${st.streakMsg}</div>`;
     if(st.lvlUpMsg)h+=`<div class="lvl-up-toast">&#11088; ${st.lvlUpMsg}</div>`;
-    // A retried answer says "You got it!" rather than "Keep going!", since it
-    // moves him on without filling a pip -- only first-try answers do that.
-    const rm=escaped?`${wild.n} broke free and ran away!`:caught?`&#9889; Gotcha! ${wild.n} was caught!`
-      :st.cor?(st.tries>1?`You got it!`:`Great answer! Keep going!`):`${wild.n} broke free! ${st.q?.hint||'Try again!'}`;
+    // Same rule as the play phase: nothing under the answers when he gets it right.
+    // A filled pip, a green button and the Pokemon flinching already say it, and the
+    // box was pushing the button he actually needs down the screen.
+    //
+    // The catch message went with it rather than being kept as a special case. It
+    // announced "Gotcha!" BEFORE the button that performs the catch and the animation
+    // that shows it -- the news arriving a beat ahead of the event.
+    //
+    // Escaping keeps its message. It reads red, because it only happens off a wrong
+    // answer, and it is the only thing that tells him the Pokemon is gone.
+    const rm=escaped?`${wild.n} broke free and ran away!`
+      :st.cor?'':`${wild.n} broke free! ${st.q?.hint||'Try again!'}`;
     // Only rendered once resolved, so there's no unsolved branch to label.
     const btn=escaped?'Continue &#8594;':caught?'Catch it! &#8594;':'Next Question &#8594;';
     h+=qCardHTML(rm,btn);
