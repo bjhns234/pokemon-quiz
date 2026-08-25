@@ -131,6 +131,12 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;min-heigh
 .bug-type{background:#ECFCCB;color:#3F6212}
 .fairy-type{background:#FCE7F3;color:#9D174D}
 .lvl-badge{display:inline-block;background:#1A1A2E;color:white;font-size:11px;font-weight:700;padding:3px 9px;border-radius:10px;margin-left:6px;letter-spacing:0.04em;vertical-align:middle}
+/* A level-up lands on the pill that actually changed instead of a bar above the card.
+   Green because the +XP badge just below it is green too, so the badge, the bar filling
+   and the number lighting up read as one movement rather than three separate signals.
+   Navy to mint is a big enough jump to catch the eye without moving anything: same
+   glyphs, same width, nothing below it shifts. */
+.lvl-badge.lvl-up{background:linear-gradient(90deg,#6EE7B7,#34D399);color:#064E3B;box-shadow:0 0 0 2px #059669,0 2px 10px rgba(5,150,105,0.45);animation:streak-pop 0.45s ease}
 /* Switching lives on its own screen rather than in a strip beside the Pokemon
    card. The roster runs to dozens -- ~45 after 500 correct answers -- and a
    horizontally scrolling row put most of the team behind a sideways swipe, which
@@ -1825,13 +1831,14 @@ function render(){
     // before: hidden once a wrong answer is pending, since switching re-serves.
     const canSwitch=st.team.length>1&&(st.tries===0||st.cor);
     const switchBtn=canSwitch?`<button class="switch-btn" id="switch-btn"><span>&#128260;</span><span>Switch</span><span class="switch-count">${st.team.length}</span></button>`:'';
-    h+=`<div class="card pcard${canSwitch?' has-switch':''}">${switchBtn}<div class="pnum">${p.num} &bull; ${typeBadgesInline(p.type)} Type</div><div class="pname">${p.n}${tm.shiny?` <span class="shiny-badge">${SHINY_STAR} Shiny</span>`:''} <span class="lvl-badge">Lv ${tm.level}</span></div><div class="psvg ${st.anim}">${pkSprite(tm.pi,148,tm.shiny)}</div><div class="xp-row"><span>XP</span><span class="xp-right">${st.lastXp?`<span class="xp-gain">+${st.lastXp} XP</span>`:''}${tm.xp}/${xpMx}</span></div><div class="xp-track"><div class="xp-fill" style="width:${pct}%"></div></div></div>`;
+    h+=`<div class="card pcard${canSwitch?' has-switch':''}">${switchBtn}<div class="pnum">${p.num} &bull; ${typeBadgesInline(p.type)} Type</div><div class="pname">${p.n}${tm.shiny?` <span class="shiny-badge">${SHINY_STAR} Shiny</span>`:''} <span class="lvl-badge${st.lvlUpMsg?' lvl-up':''}">Lv ${tm.level}</span></div><div class="psvg ${st.anim}">${pkSprite(tm.pi,148,tm.shiny)}</div><div class="xp-row"><span>XP</span><span class="xp-right">${st.lastXp?`<span class="xp-gain">+${st.lastXp} XP</span>`:''}${tm.xp}/${xpMx}</span></div><div class="xp-track"><div class="xp-fill" style="width:${pct}%"></div></div></div>`;
     if(st.streakMsg){
       h+=`<div class="streak-toast">&#128293; ${st.streakMsg}</div>`;
     }
-    if(st.lvlUpMsg){
-      h+=`<div class="lvl-up-toast">&#11088; ${st.lvlUpMsg}</div>`;
-    }
+    // No level-up bar here: the Lv pill on the card above is lit instead, and the
+    // Pokemon's name is already sitting beside it, so the bar's sentence said nothing
+    // the card wasn't. st.lvlUpMsg survives as the flag for that -- the wild phase
+    // still needs its text.
     // Nothing under the answers when he gets it right. The XP badge moved up onto the
     // bar it actually fills, and everything else the message said was already being
     // said louder: the button goes green, the Pokemon bounces, the bar grows.
@@ -1866,11 +1873,12 @@ function render(){
     const flee=canFlee?`<button class="flee-btn" id="flee">Run away</button>`:'';
     const wsh=!!st.wild.shiny;
     h+=`<div class="wild-card${wsh?' shiny':''}"><div class="wild-badge">${wsh?`${SHINY_STAR} Shiny Encounter! ${SHINY_STAR}`:'&#9889; Wild Encounter'}</div><div class="wild-name">A wild ${wsh?`<strong class="shiny-name">shiny ${wild.n}</strong>`:`<strong>${wild.n}</strong>`} appeared! <span class="lvl-badge">Lv ${st.wild.level}</span></div><div class="psvg ${st.anim}">${pkSprite(st.wild.pi,140,wsh)}</div><div class="catch-counter">Answer ${CATCH_STREAK_NEEDED} to catch it! (${cs}/${CATCH_STREAK_NEEDED})</div>${pips}${balls}${flee}</div>`;
-    // Both toasts belong here too. A milestone bonus is paid during an encounter and
-    // can level him up, but the level-up toast only used to render in the play phase --
-    // so the level happened, the message was set, and loadQuestion() cleared it before
-    // he ever saw it. The active Pokemon's XP bar is hidden behind the wild card, so
-    // this toast is the only evidence the bonus landed anywhere.
+    // Both toasts stay HERE, even though the play phase dropped its level-up bar for a
+    // lit pill. There is no pill to light: the whole active Pokemon card is behind the
+    // wild card, and the "Lv 8" on screen belongs to the WILD Pokemon -- lighting that
+    // would say the thing he is trying to catch just levelled up. A milestone bonus is
+    // paid during an encounter and can level him up, so without this toast the level
+    // would happen and loadQuestion() would clear the message before he ever saw it.
     if(st.streakMsg)h+=`<div class="streak-toast">&#128293; ${st.streakMsg}</div>`;
     if(st.lvlUpMsg)h+=`<div class="lvl-up-toast">&#11088; ${st.lvlUpMsg}</div>`;
     // Same rule as the play phase: nothing under the answers when he gets it right.
