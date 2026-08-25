@@ -1380,23 +1380,29 @@ const CATCH_STREAK_NEEDED=3;
 // blocks another regular Pikachu but not a shiny one.
 //
 // The rate is no longer flat, because a flat one made accuracy almost irrelevant:
-// simulated over 1000 answers, a 60%-correct player got a shiny every ~506 answers
-// and a 95% player every ~319 -- barely a 1.6x spread for a huge skill gap, since
-// the only thing a flat rate rewards is volume. Scaling with the streak turns the
-// shiny from a lottery played by showing up into something accuracy actually buys:
-// the same simulation gives ~332 answers at 60% and ~89 at 95%, a 3.7x spread.
+// the only thing a flat rate rewards is showing up. Scaling with the streak turns
+// the shiny from a lottery into something accuracy actually buys.
 //
 // Same shape as xpForStreak -- base + step*min(streak,cap) -- so the two ladders
-// read alike. The cap is 20 rather than XP_STREAK_CAP's 7 ON PURPOSE: per-answer XP
-// deliberately flattens at 7, which is exactly why streaks 8-20 had nothing left to
-// earn between milestones. This is what fills that stretch.
+// read alike. But the cap is 10, NOT XP_STREAK_CAP's 7 and not the 20 this was
+// first written with, and that number was measured rather than reasoned:
+//
+// LEVEL_UP_STREAK is 3, so the difficulty system promotes him to a harder tier
+// every third correct answer. It is built to break exactly the runs this pays for.
+// Simulating a fixed ability against the real adaptive tiers, he settles at the
+// ceiling tier and lives at streaks 0-10 -- a streak of 20 is a rare spike, not a
+// place he ever sits. A cap of 20 meant the top half of the ladder was decoration:
+// the multiplier he actually saw averaged 1.3-1.8x however well he played. At 10 the
+// same 1-in-6 ceiling lands where he can reach it, roughly doubling the odds he
+// really gets (1.29->1.56 at 59% accuracy, 1.78->2.42 at 80%) without moving either
+// end of the range.
 //
 // Strictly additive: SHINY_BASE_CHANCE is the floor, so breaking a run never leaves
 // him worse off than the old flat rate -- he only stops earning the bonus. A miss
 // costs a streak already; it shouldn't also owe a penalty.
 const SHINY_BASE_CHANCE=0.0333;  // 1 in 30, the floor -- the old flat rate
-const SHINY_STREAK_STEP=0.0067;
-const SHINY_STREAK_CAP=20;       // 1 in 6 at the top
+const SHINY_STREAK_STEP=0.0134;
+const SHINY_STREAK_CAP=10;       // 1 in 6 at the top
 function shinyChance(streak){
   return SHINY_BASE_CHANCE+SHINY_STREAK_STEP*Math.min(Math.max(0,streak|0),SHINY_STREAK_CAP);
 }
@@ -1404,11 +1410,8 @@ function shinyChance(streak){
 // working unchanged -- including the two starter picks, which happen at streak 0 and
 // so correctly get the floor.
 function rollShiny(){return Math.random()<shinyChance(st.streak);}
-// How many times the floor the current streak is worth. Shown to the player, because
-// an invisible buff is the same mistake 1/1000 was: real odds nobody can feel.
-function shinyMult(streak){return shinyChance(streak)/SHINY_BASE_CHANCE;}
-// Appears at the first milestone, where the multiplier is exactly 2x -- so the pill
-// arriving and the first "5 in a row!" bonus land on the same answer.
+// Appears at the first XP milestone, so the pill arriving and the first "5 in a row!"
+// bonus land on the same answer.
 const SHINY_PILL_MIN=5;
 // Wild Pokemon used to appear at (active level - 3 .. active level). That read fine
 // at level 12 and became nonsense at level 100: every Pokemon in the grass was a
@@ -1708,13 +1711,17 @@ function qCardHTML(resultMsg,btnLabel){
   const bestPill=(st.bestStreak>=BEST_STREAK_NOTE&&!st.newRecord)
     ?`<span class="best-pill">&#127942; Best ${st.bestStreak}</span>`
     :'';
-  // Play phase only. The odds apply to the NEXT encounter roll, but showing "5x
-  // shiny luck" underneath a wild Pokemon whose colour was already decided reads
-  // like a broken promise -- so it steps aside while one is on screen.
-  const mult=shinyMult(st.streak);
-  const multLabel=mult.toFixed(1).replace(/\.0$/,'');
+  // Says the odds are better without saying by how much. He is five: "2.4x" asks him
+  // to read a multiplier, and the exact figure buys him nothing he can act on -- the
+  // only thing he can do about it is keep the streak alive, which the streak pill
+  // beside it is already telling him.
+  //
+  // Play phase only. The odds apply to the NEXT encounter roll, and a shiny promise
+  // printed underneath a wild Pokemon whose colour was already decided reads like a
+  // broken one -- so it steps aside while one is on screen.
+  const shinyMaxed=st.streak>=SHINY_STREAK_CAP;
   const shinyPill=(st.phase==='play'&&st.streak>=SHINY_PILL_MIN)
-    ?`<span class="shiny-pill${st.streak>=SHINY_STREAK_CAP?' maxed':''}${grew?' bump':''}">&#10024; ${multLabel}&#215; shiny luck</span>`
+    ?`<span class="shiny-pill${shinyMaxed?' maxed':''}${grew?' bump':''}">&#10024; ${shinyMaxed?'SHINY CHANCE MAX!':'Shiny chance UP!'}</span>`
     :'';
   let h=`<div class="card"><div class="q-head"><div class="subj-tag ${SCLS[q.subject]||'tagm'}">${SNAME[q.subject]}</div>${streakPill}${bestPill}${shinyPill}</div><div class="qtext">${q.question}</div><div${gridAttrs}>`;
   q.answers.forEach((a,i)=>{
@@ -2372,12 +2379,9 @@ function playStarterReveal(lineIdx,shiny,onDone){
 // exactly once, so it gets the reveal whether or not the roll came up shiny --
 // it used to drop him straight into a question with no acknowledgement at all.
 //
-// Minus the reel, though. "Surprise me!" spins because the result is genuinely
-// unknown to him; spinning here would flick other starters past a choice he just
-// made deliberately, which reads as the game reconsidering it. The hold before
-// the burst does the reel's job: he gets the same landing, the same sparkles and
-// the same "Squirtle is your partner!" -- just without being asked to wonder
-// whether he is about to get Squirtle.
+// Identical to "Surprise me!", down to the call: the ball is honest suspense either
+// way. It withholds a Pokemon he has already named rather than pretending the game
+// might hand him a different one, so the two paths stopped needing to differ.
 function choosePickedStarter(lineIdx){
   const shiny=rollShiny();
   playStarterReveal(lineIdx,shiny,()=>pickStarter(lineIdx,shiny));
@@ -2389,8 +2393,8 @@ function pickRandomStarter(){
   const all=GENS.reduce((a,g)=>a.concat(g),[]);
   if(!all.length)return;
   const lineIdx=all[Math.floor(Math.random()*all.length)];
-  // Rolled up front so the reveal can land on the shiny sprite -- the reel stays
-  // theatre over an already-decided result, colour included.
+  // Rolled up front so the reveal can land on the shiny sprite: the ball is theatre
+  // over an already-decided result, colour included.
   const shiny=rollShiny();
   playStarterReveal(lineIdx,shiny,()=>pickStarter(lineIdx,shiny));
 }
@@ -2517,8 +2521,10 @@ function fleeWild(){
 
 function afterTurn(){
   if(st.cor&&st.phase==='play'){
-    // One roll, shared by whichever of the two encounter kinds fires -- so the
-    // rate is 0.1% per encounter, not per encounter kind.
+    // One roll, shared by whichever of the two encounter kinds fires, so the odds
+    // are per ENCOUNTER and not per encounter kind. Rolled here rather than inside
+    // triggerWildEncounter because the stray-starter branch never goes through it
+    // and would otherwise be rolling a second time at the same streak.
     const shiny=rollShiny();
     const starterCands=getAvailableOtherStarters(shiny);
     if(starterCands.length>0&&Math.random()<STARTER_WILD_CHANCE){
