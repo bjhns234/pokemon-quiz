@@ -41,6 +41,14 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;min-heigh
 /* Sits beside the subject pill rather than up in the header: the streak is what
    the XP ladder pays for, so it has to be in his eyeline while he reads. */
 .streak-pill{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:#FEF3C7;color:#B45309;letter-spacing:0.03em;white-space:nowrap}
+.rematch-pill{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:#EDE9FE;color:#6D28D9;letter-spacing:0.03em;white-space:nowrap}
+.rematch-toast{background:linear-gradient(90deg,#8B5CF6,#6D28D9);color:#fff;border-radius:12px;padding:11px 16px;font-size:15px;font-weight:700;margin-bottom:12px;text-align:center;box-shadow:0 4px 16px rgba(109,40,217,0.35);animation:lvl-up-flash 0.55s cubic-bezier(0.34,1.56,0.64,1)}
+/* Quiet on purpose: it sits under the answers on every question, so it has to be
+   findable when he's stuck without shouting at him when he isn't. */
+.help-btn{display:block;width:100%;background:#F0F9FF;border:1.5px dashed #7DD3FC;color:#0369A1;border-radius:12px;padding:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit}
+.help-btn:hover{background:#E0F2FE;border-color:#0EA5E9}
+.help-box{background:#F0F9FF;border:1.5px solid #7DD3FC;border-radius:12px;padding:11px 14px;color:#0C4A6E;font-size:14px;line-height:1.5}
+.help-keep{font-size:12px;font-weight:700;color:#0369A1;margin-top:5px}
 .streak-pill.maxed{background:#FFEDD5;color:#C2410C}
 .streak-pill.bump{animation:streak-pop 0.45s ease}
 .streak-pill.record{background:linear-gradient(90deg,#FDE68A,#FCD34D);color:#92400E;box-shadow:0 0 0 1.5px #F59E0B}
@@ -1297,23 +1305,35 @@ const QUEUES={};
 SUBS.forEach(sub=>{QUEUES[sub]={};QLEVELS[sub].forEach(lv=>{QUEUES[sub][lv]=shuffle(QB[sub][lv].map((_,i)=>i));});});
 function pickBuiltIn(sub,level,pname){
   if(QUEUES[sub][level].length===0) QUEUES[sub][level]=shuffle(QB[sub][level].map((_,i)=>i));
-  const idx=QUEUES[sub][level].shift();
+  return serveQuestion(sub,level,QUEUES[sub][level].shift(),pname);
+}
+// Everything random about a serving is rolled here, once, and kept on the question
+// as `tmpl` -- so fillQuestion can redraw the same question with a different
+// Pokemon's name (a mid-question switch) without reshuffling the options under him.
+// `lv` and `idx` are its address in QB, which is what a Rematch is stored by.
+function serveQuestion(sub,level,idx,pname){
   const raw=QB[sub][level][idx];
-  const fill=s=>s.replace(/\{P\}/g,pname);
   // Options are shuffled per serving. As authored, 95% of correct answers sit in
   // slots 1 and 2 of the 2x2 grid, so always tapping bottom-left scored 52.7%
   // first try (63.8% on math), and numeric options were sorted ascending with the
   // answer third-smallest 77% of the time. Both made position a better strategy
   // than reading. order[newSlot] is the index the option had as authored.
   const order=shuffle(raw[1].map((_,i)=>i));
+  const cheer=Math.random()<CHEER_RATE?CHEERS[Math.floor(Math.random()*CHEERS.length)]:raw[3];
+  return fillQuestion({sub,lv:level,idx,raw,order,cheer},pname);
+}
+function fillQuestion(tmpl,pname){
+  const {raw,order}=tmpl;
+  const fill=s=>s.replace(/\{P\}/g,pname);
   return{
-    subject:sub,
+    subject:tmpl.sub,
+    tmpl,
     question:fill(raw[0]),
     answers:order.map(i=>fill(raw[1][i])),
     correctIndex:order.indexOf(raw[2]),
     // fill() matters here: this was the one field that never ran through it, so
     // a {P} in an encouragement used to render as the literal text "{P}".
-    encouragement:fill(Math.random()<CHEER_RATE?CHEERS[Math.floor(Math.random()*CHEERS.length)]:raw[3]),
+    encouragement:fill(tmpl.cheer),
     hint:fill(raw[4]),
   };
 }
@@ -1369,6 +1389,24 @@ const XP_STREAK_CAP=7;   // streak 7+ pays 45
 // working a question out from the hint still visibly pays.
 const XP_AFTER_HINT=2;
 function xpForStreak(streak){return XP_BASE+XP_STREAK_STEP*Math.min(streak,XP_STREAK_CAP);}
+
+// "Ask for help" shows the hint BEFORE he answers. It exists because the only
+// honest options on a hard question used to be "guess and probably lose the
+// streak" or "change subject and get a free new question" -- and he found the
+// second one. Asking now pauses the streak instead: land it and the streak
+// survives (it just doesn't grow), miss it and it resets like any miss.
+// The pay sits between the two paths it has to beat and lose to: more than
+// guessing wrong and landing it off the hint, less than any unaided answer, so
+// asking is never the best way to farm XP -- only the best way to not be stuck.
+const XP_WITH_HELP=XP_BASE;
+
+// Rematches: a question missed first time, or only landed with help, comes back
+// REVIEW.gap questions later. Beating it unaided sends it further out (REVIEW.long,
+// which usually means next session); beating it that way REVIEW.wins times retires
+// it. Anything else -- a miss, or needing help again -- starts it over at the short
+// gap. That spacing is the actual learning: the same idea, again, just as he's
+// about to forget it. Mutable for the same reason PAUSE is.
+const REVIEW={gap:4,long:15,wins:2,max:24,bonus:20};
 
 // Per-answer XP flattens at streak 7, so a 20-run used to pay exactly the same as
 // a 7-run. Milestones give the long runs somewhere to go. Safe against guessing for
@@ -1501,6 +1539,11 @@ function mkState(saved){
     activeIdx:0,
     q:null,sel:null,cor:false,
     tries:0,wrong:[],armAt:0,lastXp:0,
+    // helped: he asked for the hint on this question before answering it.
+    helped:false,
+    // Rematch queue, and the count of questions served this session that its
+    // due-times are measured in. See REVIEW.
+    review:[],served:0,rematchMsg:null,
     pdx:new Array(PKM.length).fill(false),
     // A second, parallel Pokedex. Shinies are tracked apart from regulars so
     // one Pokemon can be recorded twice -- once in each colour.
@@ -1526,6 +1569,7 @@ function mkState(saved){
     s.stats=saved.stats;
     s.subject=saved.subject;
     s.bestStreak=saved.bestStreak;
+    s.review=saved.review;
     // phase is derived, never restored: an interrupted wild encounter or
     // evolution is forfeited rather than resumed into a half-built state.
     s.phase=saved.team.length>0?'play':'starter';
@@ -1558,6 +1602,9 @@ function save(){
       stats:st.stats,
       subject:st.subject,
       bestStreak:st.bestStreak,
+      // Stored by QB address plus the question text, so an edit to the question
+      // bank can't quietly turn a saved Rematch into a different question.
+      review:st.review.map(r=>({sub:r.sub,lv:r.lv,idx:r.idx,q:QB[r.sub][r.lv][r.idx][0],wins:r.wins})),
     }));
   }catch(e){/* storage full or unavailable — keep playing unsaved */}
 }
@@ -1598,6 +1645,13 @@ function loadSaved(){
       };
     });
 
+    // A saved Rematch is kept only if it still points at the question it was
+    // saved from. `due` is session-relative, so it isn't stored: they come back
+    // spread through the start of the next session instead, a few questions apart.
+    const review=(Array.isArray(data.review)?data.review:[]).filter(r=>
+      r&&SUBS.includes(r.sub)&&QB[r.sub][r.lv]&&QB[r.sub][r.lv][r.idx]&&QB[r.sub][r.lv][r.idx][0]===r.q
+    ).slice(-REVIEW.max).map((r,i)=>({sub:r.sub,lv:r.lv,idx:r.idx,wins:Math.max(0,r.wins|0),due:2+i*3}));
+
     return{
       starter:typeof data.starter==='number'?data.starter:null,
       activeIdx:Math.min(Math.max(0,data.activeIdx|0),team.length-1),
@@ -1607,6 +1661,8 @@ function loadSaved(){
       // Saves from before records existed have none; 0 just means "no record yet",
       // so SAVE_V holds here the same way it did for the subject chooser.
       bestStreak:Math.max(0,data.bestStreak|0),
+      // Older saves have no Rematches; an empty queue is exactly what they meant.
+      review,
       // Saves from before shinies existed carry no `shiny` on team members and
       // no shinyDex; both default to "nothing is shiny", which is exactly what
       // those saves meant. SAVE_V holds again -- bumping it would wipe every
@@ -1745,7 +1801,10 @@ function qCardHTML(resultMsg,btnLabel){
   const shinyPill=(st.phase==='play'&&st.streak>=SHINY_PILL_MIN)
     ?`<span class="shiny-pill${shinyMaxed?' maxed':''}${grew?' bump':''}">&#10024; ${shinyMaxed?'SHINY CHANCE MAX!':'Shiny chance UP!'}</span>`
     :'';
-  let h=`<div class="card"><div class="q-head"><div class="subj-tag ${SCLS[q.subject]||'tagm'}">${SNAME[q.subject]}</div>${streakPill}${bestPill}${shinyPill}</div><div class="qtext">${q.question}</div><div${gridAttrs}>`;
+  // Tells him this one is a question he stumbled on before -- worth knowing, since
+  // beating it is worth a bonus and it's the whole point of it coming back.
+  const rematchPill=q.rematch?`<span class="rematch-pill">&#128257; Rematch!</span>`:'';
+  let h=`<div class="card"><div class="q-head"><div class="subj-tag ${SCLS[q.subject]||'tagm'}">${SNAME[q.subject]}</div>${rematchPill}${streakPill}${bestPill}${shinyPill}</div><div class="qtext">${q.question}</div><div${gridAttrs}>`;
   q.answers.forEach((a,i)=>{
     let c='ans-btn';
     const ruled=st.wrong.includes(i);
@@ -1754,6 +1813,20 @@ function qCardHTML(resultMsg,btnLabel){
     h+=`<button class="${c}"${resolved||ruled?' disabled':''} data-i="${i}">${a}</button>`;
   });
   h+=`</div>`;
+  // Before the first answer only: after a miss the hint is already on screen. His
+  // own Pokemon is the one asked, even mid-encounter -- the wild one isn't his to ask.
+  if(!resolved&&st.tries===0){
+    const helper=PKM[activePi()].n;
+    if(st.helped){
+      // Says outright that the streak is safe, because fear of losing it is the
+      // entire reason he was skipping -- the box has to answer that fear, not
+      // just carry the hint.
+      const keep=st.streak>1?`Get it right and your &#128293; ${st.streak} streak stays!`:'Take your time &#8212; you can do it!';
+      h+=`<div class="help-box"><div class="help-say"><strong>${helper} says:</strong> ${q.hint}</div><div class="help-keep">${keep}</div></div>`;
+    } else {
+      h+=`<button class="help-btn" id="help-btn">&#128161; Ask ${helper} for help</button>`;
+    }
+  }
   if(st.tries>0){
     // Empty is the common case now -- no phase says anything here on a correct answer
     // -- and an empty .result-msg would still paint its padding as a bare stripe.
@@ -1792,7 +1865,7 @@ function render(){
   }
 
   if(st.phase==='subject'){
-    h+=`<div class="starter-card"><div style="font-size:20px;font-weight:700;color:#1A1A2E;margin-bottom:3px;text-align:center">What do you want to practice?</div><div style="font-size:13px;color:#6B7280;margin-bottom:16px;text-align:center">You can change this any time</div><div class="subj-choice-grid">`;
+    h+=`<div class="starter-card"><div style="font-size:20px;font-weight:700;color:#1A1A2E;margin-bottom:3px;text-align:center">What do you want to practice?</div><div style="font-size:13px;color:#6B7280;margin-bottom:16px;text-align:center">${st.q&&!st.cor&&!st.wildEscape?'Starts after this question':'You can change this any time'}</div><div class="subj-choice-grid">`;
     SUBJ_CHOICES.forEach(s=>{
       h+=`<button class="subj-opt ${SUBJ_OPT_CLS[s]}${s===st.subject?' sel':''}" data-subj="${s}"><span class="subj-opt-ico">${SUBJ_ICON[s]}</span><span class="subj-opt-name">${subjTitle(s)}</span><span class="subj-opt-sub">${SUBJ_BLURB[s]}</span></button>`;
     });
@@ -1827,14 +1900,17 @@ function render(){
     const xpMx=xpToNext(tm.level);
     const pct=Math.min(100,Math.round(tm.xp/xpMx*100));
     // Inside the card, so it reads as a control ON this Pokemon rather than a
-    // separate thing between the Pokemon and the question. Same visibility rule as
-    // before: hidden once a wrong answer is pending, since switching re-serves.
-    const canSwitch=st.team.length>1&&(st.tries===0||st.cor);
+    // separate thing between the Pokemon and the question. Switching no longer
+    // changes the question, so it's safe mid-question. Hidden while an evolution is
+    // queued, though: processEvolution evolves whoever is active when Next is
+    // pressed, so switching first would evolve the wrong Pokemon.
+    const canSwitch=st.team.length>1&&!st.pendingEvo;
     const switchBtn=canSwitch?`<button class="switch-btn" id="switch-btn"><span>&#128260;</span><span>Switch</span><span class="switch-count">${st.team.length}</span></button>`:'';
     h+=`<div class="card pcard${canSwitch?' has-switch':''}">${switchBtn}<div class="pnum">${p.num} &bull; ${typeBadgesInline(p.type)} Type</div><div class="pname">${p.n}${tm.shiny?` <span class="shiny-badge">${SHINY_STAR} Shiny</span>`:''} <span class="lvl-badge${st.lvlUpMsg?' lvl-up':''}">Lv ${tm.level}</span></div><div class="psvg ${st.anim}">${pkSprite(tm.pi,148,tm.shiny)}</div><div class="xp-row"><span>XP</span><span class="xp-right">${st.lastXp?`<span class="xp-gain">+${st.lastXp} XP</span>`:''}${tm.xp}/${xpMx}</span></div><div class="xp-track"><div class="xp-fill" style="width:${pct}%"></div></div></div>`;
     if(st.streakMsg){
       h+=`<div class="streak-toast">&#128293; ${st.streakMsg}</div>`;
     }
+    if(st.rematchMsg)h+=`<div class="rematch-toast">&#128257; ${st.rematchMsg}</div>`;
     // No level-up bar here: the Lv pill on the card above is lit instead, and the
     // Pokemon's name is already sitting beside it, so the bar's sentence said nothing
     // the card wasn't. st.lvlUpMsg survives as the flag for that -- the wild phase
@@ -1865,10 +1941,9 @@ function render(){
     const escaped=st.wildEscape;
     const caught=cs>=CATCH_STREAK_NEEDED;
     // Running away is offered only when no wrong answer is pending. A wrong answer
-    // re-serves the same question until it's solved, so letting him flee out of that
-    // would hand back exactly the reroll the anti-guessing work removed. Before he
-    // has committed an answer he's free to go -- skipping one unanswered question
-    // during an encounter isn't farmable, but escaping a wrong one would be.
+    // costs a ball, and fleeing past it would dodge that. Before he has committed an
+    // answer he's free to go -- fleeWild carries the open question back with him, so
+    // running is a way out of the encounter, never out of the question.
     const canFlee=!escaped&&!caught&&(st.tries===0||st.cor);
     const flee=canFlee?`<button class="flee-btn" id="flee">Run away</button>`:'';
     const wsh=!!st.wild.shiny;
@@ -1880,6 +1955,7 @@ function render(){
     // paid during an encounter and can level him up, so without this toast the level
     // would happen and loadQuestion() would clear the message before he ever saw it.
     if(st.streakMsg)h+=`<div class="streak-toast">&#128293; ${st.streakMsg}</div>`;
+    if(st.rematchMsg)h+=`<div class="rematch-toast">&#128257; ${st.rematchMsg}</div>`;
     if(st.lvlUpMsg)h+=`<div class="lvl-up-toast">&#11088; ${st.lvlUpMsg}</div>`;
     // Same rule as the play phase: nothing under the answers when he gets it right.
     // A filled pip, a green button and the Pokemon flinching already say it, and the
@@ -1907,6 +1983,7 @@ function render(){
   const sb=gameEl.querySelector('#subj-btn');if(sb)sb.addEventListener('click',openSubjectPicker);
   const nb=gameEl.querySelector('#nxt');if(nb)nb.addEventListener('click',onNext);
   const fb=gameEl.querySelector('#flee');if(fb)fb.addEventListener('click',fleeWild);
+  const hb=gameEl.querySelector('#help-btn');if(hb)hb.addEventListener('click',askForHelp);
 }
 
 // A shiny slot is rendered only once it has actually been caught. Carrying 237
@@ -2001,30 +2078,91 @@ function openSubjectPicker(){
 
 function chooseSubject(sub){
   if(!SUBJ_CHOICES.includes(sub))return;
-  const changed=sub!==st.subject;
   st.subject=sub;
   st.phase=st.subjectReturn||'play';
   st.subjectReturn=null;
   save();
-  // Two cases put him back on the question he left rather than a new one:
-  // a resolved question still has a result to push through onNext — a catch, an
-  // escape, an evolution — and picking the subject already selected is a cancel.
-  // Either way the choice applies from the next question on. A question he's
-  // merely part-way through (one wrong pick, still open) is safe to replace.
-  if(st.q&&(st.cor||st.wildEscape||!changed))render();
+  // Always back to the question he left: the new subject starts from the next one.
+  // It used to deal a fresh question whenever this one was still open, which made
+  // the subject button a free skip for any question that looked hard -- the streak
+  // survived, and the question he'd just flinched from was never seen again.
+  // (Ask-for-help is the way out of a hard question now.) Only the very first
+  // question after picking a starter has nothing to go back to.
+  if(st.q)render();
   else loadQuestion();
 }
 
+// The name {P} is filled with: the wild Pokemon during an encounter, his own otherwise.
+function questionPname(){return st.phase==='wild'&&st.wild?PKM[st.wild.pi].n:PKM[activePi()].n;}
+
+function reviewKey(r){return `${r.sub}/${r.lv}/${r.idx}`;}
+function findReview(tmpl){const k=reviewKey(tmpl);return st.review.find(r=>reviewKey(r)===k);}
+// The oldest-due Rematch the chosen subject allows, if one is due. Picking "Math
+// only" means math only -- a reading Rematch waits for him to come back to reading.
+function dueReview(){
+  return st.review
+    .filter(r=>r.due<=st.served&&(st.subject===SUBJ_MIX||st.subject===r.sub))
+    .sort((a,b)=>a.due-b.due)[0]||null;
+}
+// Called once per question, off its first answer. `clean` is an unaided first-try
+// hit. A question not already queued only joins on a stumble.
+function recordReview(tmpl,clean){
+  let r=findReview(tmpl);
+  if(clean){
+    if(!r)return false;
+    r.wins++;
+    if(r.wins>=REVIEW.wins)st.review=st.review.filter(x=>x!==r);
+    else r.due=st.served+REVIEW.long;
+    return true;
+  }
+  if(!r){
+    r={sub:tmpl.sub,lv:tmpl.lv,idx:tmpl.idx,wins:0};
+    st.review.push(r);
+    // Oldest out first. A long enough losing run could otherwise grow it forever.
+    if(st.review.length>REVIEW.max)st.review.shift();
+  }
+  r.wins=0;
+  r.due=st.served+REVIEW.gap;
+  return false;
+}
+
 async function loadQuestion(){
-  const sub=nextSubject(st.subject);
-  const lv=st.stats[sub].level;
-  const pname=st.phase==='wild'&&st.wild?PKM[st.wild.pi].n:PKM[activePi()].n;
+  st.served++;
+  const pname=questionPname();
   st.wildEscape=false;
   st.lvlUpMsg=null;
   st.streakMsg=null;
-  const q=pickBuiltIn(sub,lv,pname);
-  st.q=q;st.sel=null;st.cor=false;st.anim="";
+  st.rematchMsg=null;
+  // A due Rematch takes the slot without spending the subject bag, so Mix keeps
+  // its rotation either way.
+  const r=dueReview();
+  let q;
+  if(r){
+    q=serveQuestion(r.sub,r.lv,r.idx,pname);
+    q.rematch=true;
+  } else {
+    const sub=nextSubject(st.subject);
+    q=pickBuiltIn(sub,st.stats[sub].level,pname);
+  }
+  st.q=q;st.sel=null;st.cor=false;st.anim="";st.helped=false;
   st.tries=0;st.wrong=[];st.lastXp=0;st.armAt=Date.now()+PAUSE.first;
+  render();
+}
+
+// Redraws the question on screen with whoever {P} should be now, keeping it the
+// same question: same option order, same picks ruled out, same everything.
+function refillQuestion(){
+  if(!st.q)return;
+  const rematch=st.q.rematch;
+  st.q=fillQuestion(st.q.tmpl,questionPname());
+  st.q.rematch=rematch;
+}
+
+// Shows the hint before he commits an answer. Only offered on a question he
+// hasn't answered yet -- after a miss the hint is already on screen.
+function askForHelp(){
+  if(!st.q||st.tries>0||st.helped||st.cor||st.wildEscape)return;
+  st.helped=true;
   render();
 }
 
@@ -2475,9 +2613,10 @@ function switchPokemon(idx){
   save();
   // 187 questions bake the active Pokemon's name in through {P} at serve time, so
   // the question on screen would still be talking about the one he just put away.
-  // Re-serving is the only honest way to redraw it, and is why the button that
-  // opens this picker disappears once he has an answer wrong.
-  loadQuestion();
+  // It used to be re-served outright, which made Switch a second skip button;
+  // now it's redrawn with the new name and stays the same question.
+  refillQuestion();
+  render();
 }
 
 function applyLevelUps(){
@@ -2553,11 +2692,17 @@ function fleeWild(){
   st.wild=null;
   st.wildEscape=false;
   st.phase='play';
-  loadQuestion();
+  // An open question comes with him, redrawn with his own Pokemon's name --
+  // otherwise running away is one more way to skip a question he doesn't like.
+  if(st.q&&!st.cor){refillQuestion();render();}
+  else loadQuestion();
 }
 
 function afterTurn(){
-  if(st.cor&&st.phase==='play'){
+  // Not after a question he needed help on. Help pauses the streak rather than
+  // spending it, so without this he could park at streak 10 and ask on every
+  // question to keep rolling encounters at the top shiny odds forever.
+  if(st.cor&&st.phase==='play'&&!st.helped){
     // One roll, shared by whichever of the two encounter kinds fires, so the odds
     // are per ENCOUNTER and not per encounter kind. Rolled here rather than inside
     // triggerWildEncounter because the stray-starter branch never goes through it
@@ -2614,8 +2759,24 @@ function handleAnswer(i){
   // guessing a free reroll and left the hint decorative. Now he has to land the
   // question he missed, but landing it late doesn't pay like getting it first go.
   if(firstTry){
-    updStats(st.q.subject,ok);
-    if(ok){
+    const helped=st.helped;
+    // Before the streak moves, so a Rematch he wins lands its bonus alongside
+    // whatever the answer itself pays.
+    const rematchWon=recordReview(st.q.tmpl,ok&&!helped)&&!!st.q.rematch;
+    if(ok&&helped){
+      // Asked for help and landed it: the streak is paused, not broken. Nothing
+      // that climbs with the streak moves -- not the streak, not the catch pips,
+      // not the difficulty tier -- but the promotion run is broken, since needing
+      // the hint is a sign this tier isn't comfortable yet.
+      const sub=st.stats[st.q.subject];sub.att++;sub.cor++;sub.cs=0;
+      if(st.phase==='play'){
+        const tm=activeTM();
+        if(tm){st.lastXp=XP_WITH_HELP;tm.xp+=st.lastXp;applyLevelUps();}
+      }
+    } else {
+      updStats(st.q.subject,ok);
+    }
+    if(ok&&!helped){
       st.streak++;
       if(st.streak>st.bestStreak){st.bestStreak=st.streak;if(st.streak>=BEST_STREAK_NOTE)st.newRecord=true;}
       const bonus=milestoneBonus(st.streak);
@@ -2631,7 +2792,7 @@ function handleAnswer(i){
         if(tm&&bonus){tm.xp+=bonus;applyLevelUps();}
       }
       if(bonus)st.streakMsg=`${st.streak} in a row! +${bonus} bonus XP!`;
-    } else {
+    } else if(!ok){
       st.streak=0;
       st.newRecord=false;
       // A miss spends a ball but leaves the catch progress intact; only the last
@@ -2640,6 +2801,18 @@ function handleAnswer(i){
         st.wild.misses=(st.wild.misses||0)+1;
         if(st.wild.misses>CATCH_MISSES_ALLOWED)st.wildEscape=true;
       }
+    }
+    // Paid in either phase, like a milestone: it's for beating this question, and
+    // a wild Pokemon turning up shouldn't make that worth less.
+    if(rematchWon){
+      const tm=activeTM();
+      if(tm){
+        tm.xp+=REVIEW.bonus;
+        if(st.phase==='play')st.lastXp+=REVIEW.bonus;
+        // An evolution already queued will run applyLevelUps itself once it lands.
+        if(!st.pendingEvo)applyLevelUps();
+      }
+      st.rematchMsg=`Rematch won! +${REVIEW.bonus} XP`;
     }
   } else if(ok&&st.phase==='play'){
     const tm=activeTM();
