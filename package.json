@@ -1,0 +1,11 @@
+{
+  "name": "pokemon-quiz",
+  "private": true,
+  "description": "Dev-only: the game itself is index.html and needs none of this.",
+  "scripts": {
+    "test": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.56.1"
+  }
+}
