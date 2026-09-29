@@ -2749,11 +2749,25 @@ function getAvailableOtherStarters(shiny){
     return !line.some(lpi=>teamPis.has(lpi));
   });
 }
+// Every stage of the evolution family `pi` belongs to. Starters have LINES; a wild
+// family is its base entry plus the isEvo entries that follow it in PKM (evolution
+// is positional, so the family is always one contiguous run).
+function familyOf(pi){
+  const line=LINES.find(ln=>ln.includes(pi));
+  if(line)return line;
+  let lo=pi;while(lo>STARTER_COUNT&&PKM[lo].isEvo)lo--;
+  const fam=[lo];for(let i=lo+1;i<PKM.length&&PKM[i].isEvo;i++)fam.push(i);
+  return fam;
+}
+// The wild pool used to rule out only the exact Pokemon he held, so owning an
+// Arcanine still let a Growlithe turn up -- catch it, level it, and he had two
+// Arcanines. Now any member of the family, in the same colour, rules the whole
+// family out, the same rule the stray-starter pool already followed.
 function triggerWildEncounter(shiny){
   if(shiny===undefined)shiny=rollShiny();
   const allWild=WILD_BY_GEN.reduce((a,g)=>a.concat(g),[]);
   const teamPis=ownedPis(shiny);
-  const available=allWild.filter(pi=>!teamPis.has(pi));
+  const available=allWild.filter(pi=>!familyOf(pi).some(f=>teamPis.has(f)));
   if(available.length===0){loadQuestion();return;}
   const wpi=available[Math.floor(Math.random()*available.length)];
   st.wild={pi:wpi,level:wildLevel(),shiny,correctStreak:0,misses:0};
