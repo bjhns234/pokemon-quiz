@@ -220,3 +220,36 @@ test.describe('saving',()=>{
     expect(s).toEqual({phase:'play',team:1,best:7,review:['math/1/0'],due:[2]});
   });
 });
+
+test.describe('no duplicate Pokemon',()=>{
+  // Owning any stage of a family rules the whole family out of the wild pool in
+  // that colour -- otherwise a caught Growlithe could grow into a second Arcanine.
+  test('an evolved Pokemon on the team keeps its base form out of the wild',async({page})=>{
+    const r=await state(page,()=>{
+      const arc=PKM.findIndex(p=>p.n==='Arcanine'),grow=arc-1;
+      st.team.push({pi:arc,level:40,xp:0,shiny:false});
+      const seen={regular:new Set(),shiny:new Set()};
+      for(let i=0;i<2000;i++){
+        triggerWildEncounter(false);seen.regular.add(st.wild.pi);
+        triggerWildEncounter(true);seen.shiny.add(st.wild.pi);
+      }
+      st.wild=null;st.phase='play';
+      return {grow,regular:seen.regular.has(grow),shiny:seen.shiny.has(grow)};
+    });
+    expect(r.regular,'regular Growlithe offered while holding a regular Arcanine').toBe(false);
+    expect(r.shiny,'a shiny Growlithe should still be catchable').toBe(true);
+  });
+
+  test('every wild family is one base form followed by its evolutions',async({page})=>{
+    const bad=await state(page,()=>{
+      const out=[];
+      WILD_BY_GEN.flat().forEach(pi=>{
+        const fam=familyOf(pi);
+        if(fam[0]!==pi||PKM[pi].isEvo)out.push(PKM[pi].n);
+        fam.slice(1).forEach(f=>{if(!PKM[f].isEvo||familyOf(f)[0]!==pi)out.push(PKM[f].n);});
+      });
+      return out;
+    });
+    expect(bad).toEqual([]);
+  });
+});
