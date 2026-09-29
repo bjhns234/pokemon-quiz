@@ -33,3 +33,20 @@ test('a corrupt save starts a fresh game instead of a blank screen',async({page}
   expect(await state(page,()=>st.phase)).toBe('starter');
   expect(errors).toEqual([]);
 });
+
+// Older versions let a wild encounter hand him a second copy of a family he
+// already had. On load, one per family and colour survives: the highest level.
+test('duplicate Pokemon in a save are merged down to one per family and colour',async({page})=>{
+  const save={...base,activeIdx:3,team:[
+    {num:'#001',level:7,xp:3},
+    {num:'#058',level:20,xp:0},              // Growlithe that would grow into a second Arcanine
+    {num:'#059',level:40,xp:5},              // the best regular Arcanine
+    {num:'#059',level:35,xp:0},              // the active one, a duplicate
+    {num:'#059',level:12,xp:0,shiny:true},   // a shiny is its own thing and stays
+  ]};
+  const errors=await openGame(page,{save});
+  const s=await state(page,()=>({team:st.team.map(t=>[PKM[t.pi].num,t.level,!!t.shiny]),active:PKM[activeTM().pi].num+'/'+activeTM().level}));
+  expect(s.team).toEqual([['#001',7,false],['#059',40,false],['#059',12,true]]);
+  expect(s.active).toBe('#059/40');
+  expect(errors).toEqual([]);
+});
