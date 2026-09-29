@@ -1699,12 +1699,26 @@ function loadSaved(){
     const data=JSON.parse(raw);
     if(!data||data.v!==SAVE_V)return null;
 
-    const team=(data.team||[]).map(t=>{
+    const loaded=(data.team||[]).map(t=>{
       const pi=NUM_TO_PI[t&&t.num];
       if(pi===undefined)return null;
       return{pi,level:Math.max(1,t.level|0),xp:Math.max(0,t.xp|0),shiny:!!(t&&t.shiny)};
     }).filter(Boolean);
-    if(team.length===0)return null;
+    if(loaded.length===0)return null;
+
+    // Wild encounters used to offer a family he already had, so some saves hold
+    // two of one family in the same colour (two Arcanines, or a Growlithe beside
+    // an Arcanine that would grow into a second one). Keep one per family and
+    // colour -- the highest level, then the furthest evolved -- in the slot the
+    // first copy held, so the team order he's used to barely moves.
+    const famKey=t=>familyOf(t.pi)[0]+(t.shiny?'s':'r');
+    const better=(a,b)=>b.level!==a.level?b.level>a.level:b.pi>a.pi;
+    const keep=new Map();
+    loaded.forEach(t=>{const k=famKey(t);if(!keep.has(k)||better(keep.get(k),t))keep.set(k,t);});
+    const team=[];const seen=new Set();
+    loaded.forEach(t=>{const k=famKey(t);if(!seen.has(k)){seen.add(k);team.push(keep.get(k));}});
+    const savedActive=loaded[Math.min(Math.max(0,data.activeIdx|0),loaded.length-1)];
+    const activeIdx=team.findIndex(t=>famKey(t)===famKey(savedActive));
 
     const pdx=new Array(PKM.length).fill(false);
     (data.dex||[]).forEach(n=>{const pi=NUM_TO_PI[n];if(pi!==undefined)pdx[pi]=true;});
@@ -1733,7 +1747,7 @@ function loadSaved(){
 
     return{
       starter:typeof data.starter==='number'?data.starter:null,
-      activeIdx:Math.min(Math.max(0,data.activeIdx|0),team.length-1),
+      activeIdx,
       // Saves written before the chooser existed have no subject; falling back
       // to mix reproduces exactly how they used to behave, so SAVE_V holds.
       subject:SUBJ_CHOICES.includes(data.subject)?data.subject:SUBJ_MIX,
