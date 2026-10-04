@@ -704,6 +704,51 @@ const WILD_PKM=[
 {n:"Nacli",num:"#932",type:"Rock",evoAt:24,svg:s=>pkImg(932,s),fact:"Nacli is made of salt and helps keep food fresh!",gen:8},
 {n:"Naclstack",num:"#933",type:"Rock",evoAt:38,isEvo:true,svg:s=>pkImg(933,s),fact:"Naclstack stacks salt blocks to make a strong wall!",gen:8},
 {n:"Garganacl",num:"#934",type:"Rock",evoAt:null,isEvo:true,svg:s=>pkImg(934,s),fact:"Garganacl gives salt from its fingers to help tired people feel better!",gen:8},
+// Fourth wave: two new wild families per generation. Append to preserve
+// existing Pokemon indices and positional evolutions. Special evolutions use
+// level gates, matching the simplified rules of the earlier waves.
+{"n":"Gastly","num":"#092","type":["Ghost","Poison"],"evoAt":25,"fact":"Gastly has a round face surrounded by a cloud of purple gas!","gen":0,"svg":s=>pkImg(92,s)},
+{"n":"Haunter","num":"#093","type":["Ghost","Poison"],"evoAt":40,"isEvo":true,"fact":"Haunter floats through walls and likes to play spooky tricks!","gen":0,"svg":s=>pkImg(93,s)},
+{"n":"Gengar","num":"#094","type":["Ghost","Poison"],"evoAt":null,"isEvo":true,"fact":"Gengar hides in shadows and flashes a huge mischievous grin!","gen":0,"svg":s=>pkImg(94,s)},
+{"n":"Abra","num":"#063","type":"Psychic","evoAt":16,"fact":"Abra spends most of its day sleeping and can teleport away from danger!","gen":0,"svg":s=>pkImg(63,s)},
+{"n":"Kadabra","num":"#064","type":"Psychic","evoAt":40,"isEvo":true,"fact":"Kadabra carries a spoon that helps focus its psychic power!","gen":0,"svg":s=>pkImg(64,s)},
+{"n":"Alakazam","num":"#065","type":"Psychic","evoAt":null,"isEvo":true,"fact":"Alakazam has an amazing memory and holds a spoon in each hand!","gen":0,"svg":s=>pkImg(65,s)},
+{"n":"Sunkern","num":"#191","type":"Grass","evoAt":25,"fact":"Sunkern saves its energy while waiting for the day it can grow!","gen":1,"svg":s=>pkImg(191,s)},
+{"n":"Sunflora","num":"#192","type":"Grass","evoAt":null,"isEvo":true,"fact":"Sunflora turns its happy flower face toward the sunshine!","gen":1,"svg":s=>pkImg(192,s)},
+{"n":"Slugma","num":"#218","type":"Fire","evoAt":38,"fact":"Slugma has a body made of hot lava and keeps moving to stay warm!","gen":1,"svg":s=>pkImg(218,s)},
+{"n":"Magcargo","num":"#219","type":["Fire","Rock"],"evoAt":null,"isEvo":true,"fact":"Magcargo carries a rocky shell made from cooled lava!","gen":1,"svg":s=>pkImg(219,s)},
+{"n":"Trapinch","num":"#328","type":"Ground","evoAt":35,"fact":"Trapinch digs a sandy pit and waits at the bottom for food!","gen":2,"svg":s=>pkImg(328,s)},
+{"n":"Vibrava","num":"#329","type":["Ground","Dragon"],"evoAt":45,"isEvo":true,"fact":"Vibrava rubs its wings together to make a humming sound!","gen":2,"svg":s=>pkImg(329,s)},
+{"n":"Flygon","num":"#330","type":["Ground","Dragon"],"evoAt":null,"isEvo":true,"fact":"Flygon's wings stir up desert sand as it flies!","gen":2,"svg":s=>pkImg(330,s)},
+{"n":"Numel","num":"#322","type":["Fire","Ground"],"evoAt":33,"fact":"Numel stores hot magma in the hump on its back!","gen":2,"svg":s=>pkImg(322,s)},
+{"n":"Camerupt","num":"#323","type":["Fire","Ground"],"evoAt":null,"isEvo":true,"fact":"Camerupt has two humps that look like tiny volcanoes!","gen":2,"svg":s=>pkImg(323,s)},
+{"n":"Shellos","num":"#422","type":"Water","evoAt":30,"fact":"Shellos has different colors depending on which sea it calls home!","gen":3,"svg":s=>pkImg(422,s)},
+{"n":"Gastrodon","num":"#423","type":["Water","Ground"],"evoAt":null,"isEvo":true,"fact":"Gastrodon's soft body lets it squeeze through small spaces!","gen":3,"svg":s=>pkImg(423,s)},
+{"n":"Croagunk","num":"#453","type":["Poison","Fighting"],"evoAt":37,"fact":"Croagunk makes a croaking sound by puffing out its cheek sacs!","gen":3,"svg":s=>pkImg(453,s)},
+{"n":"Toxicroak","num":"#454","type":["Poison","Fighting"],"evoAt":null,"isEvo":true,"fact":"Toxicroak has a sharp claw on each hand and strong jumping legs!","gen":3,"svg":s=>pkImg(454,s)},
+{"n":"Roggenrola","num":"#524","type":"Rock","evoAt":25,"fact":"Roggenrola has a rocky body and a big ear in the middle of its face!","gen":4,"svg":s=>pkImg(524,s)},
+{"n":"Boldore","num":"#525","type":"Rock","evoAt":40,"isEvo":true,"fact":"Boldore's orange crystals shine when it is full of energy!","gen":4,"svg":s=>pkImg(525,s)},
+{"n":"Gigalith","num":"#526","type":"Rock","evoAt":null,"isEvo":true,"fact":"Gigalith gathers sunlight with the crystals on its body!","gen":4,"svg":s=>pkImg(526,s)},
+{"n":"Litwick","num":"#607","type":["Ghost","Fire"],"evoAt":41,"fact":"Litwick looks like a little candle with a flickering purple flame!","gen":4,"svg":s=>pkImg(607,s)},
+{"n":"Lampent","num":"#608","type":["Ghost","Fire"],"evoAt":45,"isEvo":true,"fact":"Lampent floats through the air like a glowing lantern!","gen":4,"svg":s=>pkImg(608,s)},
+{"n":"Chandelure","num":"#609","type":["Ghost","Fire"],"evoAt":null,"isEvo":true,"fact":"Chandelure looks like a fancy chandelier with ghostly purple flames!","gen":4,"svg":s=>pkImg(609,s)},
+{"n":"Clauncher","num":"#692","type":"Water","evoAt":37,"fact":"Clauncher has one big claw that can squirt water!","gen":5,"svg":s=>pkImg(692,s)},
+{"n":"Clawitzer","num":"#693","type":"Water","evoAt":null,"isEvo":true,"fact":"Clawitzer fires powerful jets of water from its enormous claw!","gen":5,"svg":s=>pkImg(693,s)},
+{"n":"Honedge","num":"#679","type":["Steel","Ghost"],"evoAt":35,"fact":"Honedge looks like an old sword with a blue ribbon for an arm!","gen":5,"svg":s=>pkImg(679,s)},
+{"n":"Doublade","num":"#680","type":["Steel","Ghost"],"evoAt":45,"isEvo":true,"fact":"Doublade's two swords work together in perfect time!","gen":5,"svg":s=>pkImg(680,s)},
+{"n":"Aegislash","num":"#681","type":["Steel","Ghost"],"evoAt":null,"isEvo":true,"fact":"Aegislash can switch between protecting itself and attacking!","gen":5,"svg":s=>pkImg(681,s)},
+{"n":"Dewpider","num":"#751","type":["Water","Bug"],"evoAt":22,"fact":"Dewpider wears a bubble of water around its head!","gen":6,"svg":s=>pkImg(751,s)},
+{"n":"Araquanid","num":"#752","type":["Water","Bug"],"evoAt":null,"isEvo":true,"fact":"Araquanid uses its big water bubble to protect smaller Pokemon!","gen":6,"svg":s=>pkImg(752,s)},
+{"n":"Sandygast","num":"#769","type":["Ghost","Ground"],"evoAt":42,"fact":"Sandygast looks like a little pile of sand with a shovel on its head!","gen":6,"svg":s=>pkImg(769,s)},
+{"n":"Palossand","num":"#770","type":["Ghost","Ground"],"evoAt":null,"isEvo":true,"fact":"Palossand looks like a sandcastle and can replace sand that falls off!","gen":6,"svg":s=>pkImg(770,s)},
+{"n":"Snom","num":"#872","type":["Ice","Bug"],"evoAt":25,"fact":"Snom looks like a tiny icy caterpillar covered in sparkling spikes!","gen":7,"svg":s=>pkImg(872,s)},
+{"n":"Frosmoth","num":"#873","type":["Ice","Bug"],"evoAt":null,"isEvo":true,"fact":"Frosmoth scatters icy scales from its beautiful wings!","gen":7,"svg":s=>pkImg(873,s)},
+{"n":"Clobbopus","num":"#852","type":"Fighting","evoAt":30,"fact":"Clobbopus is curious and explores things by poking them with its tentacles!","gen":7,"svg":s=>pkImg(852,s)},
+{"n":"Grapploct","num":"#853","type":"Fighting","evoAt":null,"isEvo":true,"fact":"Grapploct uses its strong tentacles to wrestle with opponents!","gen":7,"svg":s=>pkImg(853,s)},
+{"n":"Charcadet","num":"#935","type":"Fire","evoAt":30,"fact":"Charcadet is a tiny warrior that came to life from burnt charcoal!","gen":8,"svg":s=>pkImg(935,s)},
+{"n":"Armarouge","num":"#936","type":["Fire","Psychic"],"evoAt":null,"isEvo":true,"fact":"Armarouge wears armor full of fire and psychic energy!","gen":8,"svg":s=>pkImg(936,s)},
+{"n":"Cetoddle","num":"#974","type":"Ice","evoAt":30,"fact":"Cetoddle walks through snowy places on its little feet!","gen":8,"svg":s=>pkImg(974,s)},
+{"n":"Cetitan","num":"#975","type":"Ice","evoAt":null,"isEvo":true,"fact":"Cetitan wanders snowy, icy places with its huge strong body!","gen":8,"svg":s=>pkImg(975,s)},
 ];
 PKM.push(...WILD_PKM);
 const WILD_BY_GEN=[[],[],[],[],[],[],[],[],[]];
@@ -3042,3 +3087,4 @@ if(st.phase==='play')loadQuestion();else render();
 </script>
 </body>
 </html>
+
