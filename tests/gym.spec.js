@@ -543,7 +543,7 @@ test('a Great Ball waits until the encounter ends',async({page})=>{
   await state(page,()=>{
     st.items.great=1;st.cor=true;triggerWildEncounter(false);
     st.wild.correctStreak=CATCH_STREAK_NEEDED;
-    st.cor=true;
+    st.tries=1;st.cor=true;
     render();
   });
   expect(await state(page,()=>st.items.great)).toBe(1);

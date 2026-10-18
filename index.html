@@ -1852,7 +1852,7 @@ const GYM_PARTNER_LEVEL=8; // under every gym partner's evoAt, so the prize stil
 // so a kid who can add 36+27 cannot walk in by trying.
 const GATE={a:47,b:23,wrong:3,lock:120000};
 function gateAnswer(){return GATE.a*GATE.b;}
-function gateLocked(){return (st.gateLock|0)>Date.now();}
+function gateLocked(){return Number(st.gateLock)>Date.now();}
 const GYM_LEADER={math:'Pikachu',reading:'Eevee',science:'Psyduck'};
 const GYM_BADGE_NAMES={
   math:['Bolt Badge','Charge Badge','Thunder Badge'],
@@ -2002,7 +2002,7 @@ function save(){
       prizes:st.prizes,
       gymSnooze:st.gymSnooze,
       gateMisses:Math.max(0,st.gateMisses|0),
-      gateLock:Math.max(0,st.gateLock|0),
+      gateLock:Math.max(0,Math.floor(Number(st.gateLock)||0)),
       // A battle still being fought, including the open question: tries, help,
       // ruled-out answers, and the thinking time left. A solved one advances
       // on load so the same hit cannot score twice.
@@ -2157,7 +2157,7 @@ function loadSaved(){
       timerOff:data.timerOff===true,
       items,
       gateMisses:Math.max(0,data.gateMisses|0),
-      gateLock:Math.max(0,data.gateLock|0),
+      gateLock:Math.max(0,Math.floor(Number(data.gateLock)||0)),
     };
   }catch(e){
     // corrupt or half-written save: start fresh rather than fail to a blank screen
