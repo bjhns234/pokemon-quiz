@@ -49,6 +49,28 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;min-heigh
 .help-btn:hover{background:#E0F2FE;border-color:#0EA5E9}
 .help-box{background:#F0F9FF;border:1.5px solid #7DD3FC;border-radius:12px;padding:11px 14px;color:#0C4A6E;font-size:14px;line-height:1.5}
 .help-keep{font-size:12px;font-weight:700;color:#0369A1;margin-top:5px}
+/* Picture aid that sits with the text hint. Sized for a phone-width tablet: loose
+   icons wrap, and a ten-frame stays under ~180px so two of them stack instead of
+   forcing a sideways scroll. */
+.hint-visual{margin-top:10px;background:#F0F9FF;border:1.5px solid #7DD3FC;border-radius:12px;padding:10px 8px 8px}
+.help-box .hint-visual{background:rgba(255,255,255,.62);margin-top:8px}
+.hv-eq,.hv-ten,.hv-groups,.hv-split,.hv-ones{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:8px}
+.hv-split{gap:6px}
+.hv-ones{gap:3px;max-width:148px}
+.hv-group{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:3px;max-width:100%;background:rgba(255,255,255,.88);border-radius:14px;padding:6px}
+.hv-group.hv-empty{width:40px;height:40px;padding:0;border:1.5px dashed #7DD3FC;background:transparent;box-sizing:border-box}
+.hv-op{font-size:22px;font-weight:800;color:#0369A1;line-height:1;padding:0 2px}
+.hv-cap{margin-top:8px;font-size:13px;font-weight:700;color:#0369A1;text-align:center}
+.hv-mark{position:relative;display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;flex:0 0 auto}
+.hv-mark svg{width:30px;height:30px;display:block}
+.hv-mark.gone svg{opacity:.32}
+.hv-mark.gone::after{content:"";position:absolute;left:-1px;right:-1px;top:50%;height:3px;margin-top:-1.5px;background:#B91C1C;border-radius:2px;transform:rotate(-32deg);box-shadow:0 0 0 1px rgba(255,255,255,.85)}
+.ten-frame{display:grid;grid-template-columns:repeat(5,30px);grid-auto-rows:30px;gap:4px;padding:6px;background:#fff;border:2px solid #38BDF8;border-radius:12px;box-sizing:border-box}
+.ten-frame .hv-mark,.tf-cell.empty{width:30px;height:30px}
+.ten-frame .hv-mark svg{width:22px;height:22px}
+.ten-frame .hv-mark{background:#F8FAFC;border-radius:8px}
+.ten-frame .hv-mark.gone{background:#FEE2E2}
+.tf-cell.empty{box-sizing:border-box;border:1.5px dashed #7DD3FC;border-radius:8px;background:#F8FAFC}
 .streak-pill.maxed{background:#FFEDD5;color:#C2410C}
 .streak-pill.bump{animation:streak-pop 0.45s ease}
 .streak-pill.record{background:linear-gradient(90deg,#FDE68A,#FCD34D);color:#92400E;box-shadow:0 0 0 1.5px #F59E0B}
@@ -1996,6 +2018,205 @@ function typeEmoji(t){return typeArr(t).map(tp=>TYPE_EMOJI[tp]||'&#11088;').join
 function typeOptClass(t){return TYPE_OPT_CLASS[typeArr(t)[0]]||'grass-opt';}
 function typeBadgesInline(t){return typeArr(t).map(tp=>`<span style="color:${TYPE_COLOR[tp]||'#6B7280'}">${tp}</span>`).join('<span style="color:#D1D5DB"> / </span>');}
 
+// Picture hints are derived from the stem, not stored on the question. A question
+// is a 5-tuple the bank tests lock down, and the picture only restates numbers
+// the stem already gives: two groups to combine, a pile with the taken-away
+// ones crossed out, equal groups to count, or a ten-frame when the count is a
+// teen that bridges through 10. Clocks, money, two-step stories and the other
+// subjects don't parse, so they keep the text hint alone. Nothing here prints
+// a digit — counting is the only way the picture reveals its number.
+const HV_ICON={
+  berry:'<svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="19" r="10" fill="#E11D48"/><ellipse cx="12" cy="15" rx="3" ry="2" fill="#FECDD3"/><path d="M16 10c1.2-4 6-5 7.2-1.2-2.4.2-4.6.8-7.2 1.2z" fill="#22C55E"/><path d="M16 10c-.4-3.2-3.2-5-5.4-3.6" fill="none" stroke="#15803D" stroke-width="1.4" stroke-linecap="round"/></svg>',
+  ball:'<svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="12" fill="#fff" stroke="#1F2937" stroke-width="1.4"/><path d="M4 16a12 12 0 0 0 24 0z" fill="#EF4444"/><path d="M4.2 16h23.6" stroke="#1F2937" stroke-width="2"/><circle cx="16" cy="16" r="3.2" fill="#fff" stroke="#1F2937" stroke-width="1.6"/></svg>',
+  apple:'<svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="19" r="10" fill="#EF4444"/><ellipse cx="12" cy="15" rx="2.6" ry="1.6" fill="#FCA5A5"/><path d="M16 9c.2-3.4 2.6-5 5-4.2" fill="none" stroke="#166534" stroke-width="1.4" stroke-linecap="round"/><path d="M16 9c2-2.4 5-2.2 6 .4-2.2-.2-4 .2-6-.4z" fill="#22C55E"/></svg>',
+  cookie:'<svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="11" fill="#D97706"/><circle cx="11" cy="13" r="1.7" fill="#78350F"/><circle cx="18" cy="11" r="1.4" fill="#78350F"/><circle cx="14" cy="19" r="1.6" fill="#78350F"/><circle cx="21" cy="18" r="1.3" fill="#78350F"/><circle cx="20" cy="14" r="1.1" fill="#78350F"/></svg>',
+  flower:'<svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="8" r="4" fill="#F9A8D4"/><circle cx="8.5" cy="14" r="4" fill="#F472B6"/><circle cx="23.5" cy="14" r="4" fill="#F472B6"/><circle cx="11" cy="23" r="4" fill="#F9A8D4"/><circle cx="21" cy="23" r="4" fill="#F9A8D4"/><circle cx="16" cy="16" r="3.3" fill="#FACC15"/></svg>',
+  coin:'<svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="11" fill="#FBBF24" stroke="#D97706" stroke-width="1.6"/><circle cx="16" cy="16" r="6.5" fill="none" stroke="#D97706" stroke-width="1.4"/></svg>',
+  sticker:'<svg viewBox="0 0 32 32" aria-hidden="true"><polygon points="16,3 19.5,12 29,12.5 21.5,18.5 24,28 16,22.5 8,28 10.5,18.5 3,12.5 12.5,12" fill="#F59E0B" stroke="#D97706" stroke-width="1" stroke-linejoin="round"/></svg>',
+  goal:'<svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="11" fill="#fff" stroke="#1F2937" stroke-width="1.4"/><polygon points="16,8 19.2,14 16,16.2 12.8,14" fill="#1F2937"/><polygon points="16,16.2 19.2,14 22,18.5 16,20" fill="#1F2937"/><polygon points="16,16.2 12.8,14 10,18.5 16,20" fill="#1F2937"/></svg>',
+  egg:'<svg viewBox="0 0 32 32" aria-hidden="true"><ellipse cx="16" cy="18" rx="8" ry="11" fill="#FEF3C7" stroke="#D6D3D1" stroke-width="1.4"/></svg>',
+  mon:'<svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="11" fill="#FACC15" stroke="#CA8A04" stroke-width="1.3"/><circle cx="12" cy="15" r="1.6" fill="#1F2937"/><circle cx="20" cy="15" r="1.6" fill="#1F2937"/><path d="M12 20q4 3.2 8 0" fill="none" stroke="#1F2937" stroke-width="1.4" stroke-linecap="round"/></svg>',
+  lap:'<svg viewBox="0 0 32 32" aria-hidden="true"><rect x="8" y="5" width="2.2" height="22" rx="1" fill="#1F2937"/><polygon points="10.2,6 24,11 10.2,16" fill="#EF4444"/></svg>',
+  step:'<svg viewBox="0 0 32 32" aria-hidden="true"><ellipse cx="17" cy="21" rx="8" ry="5.5" fill="#92400E"/><circle cx="10" cy="13" r="2.2" fill="#92400E"/><circle cx="15" cy="10" r="2.2" fill="#92400E"/><circle cx="20" cy="11" r="2" fill="#92400E"/></svg>',
+  point:'<svg viewBox="0 0 32 32" aria-hidden="true"><polygon points="16,4 18.8,12 27,12.2 20.4,17.2 22.6,25 16,20.4 9.4,25 11.6,17.2 5,12.2 13.2,12" fill="#FBBF24" stroke="#D97706" stroke-width="1" stroke-linejoin="round"/></svg>',
+};
+function itemFor(stem){
+  const s=stem.toLowerCase();
+  if(s.includes('poke ball'))return 'ball';
+  if(s.includes('berr'))return 'berry';
+  if(s.includes('apple'))return 'apple';
+  if(s.includes('cookie'))return 'cookie';
+  if(s.includes('flower'))return 'flower';
+  if(s.includes('coin'))return 'coin';
+  if(s.includes('sticker'))return 'sticker';
+  if(s.includes('goal'))return 'goal';
+  if(/\beggs?\b/.test(s))return 'egg';
+  if(s.includes('pokemon'))return 'mon';
+  if(/\blaps?\b/.test(s))return 'lap';
+  if(/\bsteps?\b/.test(s))return 'step';
+  if(/\bpoints?\b/.test(s))return 'point';
+  if(/\bmiles?\b/.test(s))return 'step';
+  return 'berry';
+}
+function hvMark(item,gone,cls){
+  return `<span class="hv-mark${cls?' '+cls:''}${gone?' gone':''}">${HV_ICON[item]||HV_ICON.berry}</span>`;
+}
+function hvDots(n,item,goneAfter){
+  let h='';
+  for(let i=0;i<n;i++)h+=hvMark(item,goneAfter!=null&&i>=goneAfter);
+  return h;
+}
+function hvGroup(n,item,cls){
+  if(n<=0)return `<div class="hv-group hv-empty${cls?' '+cls:''}"></div>`;
+  return `<div class="hv-group${cls?' '+cls:''}">${hvDots(n,item)}</div>`;
+}
+function hvFullFrame(item,gone){
+  gone=gone||0;
+  let cells='';
+  for(let c=0;c<10;c++)cells+=hvMark(item,c>=10-gone,'tf-cell');
+  return `<div class="ten-frame${gone?' hv-break':''}">${cells}</div>`;
+}
+function hvPartialFrame(item,filled){
+  let cells='';
+  for(let c=0;c<10;c++)cells+=c<filled?hvMark(item,false,'tf-cell'):'<span class="tf-cell empty"></span>';
+  return `<div class="ten-frame">${cells}</div>`;
+}
+function hvQty(n,item){
+  if(n<=10)return hvGroup(n,item);
+  const tens=Math.floor(n/10),ones=n%10;
+  let frames='';
+  for(let i=0;i<tens;i++)frames+=hvFullFrame(item,0);
+  const loose=ones?`<div class="hv-ones">${hvDots(ones,item)}</div>`:'';
+  return `<div class="hv-ten">${frames}${loose}</div>`;
+}
+function hvCap(text){return `<div class="hv-cap">${text}</div>`;}
+function renderAddObjects(a,b,item){
+  return `<div class="hv-eq">${hvGroup(a,item)}<span class="hv-op">+</span>${hvGroup(b,item)}</div>${hvCap('Count every one.')}`;
+}
+function renderAddTen(a,b,item){
+  if(a>=10&&b>=10){
+    return `<div class="hv-eq">${hvFullFrame(item,0)}<span class="hv-op">+</span>${hvFullFrame(item,0)}</div>${hvCap('Count every one.')}`;
+  }
+  if(a>=10||b>=10){
+    const teen=Math.max(a,b),other=Math.min(a,b);
+    const ones=teen%10,tens=Math.floor(teen/10);
+    let frames='';
+    for(let i=0;i<tens;i++)frames+=hvFullFrame(item,0);
+    const loose=ones?`<div class="hv-ones">${hvDots(ones,item)}</div>`:'';
+    return `<div class="hv-eq"><div class="hv-ten">${frames}${loose}</div><span class="hv-op">+</span>${hvGroup(other,item)}</div>${hvCap('Count every one.')}`;
+  }
+  const start=Math.max(a,b),add=Math.min(a,b);
+  const bridge=Math.min(10-start,add),extra=add-bridge;
+  const split=`<div class="hv-split">${hvGroup(bridge,item,'hv-bridge')}${extra?hvGroup(extra,item,'hv-extra'):''}</div>`;
+  return `<div class="hv-eq">${hvPartialFrame(item,start)}<span class="hv-op">+</span>${split}</div>${hvCap('Count every one.')}`;
+}
+function renderSubObjects(a,b,item){
+  return `<div class="hv-group">${hvDots(a,item,a-b)}</div>${hvCap('Skip the crossed-out ones.')}`;
+}
+function renderSubTen(a,b,item){
+  const tens=Math.floor(a/10),ones=a%10;
+  let take=b;
+  const onesGone=Math.min(ones,take);
+  take-=onesGone;
+  let frames='';
+  for(let t=0;t<tens;t++)frames+=hvFullFrame(item,t===tens-1?Math.min(10,take):0);
+  const loose=ones?`<div class="hv-ones">${hvDots(ones,item,ones-onesGone)}</div>`:'';
+  return `<div class="hv-ten">${frames}${loose}</div>${hvCap('Skip the crossed-out ones.')}`;
+}
+function renderGroups(groups,each,item,cap){
+  let h='<div class="hv-groups">';
+  for(let g=0;g<groups;g++)h+=`<div class="hv-group" data-group>${hvDots(each,item)}</div>`;
+  return h+`</div>${hvCap(cap)}`;
+}
+function renderCmp(a,b,item){
+  return `<div class="hv-eq"><div class="hv-side">${hvQty(a,item)}</div><span class="hv-op">or</span><div class="hv-side">${hvQty(b,item)}</div></div>${hvCap('Count each side.')}`;
+}
+function renderMissing(have,item){
+  let cells='';
+  for(let i=0;i<10;i++)cells+=i<have?hvMark(item,false,'tf-cell'):'<span class="tf-cell empty"></span>';
+  return `<div class="ten-frame">${cells}</div>${hvCap('Count the empty spots.')}`;
+}
+// Pulls a single operation out of a stem. Two-step stories (three or more
+// numbers, unless they are three equal adds like 2 + 2 + 2) are left alone:
+// picturing only the first step would count to the wrong number.
+function parseMathVisual(stem){
+  const s=stem.replace(/\{P\}/g,'P').replace(/\s+/g,' ').trim();
+  const nums=[...s.matchAll(/\d+/g)].map(m=>+m[0]);
+  let m;
+  if(nums.length>=3){
+    m=s.match(/(\d+) \+ (\d+) \+ (\d+)/);
+    if(m&&nums.length===3&&m[1]===m[2]&&m[2]===m[3])return {op:'mul',a:3,b:+m[1]};
+    return null;
+  }
+  if((m=s.match(/^What is (\d+) \+ (\d+)\?$/)))return {op:'add',a:+m[1],b:+m[2]};
+  if((m=s.match(/^What is (\d+) - (\d+)\?$/)))return {op:'sub',a:+m[1],b:+m[2]};
+  if((m=s.match(/^What is (\d+) x (\d+)\?$/)))return {op:'mul',a:+m[1],b:+m[2]};
+  if((m=s.match(/^What is (\d+) divided by (\d+)\?$/)))return {op:'div',a:+m[1],b:+m[2]};
+  if((m=s.match(/^What is HALF of (\d+)\?$/)))return {op:'div',a:+m[1],b:2};
+  if((m=s.match(/Which is (?:MORE|LESS)\s+[—–-]\s+(\d+) or (\d+)/i)))return {op:'cmp',a:+m[1],b:+m[2]};
+  if((m=s.match(/needs (\d+) \w+ but only has (\d+)/)))return {op:'missing',have:+m[2],total:+m[1]};
+  if((m=s.match(/goes with (\d+) to make (\d+)/)))return {op:'missing',have:+m[1],total:+m[2]};
+  if((m=s.match(/(\d+) \+ (\d+)/)))return {op:'add',a:+m[1],b:+m[2]};
+  if((m=s.match(/Start at (\d+) and count up (\d+)/)))return {op:'add',a:+m[1],b:+m[2]};
+  if((m=s.match(/(\d+) groups of (\d+)/)))return {op:'mul',a:+m[1],b:+m[2]};
+  if((m=s.match(/(\d+) bags with (\d+)/)))return {op:'mul',a:+m[1],b:+m[2]};
+  if((m=s.match(/(\d+) bags of (\d+)/)))return {op:'mul',a:+m[1],b:+m[2]};
+  if((m=s.match(/(\d+) rows of (\d+)/)))return {op:'mul',a:+m[1],b:+m[2]};
+  if((m=s.match(/(\d+) boxes with (\d+)/)))return {op:'mul',a:+m[1],b:+m[2]};
+  if((m=s.match(/(\d+) nests with (\d+)/)))return {op:'mul',a:+m[1],b:+m[2]};
+  if((m=s.match(/eats (\d+) \w+ a day\. How many in (\d+) days/)))return {op:'mul',a:+m[2],b:+m[1]};
+  if((m=s.match(/(\d+) miles a day for (\d+) days/)))return {op:'mul',a:+m[2],b:+m[1]};
+  if((m=s.match(/splits (\d+) .+ into (\d+) equal/)))return {op:'div',a:+m[1],b:+m[2]};
+  if((m=s.match(/(\d+) Poke Balls go into (\d+) equal/)))return {op:'div',a:+m[1],b:+m[2]};
+  if((m=s.match(/(\d+) \w+ into (\d+) equal/)))return {op:'div',a:+m[1],b:+m[2]};
+  if((m=s.match(/(\d+) berries and (\d+) friends/)))return {op:'div',a:+m[1],b:+m[2]};
+  if((m=s.match(/team of (\d+) shares (\d+)/)))return {op:'div',a:+m[2],b:+m[1]};
+  if(nums.length!==2)return null;
+  if(/^(Count by|What number comes|Which number is|How many)/i.test(s))return null;
+  if(/\b(MORE|LESS) than\b/i.test(s))return null;
+  if(/\b(cents?|dollar|quarter|dime|nickel|hour|minute|clock|slices?|pieces?|fraction|pizza|cake|sandwich|digit)\b/i.test(s))return null;
+  const sub=/\b(left|ate|eats|eat|uses|used|gives|gave|away|home)\b/i.test(s);
+  const add=/\b(more|total|finds|find|gets|got|catches|caught)\b/i.test(s);
+  if(sub&&!add)return {op:'sub',a:nums[0],b:nums[1]};
+  if(add&&!sub)return {op:'add',a:nums[0],b:nums[1]};
+  return null;
+}
+function visualFits(p){
+  switch(p.op){
+    case 'add':return p.a>=0&&p.b>=0&&p.a<=20&&p.b<=20&&p.a+p.b<=20&&p.a+p.b>0;
+    case 'sub':return p.b>=0&&p.b<=p.a&&p.a<=20;
+    case 'mul':return p.a>=1&&p.b>=1&&p.a<=10&&p.b<=10&&p.a*p.b<=20;
+    case 'div':return p.b>=1&&p.a>=p.b&&p.a<=20&&p.a%p.b===0;
+    case 'cmp':return p.a>=0&&p.b>=0&&p.a<=20&&p.b<=20;
+    case 'missing':return p.total===10&&p.have>=0&&p.have<=10;
+    default:return false;
+  }
+}
+function mathVisualSpec(q){
+  if(!q||q.subject!=='math'||!q.tmpl||!q.tmpl.raw)return null;
+  const parsed=parseMathVisual(q.tmpl.raw[0]);
+  if(!parsed||!visualFits(parsed))return null;
+  parsed.item=itemFor(q.tmpl.raw[0]);
+  return parsed;
+}
+function renderMathVisual(spec){
+  const item=spec.item;
+  if(spec.op==='add')return (spec.a+spec.b<=10?renderAddObjects:renderAddTen)(spec.a,spec.b,item);
+  if(spec.op==='sub')return (spec.a<=10?renderSubObjects:renderSubTen)(spec.a,spec.b,item);
+  if(spec.op==='mul')return renderGroups(spec.a,spec.b,item,'Count every one.');
+  if(spec.op==='div')return renderGroups(spec.b,spec.a/spec.b,item,'Count one group.');
+  if(spec.op==='cmp')return renderCmp(spec.a,spec.b,item);
+  if(spec.op==='missing')return renderMissing(spec.have,item);
+  return '';
+}
+function visualHintHTML(q){
+  const spec=mathVisualSpec(q);
+  if(!spec)return '';
+  const body=renderMathVisual(spec);
+  if(!body)return '';
+  return `<div class="hint-visual" data-kind="${spec.op}" data-item="${spec.item}">${body}</div>`;
+}
+
 function qCardHTML(resultMsg,btnLabel){
   if(!st.q)return'';
   const q=st.q;
@@ -2046,6 +2267,11 @@ function qCardHTML(resultMsg,btnLabel){
     h+=`<button class="${c}"${resolved||ruled?' disabled':''} data-i="${i}">${a}</button>`;
   });
   h+=`</div>`;
+  // The picture rides along only while the text hint is actually up: asked for
+  // before answering, or shown after a miss. A solved question and a Pokemon
+  // that already fled don't carry one.
+  const hintUp=(!resolved&&st.tries===0&&st.helped)||(st.tries>0&&!st.cor&&!st.wildEscape);
+  const visual=hintUp?visualHintHTML(q):'';
   // Before the first answer only: after a miss the hint is already on screen. His
   // own Pokemon is the one asked, even mid-encounter -- the wild one isn't his to ask.
   if(!resolved&&st.tries===0){
@@ -2055,7 +2281,7 @@ function qCardHTML(resultMsg,btnLabel){
       // entire reason he was skipping -- the box has to answer that fear, not
       // just carry the hint.
       const keep=st.streak>1?`Get it right and your &#128293; ${st.streak} streak stays!`:'Take your time &#8212; you can do it!';
-      h+=`<div class="help-box"><div class="help-say"><strong>${helper} says:</strong> ${q.hint}</div><div class="help-keep">${keep}</div></div>`;
+      h+=`<div class="help-box"><div class="help-say"><strong>${helper} says:</strong> ${q.hint}</div>${visual}<div class="help-keep">${keep}</div></div>`;
     } else {
       h+=`<button class="help-btn" id="help-btn">&#128161; Ask ${helper} for help</button>`;
     }
@@ -2064,6 +2290,7 @@ function qCardHTML(resultMsg,btnLabel){
     // Empty is the common case now -- no phase says anything here on a correct answer
     // -- and an empty .result-msg would still paint its padding as a bare stripe.
     if(resultMsg)h+=`<div class="result-msg">${resultMsg}</div>`;
+    if(visual)h+=visual;
     if(resolved)h+=`<button class="nxt-btn" id="nxt">${btnLabel}</button>`;
   }
   return h+`</div>`;
