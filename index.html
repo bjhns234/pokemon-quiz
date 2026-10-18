@@ -394,15 +394,6 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;min-heigh
 .great-note{font-size:13px;font-weight:700;color:#6D28D9;margin-top:6px}
 .pdx-badges{margin-bottom:16px}
 .pdx-badge-hd{font-size:13px;font-weight:800;color:#6B7280;margin-bottom:8px}
-.grownups{margin:22px 0 8px;text-align:center}
-.grownups-btn{background:none;border:none;color:#9CA3AF;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;text-decoration:underline}
-.gate-card{text-align:center}
-.gate-q{font-size:20px;font-weight:800;margin:8px 0}
-.gate-read{min-height:52px;border:2px solid #E5E7EB;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:800;margin-bottom:10px}
-.gate-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.gate-pad button{font-family:inherit;font-size:22px;font-weight:800;padding:14px 0;border-radius:12px;border:1px solid #E5E7EB;background:#fff;cursor:pointer}
-.gate-note{color:#6B7280;font-size:14px;font-weight:600;margin:8px 0}
-.timer-toggle{display:flex;align-items:center;justify-content:center;gap:8px;font-weight:700;margin:12px 0}
 </style>
 </head>
 <body>
@@ -1777,8 +1768,8 @@ const CATCH_STREAK_NEEDED=3;
 // read alike. But the cap is 10, NOT XP_STREAK_CAP's 7 and not the 20 this was
 // first written with, and that number was measured rather than reasoned:
 //
-// LEVEL_UP_STREAK is 3, so the difficulty system promotes him to a harder tier
-// every third correct answer. It is built to break exactly the runs this pays for.
+// LEVEL_UP_STREAK is 5, so five clean answers in a subject unlock a Gym and
+// break the run this pays for. The cap below was measured when that streak was 3.
 // Simulating a fixed ability against the real adaptive tiers, he settles at the
 // ceiling tier and lives at streaks 0-10 -- a streak of 20 is a rare spike, not a
 // place he ever sits. A cap of 20 meant the top half of the ladder was decoration:
@@ -1834,10 +1825,12 @@ function wildLevel(){
 // A wrong answer during an encounter costs a ball rather than ending it outright;
 // the Pokemon only flees once the balls run out.
 const CATCH_MISSES_ALLOWED=1;
-// Symmetric on purpose: falling a level should be no easier than climbing one.
-const LEVEL_UP_STREAK=3;
+// Five clean first-tries in a row unlock the Gym for the tier he is on.
+// Dropping a tier still takes three misses, so a short stumble does not undo
+// a long run.
+const LEVEL_UP_STREAK=5;
 const LEVEL_DOWN_STREAK=3;
-// A difficulty step is a Gym battle now. Three clean answers in a subject unlock
+// A difficulty step is a Gym battle now. Five clean answers in a subject unlock
 // the leader for the tier he is ON; the next tier opens only when that battle is
 // won. Questions in the battle come from that same tier.
 const GYM_QUESTIONS=9;
@@ -1848,11 +1841,6 @@ const GYM_TIMER_MS=25000;
 const GYM_TIMER_MIN_TIER=3; // grade 2 up: math tier 3+, and the same tier elsewhere
 const GYM_BONUS_XP=80;
 const GYM_PARTNER_LEVEL=8; // under every gym partner's evoAt, so the prize still gets to grow
-// Grown-ups gate. 47×23 is past the timed Gyms, and three misses lock the pad
-// so a kid who can add 36+27 cannot walk in by trying.
-const GATE={a:47,b:23,wrong:3,lock:120000};
-function gateAnswer(){return GATE.a*GATE.b;}
-function gateLocked(){return Number(st.gateLock)>Date.now();}
 const GYM_LEADER={math:'Pikachu',reading:'Eevee',science:'Psyduck'};
 const GYM_BADGE_NAMES={
   math:['Bolt Badge','Charge Badge','Thunder Badge'],
@@ -1920,13 +1908,10 @@ function mkState(saved){
     gymOffer:{math:null,reading:null,science:null},
     gym:null,
     award:null,
-    timerOff:false,
     items:{candy:0,great:0},
     // Tiers whose Gym prize was already paid. Survives a level drop, so winning
     // the same badge again does not hand out another candy, ball, or partner.
     prizes:{math:[],reading:[],science:[]},
-    gate:null,gateDraft:'',gateNote:'',
-    gateMisses:0,gateLock:0,
     // Not now, kept across a reload. Cleared when the next practice question is dealt.
     gymSnooze:{math:false,reading:false,science:false},
     holdSnooze:false,
@@ -1948,12 +1933,9 @@ function mkState(saved){
     s.gymOffer=saved.gymOffer;
     s.gym=saved.gym;
     s.award=saved.award;
-    s.timerOff=saved.timerOff;
     s.items=saved.items;
     s.prizes=saved.prizes;
     s.gymSnooze=saved.gymSnooze;
-    s.gateMisses=saved.gateMisses;
-    s.gateLock=saved.gateLock;
     s.subject=saved.subject;
     s.bestStreak=saved.bestStreak;
     s.review=saved.review;
@@ -1997,12 +1979,9 @@ function save(){
       // SAVE_V stays 1 — bumping it would wipe Pokedexes to add a feature.
       badges:st.badges,
       gymOffer:st.gymOffer,
-      timerOff:st.timerOff===true,
       items:{candy:Math.max(0,st.items.candy|0),great:Math.max(0,st.items.great|0)},
       prizes:st.prizes,
       gymSnooze:st.gymSnooze,
-      gateMisses:Math.max(0,st.gateMisses|0),
-      gateLock:Math.max(0,Math.floor(Number(st.gateLock)||0)),
       // A battle still being fought, including the open question: tries, help,
       // ruled-out answers, and the thinking time left. A solved one advances
       // on load so the same hit cannot score twice.
@@ -2154,10 +2133,7 @@ function loadSaved(){
       // those saves meant. SAVE_V holds again -- bumping it would wipe every
       // existing Pokedex to add a feature almost no save has yet used.
       team,pdx,sdx,stats,badges,gymOffer,gym,award,prizes,gymSnooze,
-      timerOff:data.timerOff===true,
       items,
-      gateMisses:Math.max(0,data.gateMisses|0),
-      gateLock:Math.max(0,Math.floor(Number(data.gateLock)||0)),
     };
   }catch(e){
     // corrupt or half-written save: start fresh rather than fail to a blank screen
@@ -2278,7 +2254,7 @@ function gymWaiting(sub){
 }
 function gymReady(sub){return gymWaiting(sub)&&!st.gymSnooze[sub];}
 function gymTimerApplies(){
-  return st.phase==='gym'&&st.gym&&!st.gym.over&&st.gym.tier>=GYM_TIMER_MIN_TIER&&!st.timerOff&&st.tries===0&&!st.helped&&!st.cor;
+  return st.phase==='gym'&&st.gym&&!st.gym.over&&st.gym.tier>=GYM_TIMER_MIN_TIER&&st.tries===0&&!st.helped&&!st.cor;
 }
 function gymClockRunning(){
   return view==='game'&&document.visibilityState!=='hidden';
@@ -2375,13 +2351,13 @@ function dealGymQuestion(resume){
     st.helped=!!g.helped;
     st.wrong=Array.isArray(g.wrong)?g.wrong.slice():[];
     st.armAt=Date.now()+Math.max(0,g.armLeft|0);
-    const timed=g.tier>=GYM_TIMER_MIN_TIER&&!st.timerOff&&st.tries===0&&!st.helped;
+    const timed=g.tier>=GYM_TIMER_MIN_TIER&&st.tries===0&&!st.helped;
     if(!timed)g.timerLeft=null;
-    else if(!g.timerKnown&&typeof g.timerLeft!=='number')g.timerLeft=GYM_TIMER_MS;
+    else if(typeof g.timerLeft!=='number')g.timerLeft=GYM_TIMER_MS;
   } else {
     st.tries=0;st.helped=false;st.wrong=[];
     st.armAt=Date.now()+PAUSE.first;
-    g.timerLeft=(g.tier>=GYM_TIMER_MIN_TIER&&!st.timerOff)?GYM_TIMER_MS:null;
+    g.timerLeft=g.tier>=GYM_TIMER_MIN_TIER?GYM_TIMER_MS:null;
     g.timerKnown=true;
   }
   save();
@@ -2392,7 +2368,7 @@ function gymPayload(){
   if(!g||g.over)return undefined;
   let timerLeft=g.timerLeft;
   if(g.deadline!=null)timerLeft=Math.max(0,g.deadline-Date.now());
-  const timed=g.tier>=GYM_TIMER_MIN_TIER&&!st.timerOff&&st.tries===0&&!st.helped&&!st.cor;
+  const timed=g.tier>=GYM_TIMER_MIN_TIER&&st.tries===0&&!st.helped&&!st.cor;
   if(!timed)timerLeft=null;
   return{
     sub:g.sub,tier:g.tier,queue:g.queue,qi:g.qi,kid:g.kid,lead:g.lead,solved:!!g.solved,
@@ -3107,63 +3083,8 @@ function renderPokedex(){
     });
     h+=`</div></div>`;
   });
-  h+=grownupsHTML();
   pdxEl.innerHTML=h;
   wireReset();
-  wireGate();
-}
-function grownupsHTML(){
-  if(st.gate==='ask'&&gateLocked()){
-    return `<div class="card gate-card"><div class="gym-role">Grown-ups</div><div class="gate-note">Ask a grown-up to try again in a little while.</div></div>`;
-  }
-  if(st.gate==='ask'){
-    const d=/^\d+$/.test(st.gateDraft||'')?st.gateDraft:'';
-    let pad='<div class="gate-pad">';
-    for(let n=1;n<=9;n++)pad+=`<button type="button" data-gate-digit="${n}">${n}</button>`;
-    pad+=`<button type="button" data-gate="erase">⌫</button><button type="button" data-gate-digit="0">0</button><button type="button" data-gate="ok">OK</button></div>`;
-    return `<div class="card gate-card"><div class="gym-role">Grown-ups</div><div class="gate-q">What is ${GATE.a} × ${GATE.b}?</div><div class="gate-read" id="gate-read">${d||'—'}</div>${pad}${st.gateNote?`<div class="gate-note">${st.gateNote}</div>`:''}</div>`;
-  }
-  if(st.gate==='open'){
-    return `<div class="card gate-card"><div class="gym-role">Grown-ups</div><label class="timer-toggle"><input type="checkbox" id="timer-toggle"${st.timerOff?'':' checked'}> Timer in Gym battles</label><div class="gate-note">A calm timer on the harder Gym questions.</div><button class="gym-later" id="gate-close" type="button">Done</button></div>`;
-  }
-  return `<div class="grownups"><button class="grownups-btn" id="grownups-btn" type="button">Grown-ups</button></div>`;
-}
-function wireGate(){
-  const open=document.getElementById('grownups-btn');
-  if(open)open.addEventListener('click',()=>{st.gate='ask';st.gateDraft='';st.gateNote='';renderPokedex();});
-  pdxEl.querySelectorAll('[data-gate-digit]').forEach(b=>b.addEventListener('click',()=>{
-    if(gateLocked())return;
-    const d=b.dataset.gateDigit;
-    if(!/^\d$/.test(d))return;
-    const cur=/^\d+$/.test(st.gateDraft||'')?st.gateDraft:'';
-    if(cur==='0')st.gateDraft=d;
-    else if(cur.length>=4)return;
-    else st.gateDraft=cur+d;
-    st.gateNote='';
-    renderPokedex();
-  }));
-  pdxEl.querySelectorAll('[data-gate]').forEach(b=>b.addEventListener('click',()=>{
-    if(gateLocked())return;
-    if(b.dataset.gate==='erase'){st.gateDraft=(st.gateDraft||'').slice(0,-1);st.gateNote='';renderPokedex();return;}
-    const v=typedValue(st.gateDraft);
-    if(v==null){st.gateNote='That’s for a grown-up to answer.';renderPokedex();return;}
-    if(Number(v)===gateAnswer()){
-      st.gate='open';st.gateNote='';st.gateMisses=0;st.gateLock=0;save();renderPokedex();return;
-    }
-    st.gateMisses=(st.gateMisses|0)+1;
-    st.gateDraft='';
-    if(st.gateMisses>=GATE.wrong){
-      st.gateLock=Date.now()+GATE.lock;
-      st.gateMisses=0;
-      st.gateNote='Ask a grown-up to try again in a little while.';
-    } else st.gateNote='That’s for a grown-up to answer.';
-    save();
-    renderPokedex();
-  }));
-  const tog=document.getElementById('timer-toggle');
-  if(tog)tog.addEventListener('change',()=>{st.timerOff=!tog.checked;save();if(st.phase==='gym')render();});
-  const close=document.getElementById('gate-close');
-  if(close)close.addEventListener('click',()=>{st.gate=null;renderPokedex();});
 }
 
 // Held rather than tapped so a stray finger can't wipe the Pokedex.

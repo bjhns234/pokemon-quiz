@@ -1,4 +1,4 @@
-// Gym Leaders gate a difficulty step. Three clean answers in a subject unlock a
+// Gym Leaders gate a difficulty step. Five clean answers in a row unlock a
 // battle for the tier he is already on; the next tier opens only after a win.
 const {test,expect}=require('@playwright/test');
 const {openGame,startGame,state,answer,nextQuestion,pinXp}=require('./helpers');
@@ -228,28 +228,23 @@ test('the timer is only on harder tiers, and running it out is a miss',async({pa
   expect(await state(page,()=>st.gym.kid)).toBe(await state(page,()=>GYM_KID_HP-1));
 });
 
-test('a parent can turn the Gym timer off, and the choice sticks',async({page})=>{
-  await page.click('#nav-pdx');
-  await page.click('#grownups-btn');
-  await page.click('[data-gate-digit="4"]');
-  await page.click('[data-gate="ok"]');
-  await expect(page.locator('.gate-note')).toContainText('grown-up');
-  expect(await state(page,()=>st.gate)).toBe('ask');
-
-  await page.click('[data-gate="erase"]');
-  for(const d of '1081')await page.click(`[data-gate-digit="${d}"]`);
-  await page.click('[data-gate="ok"]');
-  await expect(page.locator('#timer-toggle')).toBeChecked();
-  await page.click('#timer-toggle');
-  expect(await state(page,()=>st.timerOff)).toBe(true);
-  await page.reload();
-  expect(await state(page,()=>st.timerOff)).toBe(true);
-
-  await state(page,()=>{st.phase='play';st.cor=true;st.stats.math.level=3;st.gymOffer.math={tier:3,cool:0};render();});
-  await page.click('#nav-game');
-  await page.click('[data-gym-start="math"]');
-  await expect(page.locator('#gym-time')).toHaveCount(0);
-  expect(await state(page,()=>SAVE_V)).toBe(1);
+test('a save that turned the timer off still loads, and tier 3 stays timed',async({page})=>{
+  const save={v:1,starter:0,activeIdx:0,team:[{num:'#001',level:7,xp:3}],dex:['#001'],
+    timerOff:true,gateMisses:2,gateLock:Date.now()+120000,
+    stats:{math:{cor:5,att:6,level:3,cs:0,ws:0},reading:{cor:0,att:0,level:1,cs:0,ws:0},science:{cor:0,att:0,level:1,cs:0,ws:0}}};
+  const p2=await page.context().newPage();
+  const err=await openGame(p2,{save});
+  expect(err).toEqual([]);
+  expect(await state(p2,()=>st.timerOff)).toBeUndefined();
+  expect(await state(p2,()=>st.stats.math.level)).toBe(3);
+  expect(await state(p2,()=>SAVE_V)).toBe(1);
+  await p2.click('#nav-pdx');
+  await expect(p2.locator('#grownups-btn')).toHaveCount(0);
+  await expect(p2.locator('.gate-card')).toHaveCount(0);
+  await state(p2,()=>{st.cor=true;st.gymOffer.math={tier:3,cool:0};render();});
+  await p2.click('#nav-game');
+  await p2.click('[data-gym-start="math"]');
+  await expect(p2.locator('#gym-time')).toBeVisible();
 });
 
 test('a Gym miss still comes back as a Rematch',async({page})=>{
@@ -561,33 +556,6 @@ test('Not now stays dismissed across a reload',async({page})=>{
   await nextQuestion(page);
   await answer(page,true);
   await expect(page.locator('[data-gym-start="math"]')).toBeVisible();
-});
-
-test('three wrong grown-up answers lock the gate, and a reload keeps it',async({page})=>{
-  await page.click('#nav-pdx');
-  await page.click('#grownups-btn');
-  for(let i=0;i<2;i++){
-    await page.click('[data-gate-digit="1"]');
-    await page.click('[data-gate="ok"]');
-    await expect(page.locator('.gate-note')).toContainText('grown-up');
-  }
-  expect(await state(page,()=>st.gateMisses)).toBe(2);
-  await page.reload();
-  await page.click('#nav-pdx');
-  await page.click('#grownups-btn');
-  expect(await state(page,()=>st.gateMisses)).toBe(2);
-  await page.click('[data-gate-digit="1"]');
-  await page.click('[data-gate="ok"]');
-  await expect(page.locator('.gate-pad')).toHaveCount(0);
-  await expect(page.locator('.gate-note')).toContainText('little while');
-  await page.reload();
-  await page.click('#nav-pdx');
-  await page.click('#grownups-btn');
-  await expect(page.locator('.gate-pad')).toHaveCount(0);
-  await state(page,()=>{st.gateLock=Date.now()-1000;renderPokedex();});
-  await expect(page.locator('.gate-pad')).toBeVisible();
-  await expect(page.locator('.gate-q')).toContainText('47');
-  await expect(page.locator('.gate-q')).toContainText('23');
 });
 
 test('a reading Gym on the harder tier is timed and awards the Legend Badge',async({page})=>{
