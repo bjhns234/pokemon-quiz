@@ -158,6 +158,10 @@ test('leading zeros and whitespace count as the same number, and a blank Check i
   expect(await state(page,()=>st.tries)).toBe(0);
   await page.locator('[data-pad="check"]').click();
   expect(await state(page,()=>st.tries)).toBe(0);
+  await expect(page.locator('#pad-note')).toHaveText('Type a number first.');
+  await page.locator('[data-digit="3"]').click();
+  await expect(page.locator('#pad-note')).toBeHidden();
+  await expect(page.locator('#pad-read')).toHaveText('3');
   const padded=' 0'+q.answer+' ';
   await state(page,v=>{submitTyped(v);},padded);
   expect(await state(page,()=>st.cor)).toBe(true);
@@ -183,11 +187,33 @@ test('digits and Check do nothing while the question is still arming',async({pag
   await page.locator('[data-digit="3"]').click();
   await page.locator('[data-digit="5"]').click();
   await expect(page.locator('#pad-read')).toHaveClass(/empty/);
-  await state(page,()=>{st.draft='35';render();});
+  // A wrong number, not the answer: the old code cleared the draft before the
+  // arming guard, and checking the correct 35 hid that.
+  await state(page,()=>{st.draft='12';render();});
   await page.locator('[data-pad="check"]').click();
-  expect(await state(page,()=>({tries:st.tries,cor:st.cor,draft:st.draft}))).toEqual({tries:0,cor:false,draft:'35'});
-  await state(page,()=>{typeDigit('1');eraseDigit();submitTyped('35');});
-  expect(await state(page,()=>st.tries)).toBe(0);
+  expect(await state(page,()=>({tries:st.tries,cor:st.cor,draft:st.draft}))).toEqual({tries:0,cor:false,draft:'12'});
+  await state(page,()=>{typeDigit('1');eraseDigit();submitTyped('12');});
+  expect(await state(page,()=>({tries:st.tries,draft:st.draft}))).toEqual({tries:0,draft:'12'});
+});
+
+test('a double-tap on a digit enters it once',async({page})=>{
+  await serveStem(page,'What is 25 + 10?');
+  await page.locator('[data-digit="1"]').dblclick();
+  await expect(page.locator('#pad-read')).toHaveText('1');
+  await page.locator('[data-digit="1"]').click();
+  await expect(page.locator('#pad-read')).toHaveText('11');
+});
+
+test('Check stays above the nav on a landscape iPad',async({page})=>{
+  await page.setViewportSize({width:1024,height:768});
+  await serveStem(page,'What is 25 + 10?');
+  await page.evaluate(()=>window.scrollTo(0,0));
+  const check=await page.locator('[data-pad="check"]').boundingBox();
+  const nav=await page.locator('#bottom-nav').boundingBox();
+  expect(check).not.toBeNull();
+  expect(check.y).toBeGreaterThanOrEqual(0);
+  expect(check.y+check.height).toBeLessThanOrEqual(768);
+  expect(check.y+check.height).toBeLessThanOrEqual(nav.y+1);
 });
 
 test('asking for help, then a correct Check, pauses the streak and pays the help rate',async({page})=>{

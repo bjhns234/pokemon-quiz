@@ -71,6 +71,27 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;min-heigh
 .ten-frame .hv-mark{background:#F8FAFC;border-radius:8px}
 .ten-frame .hv-mark.gone{background:#FEE2E2}
 .tf-cell.empty{box-sizing:border-box;border:1.5px dashed #7DD3FC;border-radius:8px;background:#F8FAFC}
+/* Make-10 spaces are trays the berries fill, not holes to count. The dashed
+   cell above is only for "how many more to make 10", whose caption says to
+   count the empty spots. */
+.tf-cell.slot{box-sizing:border-box;border-radius:8px;border:2px solid #FB923C;background:repeating-linear-gradient(135deg,#FFEDD5,#FFEDD5 3px,#FFF7ED 3px,#FFF7ED 6px)}
+.hv-group.hv-bridge{box-shadow:0 0 0 2px #FB923C;background:#FFF7ED}
+.hv-group.hv-count{box-shadow:0 0 0 3px #F59E0B;background:#FFFBEB}
+.pad-note{text-align:center;font-size:13px;font-weight:700;color:#9A3412;margin:-2px 0 8px}
+.pad-note[hidden]{display:none}
+@media (orientation:landscape) and (max-height:820px){
+  body{padding:8px 12px 58px}
+  .hdr{margin-bottom:6px}
+  .card{padding:10px 14px;margin-bottom:8px}
+  .psvg{margin:2px 0}
+  .psvg img{width:80px;height:80px}
+  .qtext{margin-bottom:8px}
+  .pad-wrap{margin-bottom:6px}
+  .pad-read{min-height:40px;font-size:28px;margin-bottom:6px}
+  .numpad{gap:6px}
+  .pad-key{min-height:42px;font-size:22px}
+  .pad-check{min-height:40px}
+}
 .streak-pill.maxed{background:#FFEDD5;color:#C2410C}
 .streak-pill.bump{animation:streak-pop 0.45s ease}
 .streak-pill.record{background:linear-gradient(90deg,#FDE68A,#FCD34D);color:#92400E;box-shadow:0 0 0 1.5px #F59E0B}
@@ -903,8 +924,8 @@ math:{
   ["What is 3 + 6?",["7","8","9","10"],2,"Number genius!","Start with the bigger number, 6, and count up 3."],
   ["{P} found coins: 2 + 2 + 2. How many coins?",["4","5","6","7"],2,"Great adding!","Skip count by 2s: one jump for each group of 2."],
   ["Which is LESS — 8 or 5?",["8","5","Same","Both"],1,"Smart comparing!","Count out loud from the start. The number you say first is less."],
-  ["{P} has 7 berries and finds 5 more. How many total?",["10","11","12","13"],2,"Adding star!","Make 10 first: 7 + 3 = 10. You still have 2 more to add."],
-  ["What is 6 + 7?",["11","12","13","14"],2,"Adding champ!","Doubles help! 6 + 6 = 12, and 7 is one more than 6."],
+  ["{P} has 7 berries and finds 5 more. How many total?",["10","11","12","13"],2,"Adding star!","Make 10 first: 7 + 3 = 10. Then add the 2 that are left."],
+  ["What is 6 + 7?",["11","12","13","14"],2,"Adding champ!","Make 10 first: 7 + 3 = 10. Then add the 3 that are left."],
   ["What is 14 - 6?",["6","7","8","9"],2,"Subtraction wizard!","Take 4 to get down to 10. Then take 2 more."],
   ["Count by 2s: 2, 4, 6, 8, ___",["9","10","11","12"],1,"Skip counting star!","Add 2 to the last number. Count up 2 on your fingers."],
   ["Which is MORE — 15 or 9?",["9","15","Same","Both"],1,"Comparing ace!","A two-digit number is always bigger than a one-digit number!"],
@@ -916,35 +937,35 @@ math:{
   ["{P} ran 6 laps then 8 more. How many laps total?",["12","13","14","15"],2,"Running counter!","Make 10 first: 8 + 2 = 10. Then add the 4 that are left."],
   ["Count by 2s: 8, 10, 12, ___",["13","14","15","16"],1,"Pattern wizard!","Add 2 to the last number. Count up 2 on your fingers."],
   ["Which is LESS — 17 or 12?",["17","12","Same","Both"],1,"Comparing expert!","Both have 1 ten. Look at the ones: 7 or 2. Which is less?"],
-  ["What is 9 + 7?",["14","15","16","17"],2,"Big adder!","9 is almost 10! Add 10 instead, then take 1 away."],
+  ["What is 9 + 7?",["14","15","16","17"],2,"Big adder!","Make 10 first: 9 + 1 = 10. Then add the 6 that are left."],
   ["How many ones are in the number 13?",["1","2","3","4"],2,"Place value ace!","13 = 1 ten and ___ ones!"],
   ["{P} scored 12 points then 5 more. How many total?",["15","16","17","18"],2,"Score counter!","Keep the ten. Add just the ones: 2 + 5."],
   ["What is 11 - 4?",["5","6","7","8"],2,"Careful subtract!","Take 1 to get down to 10. Then take 3 more."],
   ["Count by 5s: 10, 15, 20, ___",["23","24","25","26"],2,"Skip master!","Add 5 to the last number. Counting by 5s always ends in 0 or 5."],
   ["Which is MORE — 18 or 11?",["11","18","Same","Both"],1,"Comparing star!","Both have 1 ten. Look at the ones: 8 or 1. Which is more?"],
-  ["What is 7 + 8?",["13","14","15","16"],2,"Adding wizard!","Doubles help! 7 + 7 = 14, and 8 is one more than 7."],
+  ["What is 7 + 8?",["13","14","15","16"],2,"Adding wizard!","Make 10 first: 8 + 2 = 10. Then add the 5 that are left."],
   ["{P} had 16 stickers and gave 7 away. How many left?",["7","8","9","10"],2,"Generous subtract!","Take 6 to get down to 10. Then take 1 more."],
   ["How many tens are in the number 30?",["1","2","3","4"],2,"Tens expert!","Count by 10s until you reach 30. How many jumps did you make?"],
   ["What is 13 - 5?",["6","7","8","9"],2,"Subtraction star!","Take 3 to get down to 10. Then take 2 more."],
   ["Count by 2s: 12, 14, 16, ___",["17","18","19","20"],1,"Pattern champ!","Add 2 to the last number. Count up 2 on your fingers."],
-  ["{P} found 9 + 9 coins. How many total?",["16","17","18","19"],2,"Coin counter!","9 is almost 10! Add 10 instead, then take 1 away."],
+  ["{P} found 9 + 9 coins. How many total?",["16","17","18","19"],2,"Coin counter!","Make 10 first: 9 + 1 = 10. Then add the 8 that are left."],
   ["Which is LESS — 14 or 19?",["19","14","Same","Both"],1,"Comparing wizard!","Both have 1 ten. Look at the ones: 4 or 9. Which is less?"],
   ["What is 10 + 8?",["16","17","18","19"],2,"Teen numbers!","10 + 8 is one ten and 8 ones. How do you write that?"],
   ["How many ones are in the number 17?",["5","6","7","8"],2,"Place value champ!","17 = 1 ten and ___ ones!"],
   ["{P} had 20 berries and ate 6. How many left?",["12","13","14","15"],2,"Berry subtract!","Take the 6 from one ten: 10 - 6 = 4. The other ten is still there!"],
   ["Count by 5s: 20, 25, ___",["28","29","30","31"],2,"Skip star!","Add 5 to the last number. Counting by 5s always ends in 0 or 5."],
-  ["What is 6 + 9?",["13","14","15","16"],2,"Adding genius!","9 is almost 10! Add 10 to 6 instead, then take 1 away."],
+  ["What is 6 + 9?",["13","14","15","16"],2,"Adding genius!","Make 10 first: 9 + 1 = 10. Then add the 5 that are left."],
   ["Which is MORE — 13 or 8?",["8","13","Same","Both"],1,"Number champ!","A two-digit number is always bigger than a one-digit number!"],
   ["What is 18 - 9?",["7","8","9","10"],2,"Subtraction genius!","Take 8 to get down to 10. Then take 1 more."],
-  ["{P} scored 8 + 7 points. How many total?",["13","14","15","16"],2,"Score adder!","Doubles help! 7 + 7 = 14, and 8 is one more than 7."],
+  ["{P} scored 8 + 7 points. How many total?",["13","14","15","16"],2,"Score adder!","Make 10 first: 8 + 2 = 10. Then add the 5 that are left."],
   ["How many tens are in the number 10?",["0","1","2","3"],1,"Place value star!","Count by 10s until you reach 10. How many jumps did you make?"],
   ["What is 12 - 4?",["6","7","8","9"],2,"Careful subtract!","Take 2 to get down to 10. Then take 2 more."],
   ["Count by 2s: 4, 6, 8, 10, ___",["11","12","13","14"],1,"Skip wizard!","Add 2 to the last number. Count up 2 on your fingers."],
-  ["{P} caught 9 Pokemon in the morning and 8 at night. How many total?",["15","16","17","18"],2,"Pokemon counter!","9 is almost 10! Add 10 instead, then take 1 away."],
+  ["{P} caught 9 Pokemon in the morning and 8 at night. How many total?",["15","16","17","18"],2,"Pokemon counter!","Make 10 first: 9 + 1 = 10. Then add the 7 that are left."],
   ["Which is LESS — 11 or 20?",["20","11","Same","Both"],1,"Comparing expert!","Look at the tens: 1 ten or 2 tens. Which is less?"],
-  ["What is 7 + 7?",["12","13","14","15"],2,"Doubles star!","Doubles! 5 + 5 = 10. Then add the 2 and 2 that are left."],
+  ["What is 7 + 7?",["12","13","14","15"],2,"Doubles star!","Make 10 first: 7 + 3 = 10. Then add the 4 that are left."],
   ["What is 3 + 3?",["4","5","6","7"],2,"Adding genius!","Count up 3 more from 3!"],
-  ["What is 8 + 7?",["13","14","15","16"],2,"Adding genius!","Doubles help! 7 + 7 = 14, and 8 is one more than 7."],
+  ["What is 8 + 7?",["13","14","15","16"],2,"Adding genius!","Make 10 first: 8 + 2 = 10. Then add the 5 that are left."],
   ["What is 13 + 5?",["16","17","18","19"],2,"Number superstar!","Keep the ten. Add just the ones: 3 + 5."],
 ],
 3:[
@@ -952,7 +973,7 @@ math:{
   ["Count by 2s: 2, 4, 6, ___",["7","8","9","10"],1,"Pattern master!","What comes after 6 counting by 2s?"],
   ["{P} has 14 berries and gives away 3. How many left?",["9","10","11","12"],2,"Subtraction star!","Keep the ten. Take away just the ones: 4 - 3."],
   ["Count by 5s: 5, 10, 15, ___",["18","19","20","21"],2,"Skip counting pro!","What comes after 15 counting by 5s?"],
-  ["{P} scored 9 + 9 points. How many total?",["16","17","18","19"],2,"Double digits!","9 is almost 10! Add 10 instead, then take 1 away."],
+  ["{P} scored 9 + 9 points. How many total?",["16","17","18","19"],2,"Double digits!","Make 10 first: 9 + 1 = 10. Then add the 8 that are left."],
   ["There are 27 berries. {P} eats 4. How many left?",["21","22","23","24"],2,"Great subtraction!","Keep the 2 tens. Take away just the ones: 7 - 4."],
   ["Count by 2s: 10, 12, 14, ___",["15","16","17","18"],1,"Pattern wizard!","Add 2 to the last number. Count up 2 on your fingers."],
   ["{P} has 13 Poke Balls and gets 6 more. How many total?",["17","18","19","20"],2,"Champion math!","Keep the ten. Add just the ones: 3 + 6."],
@@ -2056,6 +2077,7 @@ const HV_ICON={
   mon:'<svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="11" fill="#FACC15" stroke="#CA8A04" stroke-width="1.3"/><circle cx="12" cy="15" r="1.6" fill="#1F2937"/><circle cx="20" cy="15" r="1.6" fill="#1F2937"/><path d="M12 20q4 3.2 8 0" fill="none" stroke="#1F2937" stroke-width="1.4" stroke-linecap="round"/></svg>',
   lap:'<svg viewBox="0 0 32 32" aria-hidden="true"><rect x="8" y="5" width="2.2" height="22" rx="1" fill="#1F2937"/><polygon points="10.2,6 24,11 10.2,16" fill="#EF4444"/></svg>',
   step:'<svg viewBox="0 0 32 32" aria-hidden="true"><ellipse cx="17" cy="21" rx="8" ry="5.5" fill="#92400E"/><circle cx="10" cy="13" r="2.2" fill="#92400E"/><circle cx="15" cy="10" r="2.2" fill="#92400E"/><circle cx="20" cy="11" r="2" fill="#92400E"/></svg>',
+  mile:'<svg viewBox="0 0 32 32" aria-hidden="true"><rect x="15" y="8" width="2.4" height="20" rx="1" fill="#92400E"/><rect x="17.4" y="9" width="11" height="6" rx="1.2" fill="#F97316"/><rect x="4" y="16" width="11" height="6" rx="1.2" fill="#FDBA74"/></svg>',
   point:'<svg viewBox="0 0 32 32" aria-hidden="true"><polygon points="16,4 18.8,12 27,12.2 20.4,17.2 22.6,25 16,20.4 9.4,25 11.6,17.2 5,12.2 13.2,12" fill="#FBBF24" stroke="#D97706" stroke-width="1" stroke-linejoin="round"/></svg>',
 };
 function itemFor(stem){
@@ -2071,9 +2093,9 @@ function itemFor(stem){
   if(/\beggs?\b/.test(s))return 'egg';
   if(s.includes('pokemon'))return 'mon';
   if(/\blaps?\b/.test(s))return 'lap';
+  if(/\bmiles?\b/.test(s))return 'mile';
   if(/\bsteps?\b/.test(s))return 'step';
   if(/\bpoints?\b/.test(s))return 'point';
-  if(/\bmiles?\b/.test(s))return 'step';
   return 'berry';
 }
 function hvMark(item,gone,cls){
@@ -2094,9 +2116,13 @@ function hvFullFrame(item,gone){
   for(let c=0;c<10;c++)cells+=hvMark(item,c>=10-gone,'tf-cell');
   return `<div class="ten-frame${gone?' hv-break':''}">${cells}</div>`;
 }
+function itemName(item){
+  return {berry:'berries',ball:'Poké Balls',apple:'apples',cookie:'cookies',flower:'flowers',coin:'coins',sticker:'stickers',goal:'goals',egg:'eggs',mon:'Pokémon',lap:'laps',step:'steps',point:'points',mile:'miles'}[item]||'berries';
+}
 function hvPartialFrame(item,filled){
   let cells='';
-  for(let c=0;c<10;c++)cells+=c<filled?hvMark(item,false,'tf-cell'):'<span class="tf-cell empty"></span>';
+  // Lined trays, not the dashed holes a missing-number hint tells him to count.
+  for(let c=0;c<10;c++)cells+=c<filled?hvMark(item,false,'tf-cell'):'<span class="tf-cell slot"></span>';
   return `<div class="ten-frame">${cells}</div>`;
 }
 function hvQty(n,item){
@@ -2126,9 +2152,11 @@ function renderAddTen(a,b,item){
   const start=Math.max(a,b),add=Math.min(a,b);
   const bridge=Math.min(10-start,add),extra=add-bridge;
   const split=`<div class="hv-split">${hvGroup(bridge,item,'hv-bridge')}${extra?hvGroup(extra,item,'hv-extra'):''}</div>`;
-  return `<div class="hv-eq">${hvPartialFrame(item,start)}<span class="hv-op">+</span>${split}</div>${hvCap('Count every one.')}`;
+  const name=itemName(item);
+  return `<div class="hv-eq">${hvPartialFrame(item,start)}<span class="hv-op">+</span>${split}</div>${hvCap('Count the '+name+'. The lined boxes are spaces those '+name+' fill.')}`;
 }
 function renderSubObjects(a,b,item){
+  if(b===0)return `<div class="hv-group">${hvDots(a,item)}</div>${hvCap('Nothing was taken away. Count them all.')}`;
   return `<div class="hv-group">${hvDots(a,item,a-b)}</div>${hvCap('Skip the crossed-out ones.')}`;
 }
 function renderSubTen(a,b,item){
@@ -2136,14 +2164,22 @@ function renderSubTen(a,b,item){
   let take=b;
   const onesGone=Math.min(ones,take);
   take-=onesGone;
+  // Spend the rest from the last ten backward. Stopping at one frame leaves
+  // 20 - 12 looking like 10 bright berries.
+  const gone=new Array(tens).fill(0);
+  for(let t=tens-1;t>=0&&take>0;t--){
+    const n=Math.min(10,take);
+    gone[t]=n;
+    take-=n;
+  }
   let frames='';
-  for(let t=0;t<tens;t++)frames+=hvFullFrame(item,t===tens-1?Math.min(10,take):0);
+  for(let t=0;t<tens;t++)frames+=hvFullFrame(item,gone[t]);
   const loose=ones?`<div class="hv-ones">${hvDots(ones,item,ones-onesGone)}</div>`:'';
   return `<div class="hv-ten">${frames}${loose}</div>${hvCap('Skip the crossed-out ones.')}`;
 }
-function renderGroups(groups,each,item,cap){
+function renderGroups(groups,each,item,cap,markOne){
   let h='<div class="hv-groups">';
-  for(let g=0;g<groups;g++)h+=`<div class="hv-group" data-group>${hvDots(each,item)}</div>`;
+  for(let g=0;g<groups;g++)h+=`<div class="hv-group${markOne&&g===0?' hv-count':''}" data-group>${hvDots(each,item)}</div>`;
   return h+`</div>${hvCap(cap)}`;
 }
 function renderCmp(a,b,item){
@@ -2175,7 +2211,8 @@ function parseMathVisual(stem){
   if((m=s.match(/needs (\d+) \w+ but only has (\d+)/)))return {op:'missing',have:+m[2],total:+m[1]};
   if((m=s.match(/goes with (\d+) to make (\d+)/)))return {op:'missing',have:+m[1],total:+m[2]};
   if((m=s.match(/(\d+) \+ (\d+)/)))return {op:'add',a:+m[1],b:+m[2]};
-  if((m=s.match(/Start at (\d+) and count up (\d+)/)))return {op:'add',a:+m[1],b:+m[2]};
+  // "Start at 16 and count up 2" is counting on, two steps. Drawing all 18
+  // icons teaches a different move, so the text hint stands alone.
   if((m=s.match(/(\d+) groups of (\d+)/)))return {op:'mul',a:+m[1],b:+m[2]};
   if((m=s.match(/(\d+) bags with (\d+)/)))return {op:'mul',a:+m[1],b:+m[2]};
   if((m=s.match(/(\d+) bags of (\d+)/)))return {op:'mul',a:+m[1],b:+m[2]};
@@ -2219,10 +2256,14 @@ function mathVisualSpec(q){
 }
 function renderMathVisual(spec){
   const item=spec.item;
-  if(spec.op==='add')return (spec.a+spec.b<=10?renderAddObjects:renderAddTen)(spec.a,spec.b,item);
+  if(spec.op==='add'){
+    // A zero addend used to draw an empty dashed box beside the pile.
+    if(spec.a===0||spec.b===0)return `${hvQty(spec.a+spec.b,item)}${hvCap('Zero more. Count this pile.')}`;
+    return (spec.a+spec.b<=10?renderAddObjects:renderAddTen)(spec.a,spec.b,item);
+  }
   if(spec.op==='sub')return (spec.a<=10?renderSubObjects:renderSubTen)(spec.a,spec.b,item);
   if(spec.op==='mul')return renderGroups(spec.a,spec.b,item,'Count every one.');
-  if(spec.op==='div')return renderGroups(spec.b,spec.a/spec.b,item,'Count one group.');
+  if(spec.op==='div')return renderGroups(spec.b,spec.a/spec.b,item,'Count the outlined group.',true);
   if(spec.op==='cmp')return renderCmp(spec.a,spec.b,item);
   if(spec.op==='missing')return renderMissing(spec.have,item);
   return '';
@@ -2261,7 +2302,7 @@ function numpadHTML(q,resolved,arming,armLeft){
   keys+=`<button type="button" class="pad-key pad-erase" data-pad="erase" aria-label="Erase">&#9003;</button>`;
   keys+=`<button type="button" class="pad-key" data-digit="0">0</button>`;
   keys+=`<button type="button" class="pad-key pad-check" data-pad="check">Check</button>`;
-  return `<div class="pad-wrap" data-typed="1"><div class="pad-read${draft?'':' empty'}" id="pad-read" aria-live="polite">${draft||'&#8212;'}</div><div${attrs}>${keys}</div></div>`;
+  return `<div class="pad-wrap" data-typed="1"><div class="pad-read${draft?'':' empty'}" id="pad-read" aria-live="polite">${draft||'&#8212;'}</div><div class="pad-note" id="pad-note" hidden></div><div${attrs}>${keys}</div></div>`;
 }
 
 function qCardHTML(resultMsg,btnLabel){
@@ -2488,7 +2529,7 @@ function render(){
 
   gameEl.innerHTML=h;
   gameEl.querySelectorAll('[data-i]').forEach(b=>b.addEventListener('click',()=>handleAnswer(+b.dataset.i)));
-  gameEl.querySelectorAll('[data-digit]').forEach(b=>b.addEventListener('click',()=>typeDigit(b.dataset.digit)));
+  gameEl.querySelectorAll('[data-digit]').forEach(b=>b.addEventListener('click',e=>typeDigit(b.dataset.digit,e.detail)));
   gameEl.querySelectorAll('[data-pad]').forEach(b=>b.addEventListener('click',()=>b.dataset.pad==='erase'?eraseDigit():submitTyped()));
   gameEl.querySelectorAll('[data-switch-idx]').forEach(b=>b.addEventListener('click',()=>switchPokemon(+b.dataset.switchIdx)));
   const swb=gameEl.querySelector('#switch-btn');if(swb)swb.addEventListener('click',openSwitchPicker);
@@ -3280,22 +3321,44 @@ function typedValue(raw){
   if(!/^\d{1,8}$/.test(s))return null;
   return String(Number(s));
 }
+function canCommit(){
+  return !!(st.q&&!st.cor&&!st.wildEscape&&Date.now()>=st.armAt);
+}
+function showPadNote(msg){
+  const n=document.getElementById('pad-note');
+  if(!n)return;
+  n.textContent=msg;
+  n.hidden=false;
+}
+function clearPadNote(){
+  const n=document.getElementById('pad-note');
+  if(!n)return;
+  n.textContent='';
+  n.hidden=true;
+}
 function submitTyped(raw){
   if(!st.q||!isTypedQuestion(st.q))return;
   const value=typedValue(raw==null?st.draft:raw);
-  if(value==null)return;
+  if(value==null){
+    // A blank Check is not a try. Say so, once the pad is actually taking taps.
+    if(canCommit())showPadNote('Type a number first.');
+    return;
+  }
   const ok=Number(value)===Number(st.q.answers[st.q.correctIndex]);
-  // Keep a canonical readout when he lands it. A miss clears the pad so the
-  // next try starts empty, the same way a ruled-out button can't be the answer.
-  st.draft=ok?value:'';
+  // Draft changes only after the attempt is accepted. Writing it first used to
+  // wipe a wrong number when Check landed during the arming pause.
+  const nextDraft=ok?value:'';
   // choice is null on a typed miss: there is no option index to retire, and
   // reusing one would make the next try look already ruled out.
-  commitAttempt(ok,ok?st.q.correctIndex:null);
+  commitAttempt(ok,ok?st.q.correctIndex:null,nextDraft);
 }
-function typeDigit(d){
+function typeDigit(d,detail){
   if(!st.q||!isTypedQuestion(st.q)||st.cor||st.wildEscape)return;
   if(Date.now()<st.armAt)return;
   if(!/^\d$/.test(d))return;
+  // A double-tap is one digit. The second click of a double-click has detail 2.
+  if(detail>=2)return;
+  clearPadNote();
   const cur=/^\d+$/.test(st.draft||'')?st.draft:'';
   // A lone 0 is a placeholder, not a tens digit: 0 then 7 is 7, not 07.
   if(cur==='0')st.draft=d;
@@ -3307,6 +3370,7 @@ function eraseDigit(){
   if(!st.q||!isTypedQuestion(st.q)||st.cor||st.wildEscape)return;
   if(Date.now()<st.armAt)return;
   if(!st.draft)return;
+  clearPadNote();
   st.draft=st.draft.slice(0,-1);
   paintDraft();
 }
@@ -3324,9 +3388,11 @@ function handleAnswer(i){
   if(st.wrong.includes(i))return;       // already ruled out
   commitAttempt(i===st.q.correctIndex,i);
 }
-function commitAttempt(ok,choice){
-  if(!st.q||st.cor||st.wildEscape)return;
-  if(Date.now()<st.armAt)return;
+function commitAttempt(ok,choice,nextDraft){
+  if(!canCommit())return false;
+  // A typed Check passes the readout to keep. It is applied here, after the
+  // guard, so a Check the pause ignores leaves the digits where they were.
+  if(nextDraft!==undefined)st.draft=nextDraft;
   const firstTry=st.tries===0;
   st.tries++;
   st.sel=choice;st.cor=ok;st.anim=ok?'bk':'sk';
