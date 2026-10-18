@@ -102,7 +102,22 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;min-heigh
 .ans-btn:disabled{cursor:default}
 /* Purely cosmetic: handleAnswer's timestamp check is what actually blocks the
    tap, so a stalled animation in a backgrounded tab can never lock him out. */
-.ans-grid.arming .ans-btn{animation:ans-arm var(--arm,1500ms) ease}
+.ans-grid.arming .ans-btn,.numpad.arming .pad-key{animation:ans-arm var(--arm,1500ms) ease}
+/* On-screen pad for typed math. Big targets, no text field, so a tablet never
+   pops the system keyboard. Three columns stay inside a phone-width card. */
+.pad-wrap{margin-bottom:10px}
+.pad-read{min-height:64px;border:2px solid #E5E7EB;border-radius:14px;background:#fff;display:flex;align-items:center;justify-content:center;font-size:40px;font-weight:800;letter-spacing:0.04em;color:#1A1A2E;margin-bottom:10px;font-variant-numeric:tabular-nums}
+.pad-read.empty{color:#D1D5DB}
+.pad-read.ok{background:#ECFDF5;border-color:#10B981;color:#065F46}
+.numpad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.pad-key{min-height:58px;border:2px solid #E5E7EB;border-radius:14px;background:#F9FAFB;font-size:26px;font-weight:800;color:#1A1A2E;cursor:pointer;font-family:inherit;touch-action:manipulation;user-select:none;-webkit-user-select:none}
+.pad-key:hover{border-color:#FF5722;color:#FF5722;background:#FFF3E0}
+.pad-key:active{transform:scale(0.97)}
+.pad-key:focus{outline:none}
+.pad-key:focus-visible{outline:2px solid #FF5722;outline-offset:2px}
+.pad-erase{font-size:22px;color:#6B7280}
+.pad-check{grid-column:1/-1;min-height:54px;background:#FF5722;border-color:#FF5722;color:#fff;font-size:20px;letter-spacing:0.02em}
+.pad-check:hover{background:#F4511E;border-color:#F4511E;color:#fff}
 @keyframes ans-arm{0%{opacity:0.25}70%{opacity:0.55}100%{opacity:1}}
 /* Sits beside the running total now, not in a message under the answers: the number
    that just landed is next to the number it landed in, directly above the bar it
@@ -1780,6 +1795,9 @@ function mkState(saved){
     activeIdx:0,
     q:null,sel:null,cor:false,
     tries:0,wrong:[],armAt:0,lastXp:0,
+    // Digits tapped on the number pad for the question on screen. Not saved:
+    // a reload deals a fresh question anyway.
+    draft:'',
     // helped: he asked for the hint on this question before answering it.
     helped:false,
     // Rematch queue, and the count of questions served this session that its
@@ -2217,6 +2235,35 @@ function visualHintHTML(q){
   return `<div class="hint-visual" data-kind="${spec.op}" data-item="${spec.item}">${body}</div>`;
 }
 
+// Typed answers start once math has left the two easiest buckets (kindergarten
+// and grade 1). From grade 2 up, a question whose every option is a plain
+// whole number is answered on the pad, so four nearby choices can't be
+// eliminated. "Which number is odd/even?" stays multiple choice: without the
+// four numbers on the card, every odd number would look like an answer.
+// Clocks, fractions and "2 hours" never qualify, because an option fails
+// the digit check.
+const TYPED_MIN_LEVEL=3;
+const TYPED_MAX_DIGITS=4;
+function isTypedQuestion(q){
+  if(!q||q.subject!=='math'||!q.tmpl||!(q.tmpl.lv>=TYPED_MIN_LEVEL))return false;
+  if(!q.answers||!q.answers.every(a=>/^\d+$/.test(a)))return false;
+  if(/^Which number is\b/i.test(q.tmpl.raw[0]))return false;
+  return true;
+}
+function numpadHTML(q,resolved,arming,armLeft){
+  if(resolved){
+    return `<div class="pad-wrap" data-typed="1"><div class="pad-read ok" id="pad-read">${q.answers[q.correctIndex]}</div></div>`;
+  }
+  const draft=/^\d+$/.test(st.draft||'')?st.draft:'';
+  const attrs=arming?` class="numpad arming" style="--arm:${armLeft}ms"`:' class="numpad"';
+  let keys='';
+  for(const d of ['1','2','3','4','5','6','7','8','9'])keys+=`<button type="button" class="pad-key" data-digit="${d}">${d}</button>`;
+  keys+=`<button type="button" class="pad-key pad-erase" data-pad="erase" aria-label="Erase">&#9003;</button>`;
+  keys+=`<button type="button" class="pad-key" data-digit="0">0</button>`;
+  keys+=`<button type="button" class="pad-key pad-check" data-pad="check">Check</button>`;
+  return `<div class="pad-wrap" data-typed="1"><div class="pad-read${draft?'':' empty'}" id="pad-read" aria-live="polite">${draft||'&#8212;'}</div><div${attrs}>${keys}</div></div>`;
+}
+
 function qCardHTML(resultMsg,btnLabel){
   if(!st.q)return'';
   const q=st.q;
@@ -2258,15 +2305,20 @@ function qCardHTML(resultMsg,btnLabel){
   // Tells him this one is a question he stumbled on before -- worth knowing, since
   // beating it is worth a bonus and it's the whole point of it coming back.
   const rematchPill=q.rematch?`<span class="rematch-pill">&#128257; Rematch!</span>`:'';
-  let h=`<div class="card"><div class="q-head"><div class="subj-tag ${SCLS[q.subject]||'tagm'}">${SNAME[q.subject]}</div>${rematchPill}${streakPill}${bestPill}${shinyPill}</div><div class="qtext">${q.question}</div><div${gridAttrs}>`;
-  q.answers.forEach((a,i)=>{
-    let c='ans-btn';
-    const ruled=st.wrong.includes(i);
-    if(ruled)c+=' wrg';
-    else if(resolved&&i===q.correctIndex)c+=' cor';
-    h+=`<button class="${c}"${resolved||ruled?' disabled':''} data-i="${i}">${a}</button>`;
-  });
-  h+=`</div>`;
+  let h=`<div class="card"><div class="q-head"><div class="subj-tag ${SCLS[q.subject]||'tagm'}">${SNAME[q.subject]}</div>${rematchPill}${streakPill}${bestPill}${shinyPill}</div><div class="qtext">${q.question}</div>`;
+  if(isTypedQuestion(q)){
+    h+=numpadHTML(q,resolved,arming,armLeft);
+  }else{
+    h+=`<div${gridAttrs}>`;
+    q.answers.forEach((a,i)=>{
+      let c='ans-btn';
+      const ruled=st.wrong.includes(i);
+      if(ruled)c+=' wrg';
+      else if(resolved&&i===q.correctIndex)c+=' cor';
+      h+=`<button class="${c}"${resolved||ruled?' disabled':''} data-i="${i}">${a}</button>`;
+    });
+    h+=`</div>`;
+  }
   // The picture rides along only while the text hint is actually up: asked for
   // before answering, or shown after a miss. A solved question and a Pokemon
   // that already fled don't carry one.
@@ -2436,6 +2488,8 @@ function render(){
 
   gameEl.innerHTML=h;
   gameEl.querySelectorAll('[data-i]').forEach(b=>b.addEventListener('click',()=>handleAnswer(+b.dataset.i)));
+  gameEl.querySelectorAll('[data-digit]').forEach(b=>b.addEventListener('click',()=>typeDigit(b.dataset.digit)));
+  gameEl.querySelectorAll('[data-pad]').forEach(b=>b.addEventListener('click',()=>b.dataset.pad==='erase'?eraseDigit():submitTyped()));
   gameEl.querySelectorAll('[data-switch-idx]').forEach(b=>b.addEventListener('click',()=>switchPokemon(+b.dataset.switchIdx)));
   const swb=gameEl.querySelector('#switch-btn');if(swb)swb.addEventListener('click',openSwitchPicker);
   const swc=gameEl.querySelector('#switch-cancel');if(swc)swc.addEventListener('click',closeSwitchPicker);
@@ -2605,7 +2659,7 @@ async function loadQuestion(){
     q=pickBuiltIn(sub,st.stats[sub].level,pname);
   }
   st.q=q;st.sel=null;st.cor=false;st.anim="";st.helped=false;
-  st.tries=0;st.wrong=[];st.lastXp=0;st.armAt=Date.now()+PAUSE.first;
+  st.tries=0;st.wrong=[];st.lastXp=0;st.draft='';st.armAt=Date.now()+PAUSE.first;
   render();
 }
 
@@ -3218,15 +3272,65 @@ function onNext(){
   afterTurn();
 }
 
+// Digits only, surrounding whitespace ignored, leading zeros kept as the same
+// number ("007" is 7). Anything else — empty, a space in the middle — is not
+// an attempt, so a stray Check press can't burn the try.
+function typedValue(raw){
+  const s=String(raw==null?'':raw).trim();
+  if(!/^\d{1,8}$/.test(s))return null;
+  return String(Number(s));
+}
+function submitTyped(raw){
+  if(!st.q||!isTypedQuestion(st.q))return;
+  const value=typedValue(raw==null?st.draft:raw);
+  if(value==null)return;
+  const ok=Number(value)===Number(st.q.answers[st.q.correctIndex]);
+  // Keep a canonical readout when he lands it. A miss clears the pad so the
+  // next try starts empty, the same way a ruled-out button can't be the answer.
+  st.draft=ok?value:'';
+  // choice is null on a typed miss: there is no option index to retire, and
+  // reusing one would make the next try look already ruled out.
+  commitAttempt(ok,ok?st.q.correctIndex:null);
+}
+function typeDigit(d){
+  if(!st.q||!isTypedQuestion(st.q)||st.cor||st.wildEscape)return;
+  if(Date.now()<st.armAt)return;
+  if(!/^\d$/.test(d))return;
+  const cur=/^\d+$/.test(st.draft||'')?st.draft:'';
+  // A lone 0 is a placeholder, not a tens digit: 0 then 7 is 7, not 07.
+  if(cur==='0')st.draft=d;
+  else if(cur.length>=TYPED_MAX_DIGITS)return;
+  else st.draft=cur+d;
+  paintDraft();
+}
+function eraseDigit(){
+  if(!st.q||!isTypedQuestion(st.q)||st.cor||st.wildEscape)return;
+  if(Date.now()<st.armAt)return;
+  if(!st.draft)return;
+  st.draft=st.draft.slice(0,-1);
+  paintDraft();
+}
+function paintDraft(){
+  const read=document.getElementById('pad-read');
+  if(!read){render();return;}
+  const d=/^\d+$/.test(st.draft||'')?st.draft:'';
+  read.textContent=d||'\u2014';
+  read.classList.toggle('empty',!d);
+}
 function handleAnswer(i){
-  if(st.cor||st.wildEscape)return;      // already resolved, waiting on Next
+  if(!st.q||st.cor||st.wildEscape)return;
   if(Date.now()<st.armAt)return;        // still arming: ignore the reflex tap
+  if(!Number.isInteger(i)||i<0||i>=st.q.answers.length)return;
   if(st.wrong.includes(i))return;       // already ruled out
-  const ok=i===st.q.correctIndex;
+  commitAttempt(i===st.q.correctIndex,i);
+}
+function commitAttempt(ok,choice){
+  if(!st.q||st.cor||st.wildEscape)return;
+  if(Date.now()<st.armAt)return;
   const firstTry=st.tries===0;
   st.tries++;
-  st.sel=i;st.cor=ok;st.anim=ok?'bk':'sk';
-  if(!ok)st.wrong.push(i);
+  st.sel=choice;st.cor=ok;st.anim=ok?'bk':'sk';
+  if(!ok&&choice!=null)st.wrong.push(choice);
 
   // Only the first attempt scores -- XP, streak, difficulty and catch progress
   // all key off it. A wrong answer used to deal a brand new question, which made
