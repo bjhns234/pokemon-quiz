@@ -280,7 +280,7 @@ test('a typed catch fills a pip, a miss spends a ball, and help fills nothing',a
   expect(await state(page,()=>({cs:st.wild.correctStreak,misses:st.wild.misses}))).toEqual({cs:0,misses:0});
 });
 
-test('typed first-tries step the math difficulty up',async({page})=>{
+test('typed first-tries unlock a math Gym instead of stepping the tier up',async({page})=>{
   await state(page,()=>{st.stats.math.level=3;st.stats.math.cs=0;});
   const need=await state(page,()=>LEVEL_UP_STREAK);
   for(let i=0;i<need;i++){
@@ -288,7 +288,7 @@ test('typed first-tries step the math difficulty up',async({page})=>{
     expect(await state(page,()=>isTypedQuestion(st.q))).toBe(true);
     await state(page,()=>{st.armAt=0;submitTyped(st.q.answers[st.q.correctIndex]);});
   }
-  expect(await state(page,()=>st.stats.math.level)).toBe(4);
+  expect(await state(page,()=>({level:st.stats.math.level,offer:st.gymOffer.math}))).toEqual({level:3,offer:{tier:3,cool:0}});
 });
 
 test('a typed correct is saved like any other answer, and the pad draft is not',async({page})=>{

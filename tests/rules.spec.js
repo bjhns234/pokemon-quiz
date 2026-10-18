@@ -58,11 +58,11 @@ test.describe('scoring',()=>{
     expect(r.past).toBe(r.cap);
   });
 
-  test('difficulty steps up after a run of first-try answers in a subject',async({page})=>{
-    await state(page,()=>{st.stats.math.level=1;st.stats.math.cs=0;});
+  test('a run of first-try answers unlocks a Gym instead of stepping the tier up',async({page})=>{
+    await state(page,()=>{st.stats.math.level=1;st.stats.math.cs=0;st.badges.math=[];});
     const need=await state(page,()=>LEVEL_UP_STREAK);
     for(let i=0;i<need;i++){await serve(page,{sub:'math',lv:1,idx:i});await answer(page,true);}
-    expect(await state(page,()=>st.stats.math.level)).toBe(2);
+    expect(await state(page,()=>({level:st.stats.math.level,offer:st.gymOffer.math}))).toEqual({level:1,offer:{tier:1,cool:0}});
   });
 });
 
@@ -157,6 +157,7 @@ test.describe('Ask for help',()=>{
       await answer(page,true);
     }
     expect(await state(page,()=>st.stats.math.level)).toBe(1);
+    expect(await state(page,()=>st.gymOffer.math)).toBeNull();
   });
 });
 
