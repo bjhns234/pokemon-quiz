@@ -355,9 +355,14 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;min-heigh
 .gym-role{font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#7C3AED;margin-bottom:2px}
 .gym-name{font-size:20px;font-weight:800;color:#1A1A2E}
 .hp{display:inline-flex;gap:4px;margin-top:4px}
-.heart{font-size:18px;color:#E5E7EB;line-height:1}
-.heart.on{color:#F472B6}
-.hp.lead .heart.on{color:#FBBF24}
+.heart{font-size:22px;color:#F9A8D4;line-height:1}
+.heart.on{color:#DB2777}
+.hp.lead .heart{color:#FCD34D}
+.hp.lead .heart.on{color:#D97706}
+.gym-end-btn{font-family:inherit;font-weight:800;border:2px solid #F59E0B;background:#FFFBEB;color:#92400E;border-radius:12px;padding:12px 14px;font-size:14px;cursor:pointer}
+.gym-confirm{text-align:center;margin-top:8px}
+.gym-confirm p{font-size:14px;font-weight:650;color:#92400E;margin:0 0 10px}
+.gym-confirm-row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
 .you-row{display:flex;justify-content:center;align-items:center;gap:8px;margin:0 0 10px;font-size:13px;font-weight:700;color:#6B7280}
 .gym-invite{background:#fff;border:2px solid #DDD6FE;border-radius:16px;padding:14px;margin-bottom:12px;text-align:center;box-shadow:0 2px 8px rgba(124,58,237,0.08)}
 .gym-invite-txt{font-size:16px;font-weight:800;color:#5B21B6;margin-bottom:10px}
@@ -1843,7 +1848,11 @@ const GYM_TIMER_MS=25000;
 const GYM_TIMER_MIN_TIER=3; // grade 2 up: math tier 3+, and the same tier elsewhere
 const GYM_BONUS_XP=80;
 const GYM_PARTNER_LEVEL=8; // under every gym partner's evoAt, so the prize still gets to grow
-const PARENT_LEFT=36,PARENT_RIGHT=27,PARENT_SUM=PARENT_LEFT+PARENT_RIGHT;
+// Grown-ups gate. 47×23 is past the timed Gyms, and three misses lock the pad
+// so a kid who can add 36+27 cannot walk in by trying.
+const GATE={a:47,b:23,wrong:3,lock:120000};
+function gateAnswer(){return GATE.a*GATE.b;}
+function gateLocked(){return (st.gateLock|0)>Date.now();}
 const GYM_LEADER={math:'Pikachu',reading:'Eevee',science:'Psyduck'};
 const GYM_BADGE_NAMES={
   math:['Bolt Badge','Charge Badge','Thunder Badge'],
@@ -1913,8 +1922,14 @@ function mkState(saved){
     award:null,
     timerOff:false,
     items:{candy:0,great:0},
+    // Tiers whose Gym prize was already paid. Survives a level drop, so winning
+    // the same badge again does not hand out another candy, ball, or partner.
+    prizes:{math:[],reading:[],science:[]},
     gate:null,gateDraft:'',gateNote:'',
-    gymLater:{},
+    gateMisses:0,gateLock:0,
+    // Not now, kept across a reload. Cleared when the next practice question is dealt.
+    gymSnooze:{math:false,reading:false,science:false},
+    holdSnooze:false,
     wild:null,
     pendingEvo:null,
     lvlUpMsg:null,
@@ -1935,6 +1950,10 @@ function mkState(saved){
     s.award=saved.award;
     s.timerOff=saved.timerOff;
     s.items=saved.items;
+    s.prizes=saved.prizes;
+    s.gymSnooze=saved.gymSnooze;
+    s.gateMisses=saved.gateMisses;
+    s.gateLock=saved.gateLock;
     s.subject=saved.subject;
     s.bestStreak=saved.bestStreak;
     s.review=saved.review;
@@ -1946,8 +1965,9 @@ function mkState(saved){
 }
 
 // ---- save / restore -------------------------------------------------------
-// Only durable progress is stored. In-flight question, wild encounter,
-// pending evolution, streak and toasts are all rebuilt fresh on load.
+// Only durable progress is stored. An in-flight practice question, a wild
+// encounter, a pending evolution, the streak and toasts are rebuilt fresh.
+// An open Gym question is kept: tries, help, ruled-out answers, thinking time.
 const SAVE_KEY='pkq-save';
 const SAVE_V=1;
 const NUM_TO_PI={};PKM.forEach((p,i)=>{NUM_TO_PI[p.num]=i;});
@@ -1979,9 +1999,14 @@ function save(){
       gymOffer:st.gymOffer,
       timerOff:st.timerOff===true,
       items:{candy:Math.max(0,st.items.candy|0),great:Math.max(0,st.items.great|0)},
-      // Only a battle still being fought. A finished one is already an award
-      // or a cooldown, and the question on screen is dealt fresh either way.
-      gym:st.gym&&!st.gym.over?{sub:st.gym.sub,tier:st.gym.tier,queue:st.gym.queue,qi:st.gym.qi,kid:st.gym.kid,lead:st.gym.lead,solved:!!st.gym.solved}:undefined,
+      prizes:st.prizes,
+      gymSnooze:st.gymSnooze,
+      gateMisses:Math.max(0,st.gateMisses|0),
+      gateLock:Math.max(0,st.gateLock|0),
+      // A battle still being fought, including the open question: tries, help,
+      // ruled-out answers, and the thinking time left. A solved one advances
+      // on load so the same hit cannot score twice.
+      gym:gymPayload(),
       award:st.award||undefined,
     }));
   }catch(e){/* storage full or unavailable — keep playing unsaved */}
@@ -2076,9 +2101,25 @@ function loadSaved(){
       const queue=g.queue.map(i=>i|0);
       const qi=g.qi|0,kid=g.kid|0,lead=g.lead|0;
       if(queue.length&&queue.every(i=>i>=0&&i<n)&&qi>=0&&qi<queue.length&&kid>=1&&kid<=GYM_KID_HP&&lead>=1&&lead<=GYM_LEAD_HP){
-        gym={sub:g.sub,tier:g.tier|0,queue,qi,kid,lead,solved:!!g.solved,over:null};
+        const wrong=Array.isArray(g.wrong)?g.wrong.map(i=>i|0).filter(i=>i>=0&&i<4):[];
+        gym={
+          sub:g.sub,tier:g.tier|0,queue,qi,kid,lead,solved:!!g.solved,over:null,
+          tries:Math.max(0,g.tries|0),helped:!!g.helped,wrong,
+          armLeft:Math.max(0,g.armLeft|0),
+          timerLeft:typeof g.timerLeft==='number'?Math.max(0,g.timerLeft):null,
+          timerKnown:typeof g.timerLeft==='number'||g.timerLeft===null,
+        };
       }
     }
+    const prizes={};
+    SUBS.forEach(sub=>{
+      const raw=(data.prizes||{})[sub];
+      const set=new Set();
+      if(Array.isArray(raw))raw.forEach(t=>{t=t|0;if(t>=1&&t<maxLevel(sub))set.add(t);});
+      prizes[sub]=[...set].sort((a,b)=>a-b);
+    });
+    const gymSnooze={};
+    SUBS.forEach(sub=>{gymSnooze[sub]=!!(data.gymSnooze&&data.gymSnooze[sub]);});
     let award=null;
     if(!gym&&data.award&&SUBS.includes(data.award.sub)){
       const a=data.award;
@@ -2088,7 +2129,7 @@ function loadSaved(){
         if(a.partner&&NUM_TO_PI[a.partner.num]!==undefined){
           partner={num:a.partner.num,shiny:!!a.partner.shiny,level:Math.max(1,a.partner.level|0)};
         }
-        award={sub:a.sub,tier,partner,xp:Math.max(0,a.xp|0),candy:Math.max(0,a.candy|0),great:Math.max(0,a.great|0),grew:!!a.grew};
+        award={sub:a.sub,tier,again:!!a.again,partner,xp:Math.max(0,a.xp|0),candy:Math.max(0,a.candy|0),great:Math.max(0,a.great|0),grew:!!a.grew};
       }
     }
     const itemN=n=>Math.max(0,(n|0));
@@ -2112,9 +2153,11 @@ function loadSaved(){
       // no shinyDex; both default to "nothing is shiny", which is exactly what
       // those saves meant. SAVE_V holds again -- bumping it would wipe every
       // existing Pokedex to add a feature almost no save has yet used.
-      team,pdx,sdx,stats,badges,gymOffer,gym,award,
+      team,pdx,sdx,stats,badges,gymOffer,gym,award,prizes,gymSnooze,
       timerOff:data.timerOff===true,
       items,
+      gateMisses:Math.max(0,data.gateMisses|0),
+      gateLock:Math.max(0,data.gateLock|0),
     };
   }catch(e){
     // corrupt or half-written save: start fresh rather than fail to a blank screen
@@ -2233,9 +2276,12 @@ function gymWaiting(sub){
   const o=st.gymOffer[sub];
   return !!(o&&o.cool<=0&&o.tier===st.stats[sub].level&&!hasBadge(sub,o.tier));
 }
-function gymReady(sub){return gymWaiting(sub)&&st.gymLater[sub]!==st.served;}
-function gymTimerOn(){
+function gymReady(sub){return gymWaiting(sub)&&!st.gymSnooze[sub];}
+function gymTimerApplies(){
   return st.phase==='gym'&&st.gym&&!st.gym.over&&st.gym.tier>=GYM_TIMER_MIN_TIER&&!st.timerOff&&st.tries===0&&!st.helped&&!st.cor;
+}
+function gymClockRunning(){
+  return view==='game'&&document.visibilityState!=='hidden';
 }
 function heartsHTML(n,max,cls){
   let s=`<span class="hp ${cls}">`;
@@ -2269,20 +2315,27 @@ function finishGymWin(){
   st.badges[sub].sort((a,b)=>a-b);
   if(st.stats[sub].level===tier&&st.stats[sub].level<maxLevel(sub))st.stats[sub].level++;
   st.gymOffer[sub]=null;
-  const tm=activeTM();
-  const before=tm?tm.level:0;
-  if(tm&&!st.pendingEvo){tm.xp+=GYM_BONUS_XP;applyLevelUps();}
-  else if(tm){tm.xp+=GYM_BONUS_XP;}
-  let candy=1;
-  st.items.candy+=1;
-  st.items.great+=1;
-  const partner=grantGymPartner(sub);
-  if(!partner){st.items.candy+=1;candy=2;}
+  const again=st.prizes[sub].indexOf(tier)>=0;
+  let candy=0,partner=null,grew=false;
+  if(!again){
+    st.prizes[sub].push(tier);
+    st.prizes[sub].sort((a,b)=>a-b);
+    const tm=activeTM();
+    const before=tm?tm.level:0;
+    if(tm&&!st.pendingEvo){tm.xp+=GYM_BONUS_XP;applyLevelUps();}
+    else if(tm){tm.xp+=GYM_BONUS_XP;}
+    grew=!!(tm&&tm.level>before);
+    candy=1;
+    st.items.candy+=1;
+    st.items.great+=1;
+    partner=grantGymPartner(sub);
+    if(!partner){st.items.candy+=1;candy=2;}
+  }
   st.award={
-    sub,tier,
+    sub,tier,again,
     partner:partner?{num:PKM[partner.pi].num,shiny:!!partner.shiny,level:partner.level}:null,
-    xp:GYM_BONUS_XP,candy,great:1,
-    grew:!!(tm&&tm.level>before),
+    xp:again?0:GYM_BONUS_XP,candy,great:again?0:1,
+    grew,
   };
   st.gym=null;
   st.phase='award';
@@ -2309,15 +2362,59 @@ function startGym(sub){
   save();
   dealGymQuestion();
 }
-function dealGymQuestion(){
+function dealGymQuestion(resume){
   const g=st.gym;if(!g)return;
   if(g.qi<0||g.qi>=g.queue.length){finishGymLose();render();return;}
   st.q=serveQuestion(g.sub,g.tier,g.queue[g.qi],questionPname());
-  st.sel=null;st.cor=false;st.anim='';st.helped=false;
-  st.tries=0;st.wrong=[];st.lastXp=0;st.draft='';
-  st.armAt=Date.now()+PAUSE.first;
+  st.sel=null;st.cor=false;st.anim='';st.lastXp=0;st.draft='';
   st.phase='gym';
+  g.deadline=null;
+  g.confirmEnd=false;
+  if(resume){
+    st.tries=Math.max(0,g.tries|0);
+    st.helped=!!g.helped;
+    st.wrong=Array.isArray(g.wrong)?g.wrong.slice():[];
+    st.armAt=Date.now()+Math.max(0,g.armLeft|0);
+    const timed=g.tier>=GYM_TIMER_MIN_TIER&&!st.timerOff&&st.tries===0&&!st.helped;
+    if(!timed)g.timerLeft=null;
+    else if(!g.timerKnown&&typeof g.timerLeft!=='number')g.timerLeft=GYM_TIMER_MS;
+  } else {
+    st.tries=0;st.helped=false;st.wrong=[];
+    st.armAt=Date.now()+PAUSE.first;
+    g.timerLeft=(g.tier>=GYM_TIMER_MIN_TIER&&!st.timerOff)?GYM_TIMER_MS:null;
+    g.timerKnown=true;
+  }
+  save();
   render();
+}
+function gymPayload(){
+  const g=st.gym;
+  if(!g||g.over)return undefined;
+  let timerLeft=g.timerLeft;
+  if(g.deadline!=null)timerLeft=Math.max(0,g.deadline-Date.now());
+  const timed=g.tier>=GYM_TIMER_MIN_TIER&&!st.timerOff&&st.tries===0&&!st.helped&&!st.cor;
+  if(!timed)timerLeft=null;
+  return{
+    sub:g.sub,tier:g.tier,queue:g.queue,qi:g.qi,kid:g.kid,lead:g.lead,solved:!!g.solved,
+    tries:st.tries|0,helped:!!st.helped,wrong:(st.wrong||[]).slice(),
+    armLeft:Math.max(0,(st.armAt||0)-Date.now()),
+    timerLeft,
+  };
+}
+function pauseGymTimer(){
+  if(gymTick){clearInterval(gymTick);gymTick=null;}
+  const g=st.gym;
+  if(!g||g.timerLeft==null)return;
+  // Snapshot once. A second pause (the tick, then the hide) must not
+  // treat the frozen remainder as already expired.
+  if(g.deadline!=null){
+    g.timerLeft=Math.max(0,g.deadline-Date.now());
+    g.deadline=null;
+  }
+}
+function noteGymHide(){
+  pauseGymTimer();
+  save();
 }
 function onGymNext(){
   const g=st.gym;
@@ -2329,6 +2426,16 @@ function onGymNext(){
   if(g.qi>=g.queue.length){finishGymLose();save();render();return;}
   dealGymQuestion();
   save();
+}
+function askEndGym(){
+  if(st.phase!=='gym'||!st.gym||st.gym.over||!st.cor)return;
+  st.gym.confirmEnd=true;
+  render();
+}
+function cancelEndGym(){
+  if(!st.gym)return;
+  st.gym.confirmEnd=false;
+  render();
 }
 function forfeitGym(){
   if(st.phase!=='gym'||!st.gym||st.gym.over||!st.cor)return;
@@ -2356,12 +2463,19 @@ function useCandy(){
   else render();
 }
 function takeGreatBall(wild){
+  // Held, not spent. A reload drops the encounter, and the ball should still
+  // be in the bag until the fight actually ends.
   if(st.items.great>0){
-    st.items.great--;
     wild.correctStreak=1;
     wild.great=true;
+    wild.greatHeld=true;
   }
   return wild;
+}
+function spendGreatBall(){
+  if(!st.wild||!st.wild.greatHeld)return;
+  if(st.items.great>0)st.items.great--;
+  st.wild.greatHeld=false;
 }
 function tickGymCool(){
   SUBS.forEach(sub=>{
@@ -2372,13 +2486,23 @@ function tickGymCool(){
 let gymTick=null;
 function armGymTimer(){
   if(gymTick){clearInterval(gymTick);gymTick=null;}
-  if(!gymTimerOn())return;
+  if(!gymTimerApplies())return;
   const tick=()=>{
-    if(!gymTimerOn()){clearInterval(gymTick);gymTick=null;const fill=document.getElementById('gym-time-fill');if(fill)fill.style.transform='scaleX(0)';return;}
-    const left=st.armAt+GYM_TIMER_MS-Date.now();
+    const g=st.gym;
+    if(!gymTimerApplies()||!g){clearInterval(gymTick);gymTick=null;return;}
+    // Hidden tab or the Pokédex: freeze the bar. Time spent off the battle
+    // is not a miss.
+    if(!gymClockRunning()){pauseGymTimer();return;}
     const fill=document.getElementById('gym-time-fill');
+    if(Date.now()<st.armAt){
+      if(fill)fill.style.transform=`scaleX(${Math.max(0,Math.min(1,(g.timerLeft||0)/GYM_TIMER_MS))})`;
+      return;
+    }
+    if(g.deadline==null)g.deadline=Date.now()+g.timerLeft;
+    const left=g.deadline-Date.now();
+    g.timerLeft=Math.max(0,left);
     if(fill)fill.style.transform=`scaleX(${Math.max(0,Math.min(1,left/GYM_TIMER_MS))})`;
-    if(left<=0){clearInterval(gymTick);gymTick=null;commitAttempt(false,null);}
+    if(left<=0){clearInterval(gymTick);gymTick=null;g.deadline=null;g.timerLeft=0;commitAttempt(false,null);}
   };
   gymTick=setInterval(tick,200);
   tick();
@@ -2393,7 +2517,7 @@ function gymInviteHTML(){
       h+=`<div class="gym-wait">${leader} is cheering you on. Practice a little more, then the Gym is ready again.</div>`;
       return;
     }
-    if(!gymWaiting(sub)||st.gymLater[sub]===st.served)return;
+    if(!gymWaiting(sub)||st.gymSnooze[sub])return;
     if(!st.cor){
       h+=`<div class="gym-wait">${leader} the Gym Leader is waiting. Finish this question first.</div>`;
       return;
@@ -2703,7 +2827,7 @@ function qCardHTML(resultMsg,btnLabel){
   // beating it is worth a bonus and it's the whole point of it coming back.
   const rematchPill=q.rematch?`<span class="rematch-pill">&#128257; Rematch!</span>`:'';
   let h=`<div class="card"><div class="q-head"><div class="subj-tag ${SCLS[q.subject]||'tagm'}">${SNAME[q.subject]}</div>${rematchPill}${streakPill}${bestPill}${shinyPill}</div><div class="qtext">${q.question}</div>`;
-  if(gymTimerOn()){
+  if(gymTimerApplies()){
     h+=`<div class="gym-time" id="gym-time"><span class="gym-time-lbl">Thinking time</span><span class="gym-time-track"><span class="gym-time-fill" id="gym-time-fill"></span></span></div>`;
   }
   if(isTypedQuestion(q)){
@@ -2903,19 +3027,29 @@ function render(){
     } else {
       const rm=st.cor?'':(st.q&&st.q.hint)||'You can do it!';
       h+=qCardHTML(rm, 'Next &#8594;');
-      if(st.cor)h+=`<button class="gym-later" id="gym-forfeit">Practice instead</button>`;
+      if(st.cor&&g.confirmEnd){
+        h+=`<div class="gym-confirm"><p>End this Gym battle? You can try again after a little more practice.</p><div class="gym-confirm-row"><button class="gym-end-btn" id="gym-forfeit-yes" type="button">End the battle</button><button class="gym-later" id="gym-forfeit-no" type="button">Keep going</button></div></div>`;
+      } else if(st.cor){
+        h+=`<button class="gym-end-btn" id="gym-forfeit" type="button">End the battle</button>`;
+      }
     }
   }
 
   if(st.phase==='award'&&st.award){
     const a=st.award;
     const leader=GYM_LEADER[a.sub];
-    const partnerPi=a.partner?NUM_TO_PI[a.partner.num]:-1;
-    const partnerBit=partnerPi>=0
-      ?`<div class="psvg award-pop">${pkSprite(partnerPi,140,a.partner.shiny)}</div><div class="award-prize">${a.partner.shiny?'A shiny ':''}${PKM[partnerPi].n} joined your team!</div>`
-      :`<div class="award-prize">${leader} cheered — you already have a partner like that, so here is an extra Rare Candy.</div>`;
+    let prizeBit='';
+    if(a.again){
+      prizeBit=`<div class="award-prize">You already got the prize for this badge.</div>`;
+    } else {
+      const partnerPi=a.partner?NUM_TO_PI[a.partner.num]:-1;
+      const partnerBit=partnerPi>=0
+        ?`<div class="psvg award-pop">${pkSprite(partnerPi,140,a.partner.shiny)}</div><div class="award-prize">${a.partner.shiny?'A shiny ':''}${PKM[partnerPi].n} joined your team!</div>`
+        :`<div class="award-prize">${leader} cheered — you already have a partner like that, so here is an extra Rare Candy.</div>`;
+      prizeBit=`${partnerBit}<div class="award-prize">+${a.xp} XP</div><div class="award-prize">Rare Candy ×${a.candy}</div><div class="award-prize">Great Ball ×${a.great} — it helps on your next wild Pokémon.</div>`;
+    }
     const grew=a.grew?`<div class="award-prize">${PKM[activePi()].n} grew stronger!</div>`:'';
-    h+=`<div class="card award-card"><div class="award-kicker">Gym prize</div><div class="award-pop">${badgeHTML(a.sub,a.tier,true)}</div><div class="award-title">You earned the ${badgeName(a.sub,a.tier)}!</div><div class="award-sub">New ${SNAME[a.sub]} questions are waiting.</div>${partnerBit}<div class="award-prize">+${a.xp} XP</div><div class="award-prize">Rare Candy ×${a.candy}</div><div class="award-prize">Great Ball ×${a.great} — it helps on your next wild Pokémon.</div>${grew}<button class="award-go" id="award-go">Yay!</button></div>`;
+    h+=`<div class="card award-card"><div class="award-kicker">Gym prize</div><div class="award-pop">${badgeHTML(a.sub,a.tier,true)}</div><div class="award-title">You earned the ${badgeName(a.sub,a.tier)}!</div><div class="award-sub">New ${SNAME[a.sub]} questions are waiting.</div>${prizeBit}${grew}<button class="award-go" id="award-go">Yay!</button></div>`;
   }
 
   gameEl.innerHTML=h;
@@ -2931,9 +3065,15 @@ function render(){
   const fb=gameEl.querySelector('#flee');if(fb)fb.addEventListener('click',fleeWild);
   const hb=gameEl.querySelector('#help-btn');if(hb)hb.addEventListener('click',askForHelp);
   gameEl.querySelectorAll('[data-gym-start]').forEach(b=>b.addEventListener('click',()=>startGym(b.dataset.gymStart)));
-  gameEl.querySelectorAll('[data-gym-later]').forEach(b=>b.addEventListener('click',()=>{st.gymLater[b.dataset.gymLater]=st.served;render();}));
+  gameEl.querySelectorAll('[data-gym-later]').forEach(b=>b.addEventListener('click',()=>{
+    st.gymSnooze[b.dataset.gymLater]=true;
+    save();
+    render();
+  }));
   const gback=gameEl.querySelector('#gym-back');if(gback)gback.addEventListener('click',leaveAfterGym);
-  const gfor=gameEl.querySelector('#gym-forfeit');if(gfor)gfor.addEventListener('click',forfeitGym);
+  const gfor=gameEl.querySelector('#gym-forfeit');if(gfor)gfor.addEventListener('click',askEndGym);
+  const gyes=gameEl.querySelector('#gym-forfeit-yes');if(gyes)gyes.addEventListener('click',forfeitGym);
+  const gno=gameEl.querySelector('#gym-forfeit-no');if(gno)gno.addEventListener('click',cancelEndGym);
   const candy=gameEl.querySelector('#candy-btn');if(candy)candy.addEventListener('click',useCandy);
   const awardGo=gameEl.querySelector('#award-go');if(awardGo)awardGo.addEventListener('click',dismissAward);
   armGymTimer();
@@ -2973,12 +3113,15 @@ function renderPokedex(){
   wireGate();
 }
 function grownupsHTML(){
+  if(st.gate==='ask'&&gateLocked()){
+    return `<div class="card gate-card"><div class="gym-role">Grown-ups</div><div class="gate-note">Ask a grown-up to try again in a little while.</div></div>`;
+  }
   if(st.gate==='ask'){
     const d=/^\d+$/.test(st.gateDraft||'')?st.gateDraft:'';
     let pad='<div class="gate-pad">';
     for(let n=1;n<=9;n++)pad+=`<button type="button" data-gate-digit="${n}">${n}</button>`;
     pad+=`<button type="button" data-gate="erase">⌫</button><button type="button" data-gate-digit="0">0</button><button type="button" data-gate="ok">OK</button></div>`;
-    return `<div class="card gate-card"><div class="gym-role">Grown-ups</div><div class="gate-q">What is ${PARENT_LEFT} + ${PARENT_RIGHT}?</div><div class="gate-read" id="gate-read">${d||'—'}</div>${pad}${st.gateNote?`<div class="gate-note">${st.gateNote}</div>`:''}</div>`;
+    return `<div class="card gate-card"><div class="gym-role">Grown-ups</div><div class="gate-q">What is ${GATE.a} × ${GATE.b}?</div><div class="gate-read" id="gate-read">${d||'—'}</div>${pad}${st.gateNote?`<div class="gate-note">${st.gateNote}</div>`:''}</div>`;
   }
   if(st.gate==='open'){
     return `<div class="card gate-card"><div class="gym-role">Grown-ups</div><label class="timer-toggle"><input type="checkbox" id="timer-toggle"${st.timerOff?'':' checked'}> Timer in Gym battles</label><div class="gate-note">A calm timer on the harder Gym questions.</div><button class="gym-later" id="gate-close" type="button">Done</button></div>`;
@@ -2989,6 +3132,7 @@ function wireGate(){
   const open=document.getElementById('grownups-btn');
   if(open)open.addEventListener('click',()=>{st.gate='ask';st.gateDraft='';st.gateNote='';renderPokedex();});
   pdxEl.querySelectorAll('[data-gate-digit]').forEach(b=>b.addEventListener('click',()=>{
+    if(gateLocked())return;
     const d=b.dataset.gateDigit;
     if(!/^\d$/.test(d))return;
     const cur=/^\d+$/.test(st.gateDraft||'')?st.gateDraft:'';
@@ -2999,10 +3143,21 @@ function wireGate(){
     renderPokedex();
   }));
   pdxEl.querySelectorAll('[data-gate]').forEach(b=>b.addEventListener('click',()=>{
+    if(gateLocked())return;
     if(b.dataset.gate==='erase'){st.gateDraft=(st.gateDraft||'').slice(0,-1);st.gateNote='';renderPokedex();return;}
     const v=typedValue(st.gateDraft);
-    if(v!=null&&Number(v)===PARENT_SUM){st.gate='open';st.gateNote='';renderPokedex();return;}
-    st.gateNote='That’s for a grown-up to answer.';
+    if(v==null){st.gateNote='That’s for a grown-up to answer.';renderPokedex();return;}
+    if(Number(v)===gateAnswer()){
+      st.gate='open';st.gateNote='';st.gateMisses=0;st.gateLock=0;save();renderPokedex();return;
+    }
+    st.gateMisses=(st.gateMisses|0)+1;
+    st.gateDraft='';
+    if(st.gateMisses>=GATE.wrong){
+      st.gateLock=Date.now()+GATE.lock;
+      st.gateMisses=0;
+      st.gateNote='Ask a grown-up to try again in a little while.';
+    } else st.gateNote='That’s for a grown-up to answer.';
+    save();
     renderPokedex();
   }));
   const tog=document.getElementById('timer-toggle');
@@ -3048,12 +3203,14 @@ function wireReset(){
 }
 
 function switchView(v){
+  if(v!=='game')pauseGymTimer();
   view=v;
   document.getElementById('nav-game').classList.toggle('nav-active',v==='game');
   document.getElementById('nav-pdx').classList.toggle('nav-active',v==='pdx');
   if(v==='game'){
     gameEl.style.display='block';
     pdxEl.style.display='none';
+    armGymTimer();
   } else {
     gameEl.style.display='none';
     pdxEl.style.display='block';
@@ -3124,6 +3281,10 @@ function recordReview(tmpl,clean){
 
 async function loadQuestion(){
   st.served++;
+  // The question dealt on boot is the one they already snoozed past. Hold
+  // that snooze; the next question they actually ask for clears it.
+  if(st.holdSnooze)st.holdSnooze=false;
+  else SUBS.forEach(s=>{st.gymSnooze[s]=false;});
   const pname=questionPname();
   st.wildEscape=false;
   st.lvlUpMsg=null;
@@ -3159,6 +3320,7 @@ function refillQuestion(){
 function askForHelp(){
   if(!st.q||st.tries>0||st.helped||st.cor||st.wildEscape)return;
   st.helped=true;
+  if(st.gym){st.gym.timerLeft=null;st.gym.deadline=null;save();}
   render();
 }
 
@@ -3699,9 +3861,12 @@ function fleeWild(){
   if(st.phase!=='wild'||!st.wild)return;
   if(st.wildEscape||st.wild.correctStreak>=CATCH_STREAK_NEEDED)return;
   if(st.tries>0&&!st.cor)return;
+  // The ball is spent only once this fight is actually over.
+  spendGreatBall();
   st.wild=null;
   st.wildEscape=false;
   st.phase='play';
+  save();
   // An open question comes with him, redrawn with his own Pokemon's name --
   // otherwise running away is one more way to skip a question he doesn't like.
   if(st.q&&!st.cor){refillQuestion();render();}
@@ -3735,12 +3900,15 @@ function onNext(){
   if(st.phase==='award'){dismissAward();return;}
   if(st.phase==='wild'){
     if(st.wildEscape){
+      spendGreatBall();
       st.wild=null;st.wildEscape=false;st.phase='play';
+      save();
       loadQuestion();return;
     }
     if(st.wild&&st.wild.correctStreak>=CATCH_STREAK_NEEDED){
       const wp=st.wild.pi;const wlev=st.wild.level;const wsh=!!st.wild.shiny;
       playCatch(wp,wsh,()=>{
+        spendGreatBall();
         st.team.push({pi:wp,level:wlev,xp:0,shiny:wsh});
         markDex(wp,wsh);
         st.wild=null;
@@ -3855,11 +4023,18 @@ function commitAttempt(ok,choice,nextDraft){
       // that climbs with the streak moves -- not the streak, not the catch pips,
       // not the difficulty tier -- but the promotion run is broken, since needing
       // the hint is a sign this tier isn't comfortable yet.
-      const sub=st.stats[st.q.subject];sub.att++;sub.cor++;sub.cs=0;
+      // A Gym is the exception: hearts are already the penalty, so help must
+      // not wipe the practice run that unlocked the battle.
+      const sub=st.stats[st.q.subject];sub.att++;sub.cor++;
+      if(st.phase!=='gym')sub.cs=0;
       if(st.phase==='play'||st.phase==='gym'){
         const tm=activeTM();
         if(tm){st.lastXp=XP_WITH_HELP;tm.xp+=st.lastXp;applyLevelUps();}
       }
+    } else if(st.phase==='gym'){
+      // Gym answers count toward the subject totals, and nothing else.
+      // Misses must not drop a tier, strip a badge, or arm another invite.
+      const sub=st.stats[st.q.subject];sub.att++;if(ok)sub.cor++;
     } else {
       updStats(st.q.subject,ok);
     }
@@ -3911,7 +4086,11 @@ function commitAttempt(ok,choice,nextDraft){
   if(st.phase==='gym'&&st.gym&&!st.gym.over){
     if(firstTry){
       if(ok&&!st.helped)st.gym.lead=Math.max(0,st.gym.lead-1);
-      else if(!ok)st.gym.kid=Math.max(0,st.gym.kid-1);
+      else if(!ok){
+        st.gym.kid=Math.max(0,st.gym.kid-1);
+        st.gym.timerLeft=null;
+        st.gym.deadline=null;
+      }
     }
     if(st.gym.lead<=0)finishGymWin();
     else if(st.gym.kid<=0)finishGymLose();
@@ -3931,8 +4110,11 @@ document.getElementById("nav-game").addEventListener("click",()=>switchView('gam
 document.getElementById("nav-pdx").addEventListener("click",()=>switchView('pdx'));
 
 // iPad swipe-away and tab close don't always fire a normal teardown
-window.addEventListener('pagehide',save);
-document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')save();});
+window.addEventListener('pagehide',noteGymHide);
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState==='hidden')noteGymHide();
+  else armGymTimer();
+});
 
 gameEl.style.display="block";
 document.getElementById("bottom-nav").style.display="flex";
@@ -3945,8 +4127,11 @@ if(st.phase==='gym'&&st.gym){
     st.gym.qi++;
     if(st.gym.qi>=st.gym.queue.length){finishGymLose();render();}
     else dealGymQuestion();
-  } else dealGymQuestion();
-} else if(st.phase==='play')loadQuestion();
+  } else dealGymQuestion(true);
+} else if(st.phase==='play'){
+  st.holdSnooze=true;
+  loadQuestion();
+}
 else render();
 </script>
 </body>
