@@ -16,9 +16,11 @@ async function newTrainer(page,name,avatar){
 
 async function passParentGate(page){
   const q=await page.locator('#parent-q').innerText();
-  const m=q.match(/(\d+)\s*\+\s*(\d+)/);
-  expect(m,'parent check should be a simple addition').not.toBeNull();
-  await page.fill('#parent-answer',String(Number(m[1])+Number(m[2])));
+  const m=q.match(/(\d+)\s*times\s*(\d+)/i);
+  expect(m,'parent check should be a multiplication').not.toBeNull();
+  const a=Number(m[1]),b=Number(m[2]);
+  expect(a*b).toBeGreaterThan(100);
+  await page.fill('#parent-answer',String(a*b));
   await page.click('#parent-go');
 }
 
@@ -114,6 +116,8 @@ test('two trainers keep separate Pokémon, and deleting one takes a confirm',asy
   await page.click('#who-btn');
   await page.getByRole('button',{name:'Remove Leo'}).click();
   await expect(page.locator('#remove-confirm')).toContainText('Delete Leo?');
+  await expect(page.locator('#remove-who')).toContainText('Buddy: Charmander');
+  await expect(page.locator('#remove-who')).toContainText('Lv 5');
   await expect(page.locator('[data-pick]').filter({hasText:'Leo'})).toHaveCount(0);
   await page.click('#remove-no');
   await expect(page.locator('[data-pick]').filter({hasText:'Leo'})).toBeVisible();
@@ -164,6 +168,18 @@ test('resetting one trainer does not wipe the other',async({page})=>{
   await page.mouse.down();
   await page.waitForTimeout(2300);
   await page.mouse.up();
+  await expect(page.locator('#reset-confirm')).toContainText('Reset Maya?');
+  await expect(page.locator('#reset-who')).toContainText('Buddy: Bulbasaur');
+  expect(await state(page,()=>st.items.candy)).toBe(3);
+  expect(await state(page,()=>st.team.length)).toBe(1);
+  await page.click('#reset-no');
+  await expect(page.locator('#reset-confirm')).toHaveCount(0);
+  expect(await state(page,()=>st.items.candy)).toBe(3);
+
+  await page.mouse.down();
+  await page.waitForTimeout(2300);
+  await page.mouse.up();
+  await page.click('#reset-yes');
   expect(await state(page,()=>st.phase)).toBe('starter');
   expect(await state(page,()=>st.team.length)).toBe(0);
   expect(await state(page,()=>activeKid().name)).toBe('Maya');
@@ -260,13 +276,56 @@ test('the parent page stays behind a math check and shows each child apart',asyn
   await expect(mayaCard).not.toContainText('Charge Badge');
   await expect(mayaCard).not.toContainText('Missed topics start from this update');
 
-  await expect(samCard).toContainText('2nd-grade bigger numbers, time, and money');
+  await expect(samCard).toContainText('2nd-grade adding, subtracting, counting, odd and even, and shapes');
+  await expect(samCard).not.toContainText('time, and money');
   await expect(samCard).toContainText('Bolt Badge');
   await expect(samCard).toContainText('Charge Badge');
   await expect(samCard).toContainText('3 right out of 5');
   await expect(samCard).toContainText('Missed topics start from this update');
   await expect(samCard).not.toContainText('What is 8 + 7?');
   await expect(samCard).not.toContainText('Rhyming');
+  await expect(page.locator('#parent-back')).toHaveText("Back to who's playing");
+  expect(errors).toEqual([]);
+});
+
+test('two trainers cannot share a name or a buddy, and delete names which one',async({page})=>{
+  const errors=await openGame(page);
+  await page.click('#profile-new');
+  await page.fill('#profile-name','Maya');
+  await page.click('[data-avatar="001"]');
+  await page.click('#profile-save');
+  await page.click('#who-btn');
+
+  await page.click('#profile-new');
+  await page.fill('#profile-name','maya');
+  await page.click('[data-avatar="004"]');
+  await expect(page.locator('#profile-err')).toContainText('already called Maya');
+  await expect(page.locator('#profile-save')).toBeDisabled();
+  expect(await state(page,()=>profiles.kids.map(k=>k.name))).toEqual(['Maya']);
+
+  await page.fill('#profile-name','Leo');
+  await page.click('[data-avatar="001"]');
+  await expect(page.locator('#profile-err')).toContainText('Maya already has that buddy');
+  await expect(page.locator('#profile-save')).toBeDisabled();
+
+  await page.click('[data-avatar="004"]');
+  await expect(page.locator('#profile-save')).toBeEnabled();
+  await page.click('#profile-save');
+  await page.click('#who-btn');
+  await expect(page.locator('[data-pick]').filter({hasText:'Leo'})).toBeVisible();
+
+  await page.getByRole('button',{name:'Edit Leo'}).click();
+  await page.fill('#profile-name','Maya');
+  await expect(page.locator('#profile-err')).toContainText('already called Maya');
+  await expect(page.locator('#profile-save')).toBeDisabled();
+  await page.click('#who-form-back');
+
+  await page.getByRole('button',{name:'Remove Maya'}).click();
+  await expect(page.locator('#remove-confirm')).toContainText('Delete Maya?');
+  await expect(page.locator('#remove-who')).toContainText('Buddy: Bulbasaur');
+  await expect(page.locator('#remove-who')).toContainText('Ready to start');
+  await page.click('#remove-no');
+  await expect(page.locator('[data-pick]').filter({hasText:'Maya'})).toBeVisible();
   expect(errors).toEqual([]);
 });
 
@@ -284,6 +343,133 @@ test('a miss is remembered for the parent page from the next answer on',async({p
   await expect(card).toContainText('What is 1 + 2?');
   await expect(card).toContainText('Last 1 answer: 0 right');
   await expect(card).not.toContainText('Missed topics start from this update');
+  expect(errors).toEqual([]);
+});
+
+test('asking for help and getting it right counts as right for a parent',async({page})=>{
+  const errors=await openGame(page);
+  await startGame(page,'math');
+  await serve(page,{sub:'math',lv:1,idx:0});
+  await state(page,()=>askForHelp());
+  await answer(page,true);
+  const scored=await state(page,()=>({
+    cor:st.stats.math.cor,att:st.stats.math.att,streak:st.streak,
+    review:st.review.length,why:st.review[0]&&st.review[0].why,
+  }));
+  expect(scored).toEqual({cor:1,att:1,streak:0,review:1,why:'help'});
+
+  await page.click('#parents-link');
+  await passParentGate(page);
+  const card=page.locator('[data-kid-name="Trainer"]');
+  await expect(card).toContainText('Last 1 answer: 1 right');
+  await expect(card).toContainText('1 right out of 1');
+  await expect(card).toContainText('Got 1 right after asking for help');
+  await expect(card).toContainText('Right after a hint');
+  await expect(card).toContainText('What is 1 + 2?');
+  await expect(card).not.toContainText('Trying these again');
+  await expect(card).not.toContainText(/Adding — missed/);
+  expect(errors).toEqual([]);
+});
+
+test('a topic drops off once they keep getting it right',async({page})=>{
+  const errors=await openGame(page);
+  await startGame(page,'math');
+  const idxs=await state(page,()=>QB.math[1].map((q,i)=>questionTopic('math',q[0])==='Adding'?i:-1).filter(i=>i>=0));
+  expect(idxs.length).toBeGreaterThan(3);
+  await serve(page,{sub:'math',lv:1,idx:idxs[0]});
+  await answer(page,false);
+  await answer(page,true);
+
+  for(let i=0;i<3;i++){
+    await serve(page,{sub:'math',lv:1,idx:idxs[(i+1)%idxs.length]});
+    await answer(page,true);
+  }
+  await page.click('#parents-link');
+  await passParentGate(page);
+  const card=page.locator('[data-kid-name="Trainer"]');
+  await expect(card).toContainText(/Adding — missed/);
+  await page.click('#parent-back');
+
+  for(let i=3;i<12;i++){
+    await serve(page,{sub:'math',lv:1,idx:idxs[(i+1)%idxs.length]});
+    await answer(page,true);
+  }
+  await page.click('#parents-link');
+  await passParentGate(page);
+  await expect(card).not.toContainText(/Adding — missed/);
+  await expect(card).toContainText('Nothing keeps missing');
+  await expect(card).toContainText('Last 10 answers: 10 right');
+  expect(errors).toEqual([]);
+});
+
+test('each level is described by the questions it really asks',async({page})=>{
+  await openGame(page);
+  const lines=await state(page,()=>({
+    math:[1,2,3,4].map(lv=>plainTier('math',lv)),
+    reading:[1,2,3,4].map(lv=>plainTier('reading',lv)),
+    science:[1,2,3].map(lv=>plainTier('science',lv)),
+  }));
+  expect(lines.math[1]).toBe('1st-grade adding and subtracting');
+  expect(lines.math[2]).toBe('2nd-grade adding, subtracting, counting, odd and even, and shapes');
+  expect(lines.math[2]).not.toMatch(/time|money/i);
+  expect(lines.math[3]).toContain('time');
+  expect(lines.math[3]).toContain('money');
+  expect(lines.reading[1]).toBe('1st-grade letters, rhymes, and vowel sounds');
+  expect(lines.reading[1]).not.toMatch(/short stories/i);
+  expect(lines.science[1]).toBe('1st-grade animals, baby animals, weather, and sound');
+  const bank=await state(page,()=>{
+    const has=(lv,re)=>QB.math[lv].some(q=>re.test(q[0].toLowerCase()));
+    return {
+      l3time:has(3,/clock|hour|minute/),
+      l3money:has(3,/nickel|dime|quarter|cent|dollar/),
+      l4time:has(4,/clock|hour|minute/),
+      l4money:has(4,/nickel|dime|quarter|cent|dollar/),
+    };
+  });
+  expect(bank).toEqual({l3time:false,l3money:false,l4time:true,l4money:true});
+});
+
+test('the parent check is a multiplication the game does not practice',async({page})=>{
+  const errors=await openGame(page);
+  const rolls=await state(page,()=>{
+    const out=[];
+    for(let i=0;i<40;i++){
+      rollParentQuiz();
+      out.push({a:parentQuiz.a,b:parentQuiz.b,ans:parentQuiz.ans});
+    }
+    return out;
+  });
+  rolls.forEach(r=>{
+    expect(r.ans).toBe(r.a*r.b);
+    expect(r.ans).toBeGreaterThan(100);
+    expect(r.a).toBeGreaterThanOrEqual(13);
+    expect(r.a).toBeLessThanOrEqual(19);
+    expect(r.b).toBeGreaterThanOrEqual(6);
+    expect(r.b).toBeLessThanOrEqual(9);
+  });
+  const hardest=await state(page,()=>{
+    const facts=[];
+    Object.keys(QB.math).forEach(lv=>QB.math[lv].forEach(q=>{
+      const m=q[0].match(/(\d+)\s*x\s*(\d+)/i);
+      if(m)facts.push(Number(m[1])*Number(m[2]));
+    }));
+    return Math.max(...facts);
+  });
+  expect(hardest).toBeLessThanOrEqual(100);
+  rolls.forEach(r=>expect(r.ans).toBeGreaterThan(hardest));
+
+  await page.click('#parents-link');
+  const q=await page.locator('#parent-q').innerText();
+  expect(q).toMatch(/times/i);
+  expect(q).not.toContain('+');
+  const m=q.match(/(\d+)\s*times\s*(\d+)/i);
+  await page.fill('#parent-answer',String(Number(m[1])+Number(m[2])));
+  await page.click('#parent-go');
+  await expect(page.locator('#parent-report')).toHaveCount(0);
+  await expect(page.locator('#parent-err')).toBeVisible();
+  await passParentGate(page);
+  await expect(page.locator('#parent-report')).toBeVisible();
+  await expect(page.locator('#parent-back')).toHaveText("Back to who's playing");
   expect(errors).toEqual([]);
 });
 

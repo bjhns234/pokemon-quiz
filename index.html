@@ -2045,7 +2045,7 @@ function gamePayload(){
     bestStreak:st.bestStreak,
     // Stored by QB address plus the question text, so an edit to the question
     // bank can't quietly turn a saved Rematch into a different question.
-    review:st.review.map(r=>({sub:r.sub,lv:r.lv,idx:r.idx,q:QB[r.sub][r.lv][r.idx][0],wins:r.wins})),
+    review:st.review.map(r=>({sub:r.sub,lv:r.lv,idx:r.idx,q:QB[r.sub][r.lv][r.idx][0],wins:r.wins,why:r.why==='help'?'help':'miss'})),
     badges:st.badges,
     gymOffer:st.gymOffer,
     items:{candy:Math.max(0,st.items.candy|0),great:Math.max(0,st.items.great|0)},
@@ -2123,7 +2123,7 @@ function parseGameSave(data){
     // spread through the start of the next session instead, a few questions apart.
     const review=(Array.isArray(data.review)?data.review:[]).filter(r=>
       r&&SUBS.includes(r.sub)&&QB[r.sub][r.lv]&&QB[r.sub][r.lv][r.idx]&&QB[r.sub][r.lv][r.idx][0]===r.q
-    ).slice(-REVIEW.max).map((r,i)=>({sub:r.sub,lv:r.lv,idx:r.idx,wins:Math.max(0,r.wins|0),due:2+i*3}));
+    ).slice(-REVIEW.max).map((r,i)=>({sub:r.sub,lv:r.lv,idx:r.idx,wins:Math.max(0,r.wins|0),due:2+i*3,why:r.why==='help'?'help':'miss'}));
 
     // Tiers below the saved difficulty were already earned, Gym or not. Union
     // them with any badges the save names, and if a badge sits at or above the
@@ -2228,33 +2228,54 @@ function parseGameSave(data){
 // SAVE_V stays 1. Bumping it would throw away every Pokédex.
 const PROFILE_MAX=6;
 const AVATAR_IDS=['001','004','007','025','133','152','258','387','495','653','722','813'];
+// Phrases a parent reads. Each one names what that step's questions actually
+// are. Clocks and coins, for example, are only in the hardest math step.
 const TIER_PLAIN={
   math:{
-    1:'kindergarten counting and small adding',
+    1:'kindergarten counting, adding, subtracting, and shapes',
     2:'1st-grade adding and subtracting',
-    3:'2nd-grade bigger numbers, time, and money',
-    4:'3rd-grade multiplying, fractions, and word problems',
+    3:'2nd-grade adding, subtracting, counting, odd and even, and shapes',
+    4:'3rd-grade multiplying, fractions, time, and money',
   },
   reading:{
     1:'kindergarten letters, rhymes, and sounds',
-    2:'1st-grade words and short stories',
-    3:'2nd-grade reading for meaning',
-    4:'3rd-grade sentences and grammar',
+    2:'1st-grade letters, rhymes, and vowel sounds',
+    3:'2nd-grade missing words and syllables',
+    4:'3rd-grade nouns, verbs, and punctuation',
   },
   science:{
     1:'kindergarten animals, weather, and senses',
-    2:'1st-grade plants, sound, light, and habitats',
-    3:'2nd-grade materials, habitats, and how things change',
+    2:'1st-grade animals, baby animals, weather, and sound',
+    3:'2nd-grade materials, how things change, and plants',
   },
 };
+// A topic stays on the parent page while recent tries on it still include a
+// miss. Four right answers in a row on that same topic means they've got it,
+// so it drops off instead of haunting the list forever.
+const TOPIC_WINDOW=8;
+const TOPIC_CLEAR=4;
 function freshPractice(){return{recent:[],topics:{}};}
+function topicRecentOf(t){
+  if(!t||typeof t!=='object')return [];
+  if(Array.isArray(t.recent))return t.recent.map(x=>(x===1||x==='1')?1:0).slice(-TOPIC_WINDOW);
+  const n=Math.max(0,t.n|0);
+  return n?Array(Math.min(TOPIC_WINDOW,n)).fill(0):[];
+}
+function topicCleared(recent){
+  return recent.length>=TOPIC_CLEAR&&recent.slice(-TOPIC_CLEAR).every(x=>x===1);
+}
+function topicStillMissing(recent){
+  return recent.some(x=>x===0)&&!topicCleared(recent);
+}
 function parsePractice(raw){
   const out=freshPractice();
   if(!raw||typeof raw!=='object')return out;
   if(Array.isArray(raw.recent)){
     raw.recent.forEach(r=>{
       if(!r||!SUBS.includes(r.s))return;
-      out.recent.push({s:r.s,ok:r.ok?1:0});
+      // A correct answer after asking for help is still right. `help` only
+      // marks that a hint was used, so the parent page can say so separately.
+      out.recent.push({s:r.s,ok:r.ok?1:0,help:r.ok&&r.help?1:0});
     });
     if(out.recent.length>40)out.recent=out.recent.slice(-40);
   }
@@ -2265,10 +2286,10 @@ function parsePractice(raw){
       const parts=String(k).split('|');
       if(!SUBS.includes(parts[0])||!parts[1]||parts[1].length>48)return;
       const t=topics[k];
-      const n=Math.max(0,(t&&t.n)|0);
-      if(!n)return;
+      const recent=topicRecentOf(t);
+      if(!topicStillMissing(recent))return;
       const ex=Array.isArray(t.ex)?t.ex.filter(x=>typeof x==='string').map(x=>x.slice(0,140)).slice(0,3):[];
-      out.topics[parts[0]+'|'+parts[1]]={n,ex};
+      out.topics[parts[0]+'|'+parts[1]]={n:recent.filter(x=>x===0).length,ex,recent};
     });
   }
   return out;
@@ -2419,23 +2440,43 @@ function questionTopic(sub,stem){
   }
   return 'Questions';
 }
-function notePractice(tmpl,clean){
+// `outcome` is how the game itself scored the first try: 'right', 'help'
+// (right after asking for help — a success, streak paused), or 'miss'.
+function notePractice(tmpl,outcome){
   if(!tmpl||!SUBS.includes(tmpl.sub)||!tmpl.raw)return;
+  if(outcome!=='right'&&outcome!=='help'&&outcome!=='miss')return;
   if(!st.practice)st.practice=freshPractice();
   const sub=tmpl.sub;
   const topic=questionTopic(sub,tmpl.raw[0]);
-  st.practice.recent.push({s:sub,ok:clean?1:0});
+  const ok=outcome!=='miss';
+  st.practice.recent.push({s:sub,ok:ok?1:0,help:outcome==='help'?1:0});
   if(st.practice.recent.length>40)st.practice.recent.splice(0,st.practice.recent.length-40);
-  if(clean)return;
   const key=sub+'|'+topic;
-  const cur=st.practice.topics[key]||{n:0,ex:[]};
-  cur.n++;
+  const cur=st.practice.topics[key];
+  if(ok){
+    if(!cur)return;
+    if(!Array.isArray(cur.recent))cur.recent=topicRecentOf(cur);
+    cur.recent.push(1);
+    if(cur.recent.length>TOPIC_WINDOW)cur.recent.splice(0,cur.recent.length-TOPIC_WINDOW);
+    cur.n=cur.recent.filter(x=>x===0).length;
+    if(!topicStillMissing(cur.recent))delete st.practice.topics[key];
+    return;
+  }
+  const row=cur||{n:0,ex:[],recent:[]};
+  if(!Array.isArray(row.recent))row.recent=topicRecentOf(row);
+  row.recent.push(0);
+  if(row.recent.length>TOPIC_WINDOW)row.recent.splice(0,row.recent.length-TOPIC_WINDOW);
+  row.n=row.recent.filter(x=>x===0).length;
   const stem=String(tmpl.raw[0]).replace(/\{P\}/g,'your Pokémon');
-  if(cur.ex.indexOf(stem)<0&&cur.ex.length<3)cur.ex.push(stem);
-  st.practice.topics[key]=cur;
+  if(row.ex.indexOf(stem)<0){
+    row.ex.unshift(stem);
+    row.ex=row.ex.filter(x=>typeof x==='string').slice(0,3);
+  }
+  if(!topicStillMissing(row.recent)){delete st.practice.topics[key];return;}
+  st.practice.topics[key]=row;
   const keys=Object.keys(st.practice.topics);
   if(keys.length>48){
-    keys.sort((a,b)=>st.practice.topics[a].n-st.practice.topics[b].n);
+    keys.sort((a,b)=>(st.practice.topics[a].n|0)-(st.practice.topics[b].n|0));
     delete st.practice.topics[keys[0]];
   }
 }
@@ -2508,8 +2549,26 @@ function selectProfile(id){
   writeRoster();
   bootInto();
 }
+// Same name, or the same buddy picture, and a child who can't read can open
+// the wrong game. Both have to be different. Editing keeps your own.
+function profileClash(name,avatar,exceptId){
+  const n=cleanName(name).toLowerCase();
+  const nameKid=profiles.kids.find(k=>k.id!==exceptId&&k.name.toLowerCase()===n)||null;
+  const avaKid=avatar?profiles.kids.find(k=>k.id!==exceptId&&k.avatar===avatar)||null:null;
+  return {nameKid,avaKid};
+}
+function profileClashMessage(name,avatar,exceptId){
+  if(!String(name||'').trim()||!avatar)return '';
+  const {nameKid,avaKid}=profileClash(name,avatar,exceptId);
+  if(nameKid&&avaKid&&nameKid.id===avaKid.id)return `${nameKid.name} already has that name and that buddy.`;
+  if(nameKid&&avaKid)return `Someone is already called ${nameKid.name}, and ${avaKid.name} already has that buddy.`;
+  if(nameKid)return `Someone is already called ${nameKid.name}. Pick a different name.`;
+  if(avaKid)return `${avaKid.name} already has that buddy. Pick a different one.`;
+  return '';
+}
 function createProfile(name,avatar){
   if(profiles.kids.length>=PROFILE_MAX)return;
+  if(profileClashMessage(name,avatar,null))return;
   captureActive();
   const kid={id:newProfileId(),name:cleanName(name),avatar,data:null};
   profiles.kids.push(kid);
@@ -2527,6 +2586,7 @@ function createProfile(name,avatar){
 function editProfile(id,name,avatar){
   const kid=profiles.kids.find(k=>k.id===id);
   if(!kid)return;
+  if(profileClashMessage(name,avatar,id))return;
   kid.name=cleanName(name);
   kid.avatar=avatar;
   whoMode='list';
@@ -2552,6 +2612,22 @@ function deleteProfile(id){
   view='who';
   renderWho();
 }
+function askResetProfile(){
+  if(document.getElementById('reset-confirm'))return;
+  const kid=activeKid();
+  const name=kid?kid.name:'this trainer';
+  const buddy=kid?PKM[avatarPi(kid.avatar)].n:'this buddy';
+  const blurb=kid?kidBlurb(kid):'';
+  const card=document.createElement('div');
+  card.className='card';
+  card.id='reset-confirm';
+  card.innerHTML=`<div class="who-ava" style="display:flex;justify-content:center">${kid?pkSprite(avatarPi(kid.avatar),72,false):''}</div><div class="parent-title" style="text-align:center">Reset ${escapeHtml(name)}?</div><p class="remove-copy" id="reset-who">Buddy: ${escapeHtml(buddy)}.${blurb?` ${escapeHtml(blurb)}.`:' '}</p><p class="remove-copy">${escapeHtml(name)}'s Pokémon, badges, and answers would be gone. Everyone else stays safe.</p><button type="button" class="who-go" id="reset-no">Keep ${escapeHtml(name)}</button><button type="button" class="who-go quiet" id="reset-yes">Reset ${escapeHtml(name)}'s game</button>`;
+  const hdr=pdxEl.querySelector('.hdr');
+  if(hdr&&hdr.nextSibling)pdxEl.insertBefore(card,hdr.nextSibling);
+  else pdxEl.appendChild(card);
+  document.getElementById('reset-no').addEventListener('click',()=>card.remove());
+  document.getElementById('reset-yes').addEventListener('click',()=>{card.remove();resetCurrentProfile();});
+}
 function resetCurrentProfile(){
   const kid=activeKid();
   st=mkState();
@@ -2573,6 +2649,7 @@ function trySaveProfile(){
   const input=document.getElementById('profile-name');
   const name=input?input.value:'';
   if(!String(name).trim()||!whoDraft.avatar)return;
+  if(profileClashMessage(name,whoDraft.avatar,whoDraft.editId))return;
   if(whoDraft.editId)editProfile(whoDraft.editId,name,whoDraft.avatar);
   else createProfile(name,whoDraft.avatar);
 }
@@ -2593,7 +2670,9 @@ function renderWho(){
   if(whoMode==='confirm'&&pendingDelete){
     const kid=profiles.kids.find(k=>k.id===pendingDelete);
     const name=kid?kid.name:'this trainer';
-    h+=`<div class="card" id="remove-confirm"><div class="parent-title" style="text-align:center">Delete ${escapeHtml(name)}?</div><p class="remove-copy">${escapeHtml(name)}'s Pokémon, badges, and answers would be gone forever. Everyone else stays safe.</p><button type="button" class="who-go" id="remove-no">Keep ${escapeHtml(name)}</button><button type="button" class="who-go quiet" id="remove-yes">Delete ${escapeHtml(name)}'s game</button></div></div>`;
+    const buddy=kid?PKM[avatarPi(kid.avatar)].n:'this buddy';
+    const blurb=kid?kidBlurb(kid):'Ready to start';
+    h+=`<div class="card" id="remove-confirm"><div class="who-ava" style="display:flex;justify-content:center">${kid?pkSprite(avatarPi(kid.avatar),72,false):''}</div><div class="parent-title" style="text-align:center">Delete ${escapeHtml(name)}?</div><p class="remove-copy" id="remove-who">Buddy: ${escapeHtml(buddy)}. ${escapeHtml(blurb)}.</p><p class="remove-copy">${escapeHtml(name)}'s Pokémon, badges, and answers would be gone forever. Everyone else stays safe.</p><button type="button" class="who-go" id="remove-no">Keep ${escapeHtml(name)}</button><button type="button" class="who-go quiet" id="remove-yes">Delete ${escapeHtml(name)}'s game</button></div></div>`;
     profilesEl.innerHTML=h;
     document.getElementById('remove-no').addEventListener('click',()=>{pendingDelete=null;whoMode='list';renderWho();});
     document.getElementById('remove-yes').addEventListener('click',()=>deleteProfile(pendingDelete));
@@ -2611,15 +2690,19 @@ function renderWho(){
       const sel=whoDraft.avatar===num?' sel':'';
       h+=`<button type="button" class="ava-opt${sel}" data-avatar="${id}" aria-label="${escapeHtml(PKM[avatarPi(num)].n)}">${pkSprite(avatarPi(num),52,false)}</button>`;
     });
-    const ready=!!(String(whoDraft.name).trim()&&whoDraft.avatar);
-    h+=`</div><button type="button" class="who-go" id="profile-save"${ready?'':' disabled'}>${editing?'Save':'This is me!'}</button></div></div>`;
+    const clash=profileClashMessage(whoDraft.name,whoDraft.avatar,whoDraft.editId);
+    const ready=!!(String(whoDraft.name).trim()&&whoDraft.avatar&&!clash);
+    h+=`</div><p class="parent-err" id="profile-err"${clash?'':' hidden'}>${escapeHtml(clash)}</p><button type="button" class="who-go" id="profile-save"${ready?'':' disabled'}>${editing?'Save':'This is me!'}</button></div></div>`;
     profilesEl.innerHTML=h;
     document.getElementById('who-form-back').addEventListener('click',()=>{whoMode='list';whoDraft={name:'',avatar:null,editId:null};renderWho();});
     const input=document.getElementById('profile-name');
     const sync=()=>{
       whoDraft.name=input.value;
+      const msg=profileClashMessage(input.value,whoDraft.avatar,whoDraft.editId);
+      const err=document.getElementById('profile-err');
+      if(err){err.hidden=!msg;err.textContent=msg;}
       const go=document.getElementById('profile-save');
-      if(go)go.disabled=!(input.value.trim()&&whoDraft.avatar);
+      if(go)go.disabled=!(input.value.trim()&&whoDraft.avatar&&!msg);
     };
     input.addEventListener('input',sync);
     input.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();trySaveProfile();}});
@@ -2687,26 +2770,35 @@ function plainTier(sub,level){
   const words=map[lv]||'their current questions';
   return lv>=top?words+' — the hardest '+SNAME[sub].toLowerCase()+' questions right now':words;
 }
+function recentRows(practice,sub){
+  if(!practice||!Array.isArray(practice.recent))return [];
+  return practice.recent.filter(r=>r&&(!sub||r.s===sub)).slice(-10);
+}
 function recentBits(practice,sub){
-  if(!practice||!Array.isArray(practice.recent))return null;
-  const rows=practice.recent.filter(r=>r&&(!sub||r.s===sub));
-  const last=rows.slice(-10);
+  const last=recentRows(practice,sub);
   if(!last.length)return null;
-  return{right:last.filter(r=>r.ok).length,n:last.length};
+  return{right:last.filter(r=>r.ok).length,n:last.length,help:last.filter(r=>r.ok&&r.help).length};
 }
 function missList(practice){
   if(!practice||!practice.topics)return [];
   return Object.keys(practice.topics).map(k=>{
     const parts=k.split('|');
     const t=practice.topics[k];
-    return{sub:parts[0],topic:parts[1],n:t.n|0,ex:Array.isArray(t.ex)?t.ex:[]};
-  }).filter(t=>SUBS.includes(t.sub)&&t.n>0).sort((a,b)=>b.n-a.n).slice(0,5);
+    const recent=topicRecentOf(t);
+    if(!SUBS.includes(parts[0])||!topicStillMissing(recent))return null;
+    return{sub:parts[0],topic:parts[1],n:recent.filter(x=>x===0).length,ex:Array.isArray(t.ex)?t.ex:[]};
+  }).filter(t=>t&&t.n>0).sort((a,b)=>b.n-a.n).slice(0,5);
 }
-function liveRematches(data){
+// `why` is 'help' when the question was queued because they got it right after
+// a hint. Those are still asked again in the game, but they were scored right,
+// so the parent page does not call them misses. Older saves have no why.
+function liveRematches(data,why){
   const rev=Array.isArray(data.review)?data.review:[];
   const out=[];
   rev.forEach(r=>{
     if(!r||!SUBS.includes(r.sub))return;
+    const helped=r.why==='help';
+    if(why==='help'? !helped : helped)return;
     const bank=QB[r.sub]&&QB[r.sub][r.lv]&&QB[r.sub][r.lv][r.idx];
     if(!bank||bank[0]!==r.q)return;
     out.push({sub:r.sub,q:String(r.q).replace(/\{P\}/g,'your Pokémon')});
@@ -2722,7 +2814,10 @@ function parentKidHTML(kid){
   }
   const practice=data.practice&&typeof data.practice==='object'?data.practice:freshPractice();
   const overall=recentBits(practice,null);
-  if(overall)h+=`<div class="parent-recent">Last ${overall.n} answer${overall.n===1?'':'s'}: ${overall.right} right</div>`;
+  if(overall){
+    h+=`<div class="parent-recent">Last ${overall.n} answer${overall.n===1?'':'s'}: ${overall.right} right</div>`;
+    if(overall.help)h+=`<div class="parent-recent">Got ${overall.help} right after asking for help</div>`;
+  }
   h+=`</div></div>`;
   SUBS.forEach(sub=>{
     const snap=subjectSnap(data,sub);
@@ -2747,18 +2842,36 @@ function parentKidHTML(kid){
     h+=`<p class="parent-note">Missed topics will show up here after they play.</p>`;
   }
   h+=`</div>`;
-  const again=liveRematches(data);
+  const again=liveRematches(data,'miss');
   if(again.length){
     h+=`<div class="parent-again"><h3>Trying these again</h3>`;
     again.forEach(r=>{h+=`<p>${escapeHtml(SNAME[r.sub])}: ${escapeHtml(r.q)}</p>`;});
     h+=`</div>`;
   }
+  const hinted=liveRematches(data,'help');
+  if(hinted.length){
+    h+=`<div class="parent-again"><h3>Right after a hint</h3><p class="parent-note">Got these right after asking for help. The game will ask them again.</p>`;
+    hinted.forEach(r=>{h+=`<p>${escapeHtml(SNAME[r.sub])}: ${escapeHtml(r.q)}</p>`;});
+    h+=`</div>`;
+  }
   return h+`</div>`;
 }
+function parentBackLabel(){
+  if(viewBeforeParent==='who')return "Back to who's playing";
+  if(viewBeforeParent==='pdx')return 'Back to the Pokédex';
+  return 'Back to the game';
+}
 function rollParentQuiz(){
-  const a=13+Math.floor(Math.random()*37);
-  const b=13+Math.floor(Math.random()*27);
-  parentQuiz={a,b,ans:a+b};
+  // A teen times 6, 7, 8, or 9, and only when the answer is over 100.
+  // The hardest multiplication in the game is single-digit facts and times 10,
+  // so a child who has reached that step still hasn't practiced this.
+  let a,b,ans;
+  do{
+    a=13+Math.floor(Math.random()*7);
+    b=6+Math.floor(Math.random()*4);
+    ans=a*b;
+  }while(ans<=100);
+  parentQuiz={a,b,ans};
 }
 function submitParentQuiz(){
   const input=document.getElementById('parent-answer');
@@ -2801,7 +2914,7 @@ function renderParent(){
   let h=`<div class="hdr"><span class="app-name">Pokémon Learning Adventure</span></div>`;
   if(!parentUnlocked){
     if(!parentQuiz)rollParentQuiz();
-    h+=`<div class="card" id="parent-check"><div class="parent-kicker">Grown-ups</div><div class="parent-title">Parents</div><p class="parent-lead">This page is for a parent. Answer the question to see how each trainer is doing.</p><div class="parent-q" id="parent-q">What is ${parentQuiz.a} + ${parentQuiz.b}?</div><input id="parent-answer" class="parent-ans" inputmode="numeric" autocomplete="off" aria-label="Answer"><button type="button" class="who-go" id="parent-go" style="margin-top:10px">Show me</button>${parentMsg?`<p class="parent-err" id="parent-err">${escapeHtml(parentMsg)}</p>`:''}<button type="button" class="parent-back" id="parent-back">Back</button></div>`;
+    h+=`<div class="card" id="parent-check"><div class="parent-kicker">Grown-ups</div><div class="parent-title">Parents</div><p class="parent-lead">This page is for a parent. Answer the question to see how each trainer is doing.</p><div class="parent-q" id="parent-q">What is ${parentQuiz.a} times ${parentQuiz.b}?</div><input id="parent-answer" class="parent-ans" inputmode="numeric" autocomplete="off" aria-label="Answer"><button type="button" class="who-go" id="parent-go" style="margin-top:10px">Show me</button>${parentMsg?`<p class="parent-err" id="parent-err">${escapeHtml(parentMsg)}</p>`:''}<button type="button" class="parent-back" id="parent-back">${parentBackLabel()}</button></div>`;
     parentEl.innerHTML=h;
     const input=document.getElementById('parent-answer');
     input.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();submitParentQuiz();}});
@@ -2815,7 +2928,7 @@ function renderParent(){
   } else {
     profiles.kids.forEach(kid=>{h+=parentKidHTML(kid);});
   }
-  h+=`<button type="button" class="parent-back" id="parent-back">Back to the game</button></div>`;
+  h+=`<button type="button" class="parent-back" id="parent-back">${parentBackLabel()}</button></div>`;
   parentEl.innerHTML=h;
   document.getElementById('parent-back').addEventListener('click',closeParent);
 }
@@ -3812,8 +3925,8 @@ function wireReset(){
     raf=requestAnimationFrame(tick);
     timer=setTimeout(()=>{
       stop();
-      // This trainer only. A sibling's Pokémon stay on the tablet.
-      resetCurrentProfile();
+      // The hold only asks. A big Keep button is what actually protects them.
+      askResetProfile();
     },HOLD);
   });
   ['pointerup','pointerleave','pointercancel'].forEach(ev=>btn.addEventListener(ev,stop));
@@ -4649,9 +4762,16 @@ function commitAttempt(ok,choice,nextDraft){
   if(firstTry){
     const helped=st.helped;
     // Before the streak moves, so a Rematch he wins lands its bonus alongside
-    // whatever the answer itself pays.
-    const rematchWon=recordReview(st.q.tmpl,ok&&!helped)&&!!st.q.rematch;
-    if(st.q&&st.q.tmpl)notePractice(st.q.tmpl,ok&&!helped);
+    // whatever the answer itself pays. Help still queues a Rematch; that rule
+    // is unchanged. The parent page reads `why` so a helped success is not
+    // shown as a miss.
+    const clean=ok&&!helped;
+    const rematchWon=recordReview(st.q.tmpl,clean)&&!!st.q.rematch;
+    if(!clean){
+      const queued=findReview(st.q.tmpl);
+      if(queued)queued.why=ok&&helped?'help':'miss';
+    }
+    if(st.q&&st.q.tmpl)notePractice(st.q.tmpl,!ok?'miss':(helped?'help':'right'));
     if(ok&&helped){
       // Asked for help and landed it: the streak is paused, not broken. Nothing
       // that climbs with the streak moves -- not the streak, not the catch pips,
