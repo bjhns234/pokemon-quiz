@@ -176,6 +176,8 @@ test('resetting one trainer does not wipe the other',async({page})=>{
   await expect(page.locator('#reset-confirm')).toHaveCount(0);
   expect(await state(page,()=>st.items.candy)).toBe(3);
 
+  const again=await btn.boundingBox();
+  await page.mouse.move(again.x+again.width/2,again.y+again.height/2);
   await page.mouse.down();
   await page.waitForTimeout(2300);
   await page.mouse.up();
