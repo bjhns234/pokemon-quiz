@@ -2,17 +2,20 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content">
 <title>Pokemon Learning Adventure</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;min-height:100vh;display:flex;align-items:flex-start;justify-content:center;padding:20px 20px 80px}
 .wrap{width:100%;max-width:520px}
+.wrap.wide{max-width:980px}
 #game{display:none}
 #pokedex-page{display:none}
-.hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
-.app-name{font-size:15px;font-weight:600;color:#1A1A2E}
+.hdr{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.hdr-tight{flex-wrap:nowrap}
+.hdr-tight .app-name{flex:1 1 auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.app-name{font-size:15px;font-weight:600;color:#1A1A2E;min-width:0}
 .card{background:#fff;border-radius:16px;padding:18px;margin-bottom:12px;box-shadow:0 2px 8px rgba(0,0,0,0.06)}
 /* The extra top padding is only applied when the corner button is actually there.
    Without it the button overlaps the centred dex line: at a 1440px viewport the
@@ -37,7 +40,7 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;min-heigh
    a phone width on one line -- and every pill is white-space:nowrap, so without this
    the last one is simply clipped off the right edge rather than moving down. */
 .q-head{display:flex;align-items:center;flex-wrap:wrap;gap:6px 8px;margin-bottom:10px}
-.subj-tag{display:inline-block;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;letter-spacing:0.03em}
+.subj-tag{display:inline-block;font-size:11px;font-weight:800;padding:3px 10px;border-radius:20px;letter-spacing:0.03em}
 /* Sits beside the subject pill rather than up in the header: the streak is what
    the XP ladder pays for, so it has to be in his eyeline while he reads. */
 .streak-pill{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:#FEF3C7;color:#B45309;letter-spacing:0.03em;white-space:nowrap}
@@ -91,6 +94,10 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;min-heigh
   .numpad{gap:6px}
   .pad-key{min-height:42px;font-size:22px}
   .pad-check{min-height:40px}
+  /* The Parents link is a quiet extra row in portrait. On a short landscape
+     iPad that row pushes the Check button under the nav, so park it in the
+     empty left margin instead of the column. */
+  .parents-link{position:fixed;top:4px;left:10px;margin:0;z-index:120}
 }
 .streak-pill.maxed{background:#FFEDD5;color:#C2410C}
 .streak-pill.bump{animation:streak-pop 0.45s ease}
@@ -137,8 +144,8 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;min-heigh
 .pad-key:focus{outline:none}
 .pad-key:focus-visible{outline:2px solid #FF5722;outline-offset:2px}
 .pad-erase{font-size:22px;color:#6B7280}
-.pad-check{grid-column:1/-1;min-height:54px;background:#FF5722;border-color:#FF5722;color:#fff;font-size:20px;letter-spacing:0.02em}
-.pad-check:hover{background:#F4511E;border-color:#F4511E;color:#fff}
+.pad-check{grid-column:1/-1;min-height:54px;background:#FF5722;border-color:#FF5722;color:#1A1A2E;font-size:20px;letter-spacing:0.02em}
+.pad-check:hover{background:#F4511E;border-color:#F4511E;color:#1A1A2E}
 @keyframes ans-arm{0%{opacity:0.25}70%{opacity:0.55}100%{opacity:1}}
 /* Sits beside the running total now, not in a message under the answers: the number
    that just landed is next to the number it landed in, directly above the bar it
@@ -159,7 +166,7 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;min-heigh
 .pdx-num{font-size:10px;color:#9CA3AF;font-weight:500}
 .pdx-name{font-size:12px;font-weight:700;color:#1A1A2E;margin-top:2px}
 .pdx-fact{font-size:10px;color:#6B7280;margin-top:3px;line-height:1.4}
-.reset-btn{position:relative;overflow:hidden;border:1px solid #E5E7EB;background:#fff;color:#9CA3AF;font-size:11px;font-weight:600;padding:5px 10px;border-radius:8px;cursor:pointer;touch-action:none;user-select:none;-webkit-user-select:none}
+.reset-btn{position:relative;overflow:hidden;border:1px solid #D1D5DB;background:#fff;color:#374151;font-size:11px;font-weight:700;padding:5px 10px;border-radius:8px;cursor:pointer;touch-action:none;user-select:none;-webkit-user-select:none}
 .reset-fill{position:absolute;left:0;top:0;bottom:0;width:0;background:#FECACA}
 .reset-lbl{position:relative}
 .starter-card{background:#fff;border-radius:16px;padding:16px 14px 20px;margin-bottom:12px;box-shadow:0 2px 8px rgba(0,0,0,0.06)}
@@ -178,7 +185,7 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;min-heigh
 .subj-opt:hover{transform:translateY(-3px);box-shadow:0 6px 16px rgba(0,0,0,0.1)}
 .subj-opt-ico{font-size:30px;line-height:1}
 .subj-opt-name{font-size:15px;font-weight:700;color:#1A1A2E}
-.subj-opt-sub{font-size:11px;color:#9CA3AF;font-weight:500;line-height:1.3}
+.subj-opt-sub{font-size:11px;color:#374151;font-weight:600;line-height:1.3}
 .subj-opt.sel{border-color:#1A1A2E;background:#fff}
 .optm:hover{border-color:#1D4ED8;background:#EFF6FF}
 .optr:hover{border-color:#065F46;background:#ECFDF5}
@@ -394,14 +401,98 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;min-heigh
 .great-note{font-size:13px;font-weight:700;color:#6D28D9;margin-top:6px}
 .pdx-badges{margin-bottom:16px}
 .pdx-badge-hd{font-size:13px;font-weight:800;color:#6B7280;margin-bottom:8px}
+/* Trainer switcher. Big cards, one tap to play, the dangerous action kept small
+   and off the card so a miss doesn't wipe a sibling's Pokémon. */
+#profiles-page,#parent-page{display:none}
+.who-lead{font-size:13px;color:#6B7280;text-align:center;margin:-6px 0 14px;line-height:1.4}
+.who-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.who-card{display:flex;flex-direction:column;align-items:center;gap:2px}
+.who-play{width:100%;background:#fff;border:2px solid #E5E7EB;border-radius:16px;padding:12px 8px 10px;cursor:pointer;font-family:inherit;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,0.06)}
+.who-play:hover{border-color:#FF5722;transform:translateY(-2px)}
+.who-play.now{border-color:#1A1A2E}
+.who-ava{display:flex;justify-content:center}
+.who-ava img{width:72px;height:72px;object-fit:contain}
+.who-name{font-size:16px;font-weight:800;color:#1A1A2E;margin-top:4px}
+.who-sub{font-size:11px;color:#374151;font-weight:700;line-height:1.3;min-height:2.6em}
+.who-edit{margin-top:12px;background:#fff;border:2px solid #D1D5DB;color:#1A1A2E;font-weight:800;font-size:14px;border-radius:10px;padding:8px 16px;font-family:inherit;cursor:pointer}
+.who-new{grid-column:1/-1;display:flex;align-items:center;justify-content:center;gap:8px;background:#F5F3FF;border:2px dashed #7C3AED;color:#4C1D95;border-radius:16px;padding:14px;font-size:16px;font-weight:800;cursor:pointer;font-family:inherit}
+.who-new img{width:40px;height:40px;object-fit:contain}
+.who-new:hover{background:#EDE9FE}
+.big-back{display:flex;align-items:center;gap:8px;width:100%;background:#fff;border:2px solid #1A1A2E;color:#1A1A2E;border-radius:12px;padding:14px 16px;font-size:18px;font-weight:800;cursor:pointer;font-family:inherit;margin-bottom:12px;text-align:left}
+.ava-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:8px 0 14px}
+.ava-opt{background:#F9FAFB;border:2px solid #E5E7EB;border-radius:14px;padding:6px 2px;cursor:pointer;font-family:inherit}
+.ava-opt img{width:52px;height:52px;object-fit:contain;display:block;margin:0 auto}
+.ava-opt.sel{border-color:#FF5722;background:#FFF3E0}
+.ava-opt:hover{border-color:#FF5722}
+.who-field{width:100%;border:2px solid #E5E7EB;border-radius:14px;padding:12px 14px;font-size:18px;font-weight:700;font-family:inherit;color:#1A1A2E;margin:8px 0 14px}
+.who-field:focus{outline:none;border-color:#FF5722}
+.who-go{width:100%;background:#FF5722;color:#1A1A2E;border:none;border-radius:12px;padding:14px;font-size:16px;font-weight:800;cursor:pointer;font-family:inherit}
+.who-go:disabled{background:#E5E7EB;color:#374151;cursor:default}
+.who-go.stick{position:sticky;bottom:8px;z-index:5}
+/* On a short screen (a phone with the keyboard open) the buddy grid keeps a
+   row and scrolls inside the card. The name and confirm button stay under it. */
+@media (max-height:700px){
+  .who-form{display:flex;flex-direction:column;max-height:calc(100dvh - 96px);overflow:hidden}
+  .who-form .ava-grid{overflow:auto;min-height:132px;flex:1 1 132px;margin:0 0 6px;align-content:start}
+  .who-form-foot{flex:0 0 auto;background:#fff}
+  .who-form .big-back{padding:10px 14px;margin-bottom:6px}
+  .who-form .parent-title{font-size:20px;margin:0}
+  .who-form .parent-lead{margin-bottom:4px}
+  .who-form .who-field{margin:2px 0 4px;padding:8px 12px}
+  .who-form .form-hint,.who-form .parent-err{margin:0 0 4px}
+  .who-form .who-go{padding:10px}
+}
+.who-danger{display:block;margin:16px auto 0;background:none;border:none;color:#991B1B;font-size:14px;font-weight:700;text-decoration:underline;cursor:pointer;font-family:inherit;padding:8px}
+.who-label{font-size:13px;font-weight:800;color:#374151;text-align:left}
+.form-hint{font-size:14px;font-weight:700;color:#374151;text-align:center;margin:4px 0 8px}
+.confirm-ava{margin-bottom:16px}
+.remove-copy{font-size:15px;color:#374151;line-height:1.45;margin:8px 0 14px;text-align:center}
+.who-btn{display:inline-flex;align-items:center;gap:6px;border:1px solid #E5E7EB;background:#fff;border-radius:999px;padding:2px 10px 2px 3px;font-family:inherit;font-weight:800;font-size:14px;color:#1A1A2E;cursor:pointer;max-width:46%}
+.who-btn img{width:28px;height:28px;object-fit:contain}
+.who-btn span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* Small and separate from the Game / Pokédex tabs, so it isn't a thing to tap
+   while playing. It sits in the page, not over the buttons. */
+.parents-link{display:block;margin:0 auto 8px;background:transparent;border:none;color:#374151;font-size:13px;font-weight:800;text-decoration:underline;cursor:pointer;font-family:inherit;padding:2px 8px}
+.parents-link[hidden]{display:none}
+.parent-kicker{font-size:12px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#374151}
+.parent-title{font-size:24px;font-weight:800;color:#1A1A2E;margin:2px 0 6px}
+.parent-lead{font-size:14px;color:#6B7280;line-height:1.45;margin-bottom:12px}
+.parent-q{font-size:22px;font-weight:800;color:#1A1A2E;text-align:center;margin:8px 0}
+.parent-ans{width:100%;border:2px solid #E5E7EB;border-radius:14px;padding:12px;font-size:22px;font-weight:800;text-align:center;font-family:inherit;color:#1A1A2E}
+.parent-ans:focus{outline:none;border-color:#1A1A2E}
+.parent-err{color:#9A3412;font-size:14px;font-weight:700;text-align:center;margin-top:8px}
+#parent-check{max-width:520px;margin-left:auto;margin-right:auto}
+.parent-grid{display:grid;grid-template-columns:1fr;gap:12px;align-items:start}
+@media (min-width:700px){
+  .parent-grid{grid-template-columns:1fr 1fr}
+}
+.parent-kid{display:flex;gap:12px;align-items:center;margin-bottom:10px}
+.parent-kid img{width:64px;height:64px;object-fit:contain}
+.parent-kid h2{font-size:22px;font-weight:800;color:#1A1A2E}
+.parent-recent{font-size:14px;font-weight:700;color:#065F46;margin-top:2px}
+.parent-sub{border-top:1px solid #F3F4F6;padding-top:10px;margin-top:10px}
+.parent-sub h3{font-size:13px;font-weight:800;letter-spacing:0.04em;text-transform:uppercase;color:#374151;margin-bottom:2px}
+.parent-practice{font-size:16px;font-weight:800;color:#1A1A2E;line-height:1.35;margin:4px 0}
+.parent-score{font-size:15px;font-weight:700;color:#065F46;margin:4px 0}
+.parent-sub p{font-size:15px;color:#1A1A2E;line-height:1.4;margin:2px 0}
+.parent-focus{background:#FFF7ED;border:1.5px solid #FDBA74;border-radius:12px;padding:10px 12px;margin-top:12px}
+.parent-focus h3{font-size:14px;font-weight:800;color:#9A3412;margin-bottom:6px}
+.parent-miss{font-size:14px;font-weight:700;color:#9A3412;margin-top:6px}
+.parent-ex{font-size:13px;color:#7C2D12;margin:1px 0 0 0}
+.parent-note{font-size:13px;color:#6B7280;line-height:1.4;margin-top:10px}
+.parent-again{margin-top:10px}
+.parent-again h3{font-size:14px;font-weight:800;color:#5B21B6;margin-bottom:4px}
+.parent-again p{font-size:14px;color:#1A1A2E;margin:3px 0}
 </style>
 </head>
 <body>
 <div class="wrap">
-
+<button type="button" id="parents-link" class="parents-link">Parents</button>
 
 <div id="game"></div>
 <div id="pokedex-page"></div>
+<div id="profiles-page"></div>
+<div id="parent-page"></div>
 
 <div id="bottom-nav">
   <button class="nav-tab nav-active" id="nav-game">&#127918; Game</button>
@@ -1921,6 +2012,9 @@ function mkState(saved){
     subject:SUBJ_MIX,
     subjectReturn:null,
     switchReturn:null,
+    // Miss topics and the last few answers, for the parent page. Empty on old
+    // saves: those answers still live in stats, they just were not tagged.
+    practice:freshPractice(),
   };
   if(saved){
     s.starter=saved.starter;
@@ -1939,6 +2033,7 @@ function mkState(saved){
     s.subject=saved.subject;
     s.bestStreak=saved.bestStreak;
     s.review=saved.review;
+    s.practice=saved.practice||freshPractice();
     // An award or a Gym in progress is resumed. Anything else interrupted
     // (a wild encounter, an evolution) is still forfeited.
     s.phase=saved.award?'award':saved.gym?'gym':saved.team.length>0?'play':'starter';
@@ -1957,49 +2052,56 @@ const NUM_TO_PI={};PKM.forEach((p,i)=>{NUM_TO_PI[p.num]=i;});
 // The one place that decides which of the two Pokedexes an entry lands in.
 function markDex(pi,shiny){(shiny?st.sdx:st.pdx)[pi]=true;}
 
+// One trainer's durable progress. Same shape the game used to store on its own,
+// plus `practice` for the parent page. Optional fields stay optional.
+// SAVE_V stays 1 — bumping it would wipe Pokedexes to add a feature.
+function gamePayload(){
+  return{
+    v:SAVE_V,
+    starter:st.starter,
+    activeIdx:st.activeIdx,
+    // keyed by dex number, not array index, so PKM can grow without
+    // silently remapping someone's team onto the wrong Pokemon
+    team:st.team.map(t=>({num:PKM[t.pi].num,level:t.level,xp:t.xp,shiny:!!t.shiny})),
+    dex:st.pdx.map((caught,i)=>caught?PKM[i].num:null).filter(Boolean),
+    shinyDex:st.sdx.map((caught,i)=>caught?PKM[i].num:null).filter(Boolean),
+    stats:st.stats,
+    subject:st.subject,
+    bestStreak:st.bestStreak,
+    // Stored by QB address plus the question text, so an edit to the question
+    // bank can't quietly turn a saved Rematch into a different question.
+    review:st.review.map(r=>({sub:r.sub,lv:r.lv,idx:r.idx,q:QB[r.sub][r.lv][r.idx][0],wins:r.wins,why:r.why==='help'?'help':'miss'})),
+    badges:st.badges,
+    gymOffer:st.gymOffer,
+    items:{candy:Math.max(0,st.items.candy|0),great:Math.max(0,st.items.great|0)},
+    prizes:st.prizes,
+    gymSnooze:st.gymSnooze,
+    // A battle still being fought, including the open question: tries, help,
+    // ruled-out answers, and the thinking time left. A solved one advances
+    // on load so the same hit cannot score twice.
+    gym:gymPayload(),
+    award:st.award||undefined,
+    practice:parsePractice(st.practice),
+  };
+}
+
 function save(){
-  if(st.team.length===0)return; // nothing to restore yet; don't write a stub save
-  try{
-    localStorage.setItem(SAVE_KEY,JSON.stringify({
-      v:SAVE_V,
-      starter:st.starter,
-      activeIdx:st.activeIdx,
-      // keyed by dex number, not array index, so PKM can grow without
-      // silently remapping someone's team onto the wrong Pokemon
-      team:st.team.map(t=>({num:PKM[t.pi].num,level:t.level,xp:t.xp,shiny:!!t.shiny})),
-      dex:st.pdx.map((caught,i)=>caught?PKM[i].num:null).filter(Boolean),
-      shinyDex:st.sdx.map((caught,i)=>caught?PKM[i].num:null).filter(Boolean),
-      stats:st.stats,
-      subject:st.subject,
-      bestStreak:st.bestStreak,
-      // Stored by QB address plus the question text, so an edit to the question
-      // bank can't quietly turn a saved Rematch into a different question.
-      review:st.review.map(r=>({sub:r.sub,lv:r.lv,idx:r.idx,q:QB[r.sub][r.lv][r.idx][0],wins:r.wins})),
-      // Optional fields. Older saves omit them; loadSaved fills the defaults.
-      // SAVE_V stays 1 — bumping it would wipe Pokedexes to add a feature.
-      badges:st.badges,
-      gymOffer:st.gymOffer,
-      items:{candy:Math.max(0,st.items.candy|0),great:Math.max(0,st.items.great|0)},
-      prizes:st.prizes,
-      gymSnooze:st.gymSnooze,
-      // A battle still being fought, including the open question: tries, help,
-      // ruled-out answers, and the thinking time left. A solved one advances
-      // on load so the same hit cannot score twice.
-      gym:gymPayload(),
-      award:st.award||undefined,
-    }));
-  }catch(e){/* storage full or unavailable — keep playing unsaved */}
+  // A brand-new tablet has no trainer until the first starter is picked, unless
+  // someone already made a profile from the "who's playing" screen.
+  if(!activeKid()){
+    if(st.team.length===0)return;
+    ensureProfile();
+  }
+  captureActive();
+  writeRoster();
 }
 
 function clearSave(){
   try{localStorage.removeItem(SAVE_KEY);}catch(e){}
 }
 
-function loadSaved(){
+function parseGameSave(data){
   try{
-    const raw=localStorage.getItem(SAVE_KEY);
-    if(!raw)return null;
-    const data=JSON.parse(raw);
     if(!data||data.v!==SAVE_V)return null;
 
     const loaded=(data.team||[]).map(t=>{
@@ -2046,7 +2148,7 @@ function loadSaved(){
     // spread through the start of the next session instead, a few questions apart.
     const review=(Array.isArray(data.review)?data.review:[]).filter(r=>
       r&&SUBS.includes(r.sub)&&QB[r.sub][r.lv]&&QB[r.sub][r.lv][r.idx]&&QB[r.sub][r.lv][r.idx][0]===r.q
-    ).slice(-REVIEW.max).map((r,i)=>({sub:r.sub,lv:r.lv,idx:r.idx,wins:Math.max(0,r.wins|0),due:2+i*3}));
+    ).slice(-REVIEW.max).map((r,i)=>({sub:r.sub,lv:r.lv,idx:r.idx,wins:Math.max(0,r.wins|0),due:2+i*3,why:r.why==='help'?'help':'miss'}));
 
     // Tiers below the saved difficulty were already earned, Gym or not. Union
     // them with any badges the save names, and if a badge sits at or above the
@@ -2134,6 +2236,7 @@ function loadSaved(){
       // existing Pokedex to add a feature almost no save has yet used.
       team,pdx,sdx,stats,badges,gymOffer,gym,award,prizes,gymSnooze,
       items,
+      practice:parsePractice(data.practice),
     };
   }catch(e){
     // corrupt or half-written save: start fresh rather than fail to a blank screen
@@ -2141,10 +2244,892 @@ function loadSaved(){
   }
 }
 
+// ---- trainers -------------------------------------------------------------
+// Several kids share one tablet. Each profile keeps the whole save the game
+// used to keep for one player: team, Pokédex, badges, tiers, items, Rematches.
+// The on-disk shape is {roster:1, kids:[...]} inside the same pkq-save key.
+// A save from before profiles is one flat object with a team; the first launch
+// wraps that object as the first trainer so nobody starts over.
+// SAVE_V stays 1. Bumping it would throw away every Pokédex.
+const PROFILE_MAX=6;
+const AVATAR_IDS=['001','004','007','025','133','152','258','387','495','653','722','813'];
+// Phrases a parent reads. Each one names what that step's questions actually
+// are. Clocks and coins, for example, are only in the hardest math step.
+const TIER_PLAIN={
+  math:{
+    1:'kindergarten counting, adding, subtracting, and shapes',
+    2:'1st-grade adding and subtracting',
+    3:'2nd-grade adding, subtracting, counting, odd and even, and shapes',
+    4:'3rd-grade multiplying, fractions, time, and money',
+  },
+  reading:{
+    1:'kindergarten letters, rhymes, and sounds',
+    2:'1st-grade letters, rhymes, and vowel sounds',
+    3:'2nd-grade missing words and syllables',
+    4:'3rd-grade nouns, verbs, and punctuation',
+  },
+  science:{
+    1:'kindergarten animals, weather, and senses',
+    2:'1st-grade animals, baby animals, weather, and sound',
+    3:'2nd-grade materials, how things change, and plants',
+  },
+};
+// A topic stays on the parent page while recent tries on it still include a
+// miss. Four right answers in a row on that same topic means they've got it,
+// so it drops off instead of haunting the list forever.
+const TOPIC_WINDOW=8;
+const TOPIC_CLEAR=4;
+function freshPractice(){return{recent:[],topics:{}};}
+function topicRecentOf(t){
+  if(!t||typeof t!=='object')return [];
+  if(Array.isArray(t.recent))return t.recent.map(x=>(x===1||x==='1')?1:0).slice(-TOPIC_WINDOW);
+  const n=Math.max(0,t.n|0);
+  return n?Array(Math.min(TOPIC_WINDOW,n)).fill(0):[];
+}
+function topicCleared(recent){
+  return recent.length>=TOPIC_CLEAR&&recent.slice(-TOPIC_CLEAR).every(x=>x===1);
+}
+function topicStillMissing(recent){
+  return recent.some(x=>x===0)&&!topicCleared(recent);
+}
+function parsePractice(raw){
+  const out=freshPractice();
+  if(!raw||typeof raw!=='object')return out;
+  if(Array.isArray(raw.recent)){
+    raw.recent.forEach(r=>{
+      if(!r||!SUBS.includes(r.s))return;
+      // A correct answer after asking for help is still right. `help` only
+      // marks that a hint was used, so the parent page can say so separately.
+      out.recent.push({s:r.s,ok:r.ok?1:0,help:r.ok&&r.help?1:0});
+    });
+    if(out.recent.length>40)out.recent=out.recent.slice(-40);
+  }
+  const topics=raw.topics;
+  if(topics&&typeof topics==='object'){
+    Object.keys(topics).forEach(k=>{
+      if(Object.keys(out.topics).length>=48)return;
+      const parts=String(k).split('|');
+      if(!SUBS.includes(parts[0])||!parts[1]||parts[1].length>48)return;
+      const t=topics[k];
+      const recent=topicRecentOf(t);
+      if(!topicStillMissing(recent))return;
+      const ex=Array.isArray(t.ex)?t.ex.filter(x=>typeof x==='string').map(x=>x.slice(0,140)).slice(0,3):[];
+      out.topics[parts[0]+'|'+parts[1]]={n:recent.filter(x=>x===0).length,ex,recent};
+    });
+  }
+  return out;
+}
+function escapeHtml(s){
+  return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function cleanName(s){
+  const n=String(s||'').replace(/[\u0000-\u001f<>]/g,'').replace(/\s+/g,' ').trim().slice(0,16);
+  return n||'Trainer';
+}
+function newProfileId(){
+  return 'p'+Date.now().toString(36)+Math.floor(Math.random()*1296).toString(36);
+}
+function avatarPi(num){
+  const pi=NUM_TO_PI[num];
+  return pi===undefined?0:pi;
+}
+function readRawSave(){
+  try{
+    const raw=localStorage.getItem(SAVE_KEY);
+    if(!raw)return null;
+    const data=JSON.parse(raw);
+    if(!data||typeof data!=='object'||data.v!==SAVE_V)return null;
+    return data;
+  }catch(e){return null;}
+}
+function isRoster(data){return !!(data&&data.roster&&Array.isArray(data.kids));}
+function sanitizeKid(k){
+  if(!k||typeof k.id!=='string'||!k.id)return null;
+  const avatar=NUM_TO_PI[k.avatar]!==undefined?k.avatar:'#025';
+  const data=k.data&&typeof k.data==='object'?k.data:null;
+  const kid={id:k.id.slice(0,40),name:cleanName(k.name),avatar,data};
+  if(k.askName)kid.askName=true;
+  return kid;
+}
+function activeKid(){return profiles.kids.find(k=>k.id===profiles.activeId)||null;}
+function ensureProfile(){
+  const cur=activeKid();
+  if(cur)return cur;
+  const tm=st.team[0];
+  const kid={id:newProfileId(),name:'Trainer',avatar:tm?PKM[tm.pi].num:'#025',data:null};
+  profiles.kids.push(kid);
+  profiles.activeId=kid.id;
+  return kid;
+}
+// Copies the trainer on screen into the roster. An empty team means they have
+// not picked a starter yet, so the stored game stays empty rather than a stub.
+function captureActive(){
+  const kid=activeKid();
+  if(!kid)return;
+  if(st.team.length){
+    const t=st.team[Math.min(Math.max(0,st.activeIdx|0),st.team.length-1)]||st.team[0];
+    kid.avatar=PKM[t.pi].num;
+  }
+  kid.data=st.team.length?gamePayload():null;
+}
+function writeRoster(){
+  try{
+    localStorage.setItem(SAVE_KEY,JSON.stringify({
+      v:SAVE_V,
+      roster:1,
+      activeId:profiles.activeId,
+      kids:profiles.kids.map(k=>{
+        const row={id:k.id,name:k.name,avatar:k.avatar,data:k.data||null};
+        if(k.askName)row.askName=true;
+        return row;
+      }),
+    }));
+  }catch(e){/* storage full or unavailable — keep playing unsaved */}
+}
+function reshuffleDecks(){
+  SUBS.forEach(sub=>{
+    QLEVELS[sub].forEach(lv=>{QUEUES[sub][lv]=shuffle(QB[sub][lv].map((_,i)=>i));});
+  });
+}
+function loadSaved(){
+  profiles={activeId:null,kids:[]};
+  openingWho=false;
+  const data=readRawSave();
+  if(!data){openingWho=true;return null;}
+  if(!isRoster(data)){
+    // The old single save. Wrap it; do not reinterpret it.
+    if(!Array.isArray(data.team)){openingWho=true;return null;}
+    const parsed=parseGameSave(data);
+    if(!parsed){openingWho=true;return null;}
+    const idx=Math.min(Math.max(0,data.activeIdx|0),data.team.length-1);
+    const tm=data.team[idx];
+    const avatar=tm&&NUM_TO_PI[tm.num]!==undefined?tm.num:'#001';
+    const kid={id:newProfileId(),name:'Trainer',avatar,data,askName:true};
+    profiles.kids=[kid];
+    profiles.activeId=kid.id;
+    writeRoster();
+    return parsed;
+  }
+  const kids=data.kids.map(sanitizeKid).filter(Boolean).slice(0,PROFILE_MAX);
+  profiles.kids=kids;
+  if(!kids.length){openingWho=true;return null;}
+  // Two or more trainers: ask who's playing before opening anyone's game,
+  // so a sibling can't keep going on the wrong Pokédex.
+  if(kids.length>=2){openingWho=true;profiles.activeId=null;return null;}
+  const kid=kids[0];
+  profiles.activeId=kid.id;
+  if(!kid.data)return null;
+  return parseGameSave(kid.data);
+}
+// A plain label for a missed question, for a parent. It does not affect
+// which question is dealt or how it scores.
+function questionTopic(sub,stem){
+  const s=String(stem||'');
+  const l=s.toLowerCase();
+  if(sub==='math'){
+    if(/\bthen\b|and finds|and eats/.test(l))return 'Word problems with more than one step';
+    if(/nickel|dime|quarter|cents?|dollar|\bchange\b/.test(l))return 'Money';
+    if(/clock|:\d|hour|minute|o'clock|time is it/.test(l))return 'Telling time';
+    if(/divided|how many each|what is half|equal slices|fraction|equal baskets|evenly|per basket|does each get/.test(l))return 'Dividing and fractions';
+    if(/\d+\s*x\s*\d+|in each|nests with|boxes with \d+|bags of \d+|groups of|rows of \d+|a day for \d+/.test(l))return 'Multiplying';
+    if(/shape|sides|corners|cube|sphere|cylinder|cone/.test(l))return 'Shapes';
+    if(/\btens\b|\bones\b|\bhundreds\b|\bdigit\b|10 more|10 less|100 more|100 less/.test(l))return 'Place value';
+    if(/\bodd\b|\beven\b/.test(l))return 'Odd and even';
+    if(/count by|comes after|comes before|what number comes|count up|how many fingers|how many wheels|number is between|number goes with/.test(l))return 'Counting';
+    if(/heavier|longest|holds the most|which is more|which is less/.test(l))return 'Comparing';
+    if(/how many more|make 10|needs \d+/.test(l))return 'Making 10 and how many more';
+    if(/does not belong/.test(l))return 'Sorting';
+    if(/\+/.test(s)||/how many (total|now)|gets \d+ more|got \d+ more|in all/.test(l))return 'Adding';
+    if(/ - |−|how many left|how many stay|take away|eats |ate |go home/.test(l)||/ - /.test(s))return 'Subtracting';
+    return 'Math questions';
+  }
+  if(sub==='reading'){
+    if(/noun|verb|adjective|action word|describing word/.test(l))return 'Nouns, verbs, and adjectives';
+    if(/received the action|what got|what received/.test(l))return 'Who or what receives the action';
+    if(/period|question mark|exclamation|comma|which mark|capital|starts correctly|word i correctly/.test(l))return 'Capitals and punctuation';
+    if(/joining word|connects two/.test(l))return 'Joining words';
+    if(/___/.test(s))return 'Filling in the missing word';
+    if(/prefix|suffix|\bun-|\bre-|-less|-ful/.test(l))return 'Prefixes and suffixes';
+    if(/syllable/.test(l))return 'Syllables';
+    if(/vowel/.test(l))return 'Vowel sounds';
+    if(/rhyme/.test(l))return 'Rhyming';
+    if(/what letter|what sound|starts with|sound does the letter|change the \w+ in/.test(l))return 'Letters and sounds';
+    if(/lesson|teaches|moral|this story|this shows/.test(l))return 'Story lessons';
+    if(/where did|who |what did|when did|how did|why did|what color/.test(l))return 'Story questions';
+    if(/word fits|does not belong|sight word|which word is|what animal says|illustrator|which sentence makes sense/.test(l))return 'Choosing the right word';
+    return 'Reading questions';
+  }
+  if(sub==='science'){
+    if(/reversib|melt|freeze|toast|boil|steam|burn|gets very cold|ice made/.test(l))return 'Changes you can and cannot undo';
+    if(/magnet|float|material|bendy|see through|heavy or light|raincoat|pillow|feather|sponge|glass|cotton|brick|rubber|sandpaper|\bhard\b|\brough\b|\bsoft\b|\brock\b|property/.test(l))return 'Materials';
+    if(/plant|seed|root|leaves|cactus|bees collect|flowers/.test(l))return 'Plants';
+    if(/sound|vibrat|louder/.test(l))return 'Sound';
+    if(/\blight\b|dark room|darkest|see in/.test(l))return 'Light';
+    if(/sun|season|weather|cloud|rain|snow|sky|autumn|winter|moon|wind|kite/.test(l))return 'Weather, seasons, and the sky';
+    if(/push|pull/.test(l))return 'Pushes and pulls';
+    if(/baby|kitten|tadpole|foal|\bcalf\b|\bpup\b|caterpillar|grows up/.test(l))return 'Baby animals and growing up';
+    if(/habitat|where does|where do|lives in|desert|pond|swamp|forest/.test(l))return 'Where animals and plants live';
+    if(/canyon|landslide|earthquake|fossil|earth|happens quickly/.test(l))return 'How the Earth changes';
+    if(/eyes|ears|nose|skin|taste|smell|breathe|gills|wings|beak|webbed|fur|\bsee\b|hear|sense|alive|living|animal|legs|stripes|fly\b|warm|chameleon|fireflies|turtle|monkey|bird|coat|\beat\b/.test(l))return 'Animals and senses';
+    return 'Science questions';
+  }
+  return 'Questions';
+}
+// `outcome` is how the game itself scored the first try: 'right', 'help'
+// (right after asking for help — a success, streak paused), or 'miss'.
+function notePractice(tmpl,outcome){
+  if(!tmpl||!SUBS.includes(tmpl.sub)||!tmpl.raw)return;
+  if(outcome!=='right'&&outcome!=='help'&&outcome!=='miss')return;
+  if(!st.practice)st.practice=freshPractice();
+  const sub=tmpl.sub;
+  const topic=questionTopic(sub,tmpl.raw[0]);
+  const ok=outcome!=='miss';
+  st.practice.recent.push({s:sub,ok:ok?1:0,help:outcome==='help'?1:0});
+  if(st.practice.recent.length>40)st.practice.recent.splice(0,st.practice.recent.length-40);
+  const key=sub+'|'+topic;
+  const cur=st.practice.topics[key];
+  if(ok){
+    if(!cur)return;
+    if(!Array.isArray(cur.recent))cur.recent=topicRecentOf(cur);
+    cur.recent.push(1);
+    if(cur.recent.length>TOPIC_WINDOW)cur.recent.splice(0,cur.recent.length-TOPIC_WINDOW);
+    cur.n=cur.recent.filter(x=>x===0).length;
+    if(!topicStillMissing(cur.recent))delete st.practice.topics[key];
+    return;
+  }
+  const row=cur||{n:0,ex:[],recent:[]};
+  if(!Array.isArray(row.recent))row.recent=topicRecentOf(row);
+  row.recent.push(0);
+  if(row.recent.length>TOPIC_WINDOW)row.recent.splice(0,row.recent.length-TOPIC_WINDOW);
+  row.n=row.recent.filter(x=>x===0).length;
+  const stem=String(tmpl.raw[0]).replace(/\{P\}/g,'your Pokémon');
+  if(row.ex.indexOf(stem)<0){
+    row.ex.unshift(stem);
+    row.ex=row.ex.filter(x=>typeof x==='string').slice(0,3);
+  }
+  if(!topicStillMissing(row.recent)){delete st.practice.topics[key];return;}
+  st.practice.topics[key]=row;
+  const keys=Object.keys(st.practice.topics);
+  if(keys.length>48){
+    keys.sort((a,b)=>(st.practice.topics[a].n|0)-(st.practice.topics[b].n|0));
+    delete st.practice.topics[keys[0]];
+  }
+}
+function kidBlurb(kid){
+  const d=kid&&kid.data;
+  if(kid&&kid.id===profiles.activeId&&st.team.length){
+    const t=st.team[Math.min(Math.max(0,st.activeIdx|0),st.team.length-1)]||st.team[0];
+    const extra=st.team.length>1?` · ${st.team.length} Pokémon`:'';
+    return `${t.shiny?'Shiny ':''}${PKM[t.pi].n} · Lv ${t.level|0}${extra}`;
+  }
+  if(!d||!Array.isArray(d.team)||!d.team.length)return 'Ready to start';
+  const idx=Math.min(Math.max(0,d.activeIdx|0),d.team.length-1);
+  const t=d.team[idx]||d.team[0];
+  const pk=PKM[NUM_TO_PI[t.num]];
+  const name=pk?pk.n:'Pokémon';
+  const extra=d.team.length>1?` · ${d.team.length} Pokémon`:'';
+  return `${t.shiny?'Shiny ':''}${name} · Lv ${t.level|0}${extra}`;
+}
+// The picture a child looks for is the Pokémon they battle with, not a separate buddy.
+function faceForKid(kid){
+  if(kid&&kid.id===profiles.activeId&&st.team&&st.team.length){
+    const t=st.team[Math.min(Math.max(0,st.activeIdx|0),st.team.length-1)]||st.team[0];
+    return {pi:t.pi,shiny:!!t.shiny};
+  }
+  const d=kid&&kid.data;
+  if(d&&Array.isArray(d.team)&&d.team.length){
+    const idx=Math.min(Math.max(0,d.activeIdx|0),d.team.length-1);
+    const t=d.team[idx]||d.team[0];
+    const pi=NUM_TO_PI[t.num];
+    if(pi!==undefined)return {pi,shiny:!!t.shiny};
+  }
+  return {pi:avatarPi(kid?kid.avatar:'#025'),shiny:false};
+}
+function kidPictureNum(kid){return PKM[faceForKid(kid).pi].num;}
+function whoButtonHTML(id){
+  const kid=activeKid();
+  if(!kid)return '';
+  const face=faceForKid(kid);
+  return `<button type="button" class="who-btn" id="${id}">${pkSprite(face.pi,28,face.shiny)}<span>${escapeHtml(kid.name)}</span></button>`;
+}
+function bigBackHTML(id,label){
+  return `<button type="button" class="big-back" id="${id}">&#8592; ${label}</button>`;
+}
+function starterLineForNum(num){
+  const pi=NUM_TO_PI[num];
+  if(pi===undefined)return -1;
+  return LINES.findIndex(ln=>ln[0]===pi);
+}
+function placeParentsLink(){}
+function showGameChrome(){
+  view='game';
+  profilesEl.style.display='none';
+  profilesEl.innerHTML='';
+  parentEl.style.display='none';
+  parentEl.innerHTML='';
+  pdxEl.style.display='none';
+  gameEl.style.display='block';
+  document.getElementById('bottom-nav').style.display='flex';
+  document.getElementById('nav-game').classList.add('nav-active');
+  document.getElementById('nav-pdx').classList.remove('nav-active');
+  const link=document.getElementById('parents-link');
+  if(link)link.hidden=true;
+  placeParentsLink(false);
+  const wrap=document.querySelector('.wrap');
+  if(wrap)wrap.classList.remove('wide');
+}
+function bootInto(){
+  view='game';
+  if(st.phase==='gym'&&st.gym){
+    if(st.gym.solved){
+      st.gym.solved=false;
+      st.gym.qi++;
+      if(st.gym.qi>=st.gym.queue.length){finishGymLose();render();return;}
+      dealGymQuestion();
+    } else dealGymQuestion(true);
+  } else if(st.phase==='play'){
+    st.holdSnooze=true;
+    loadQuestion();
+  } else render();
+}
+function selectProfile(id){
+  const kid=profiles.kids.find(k=>k.id===id);
+  if(!kid)return;
+  if(profiles.activeId===id){
+    whoMode='list';
+    pendingDelete=null;
+    view='game';
+    if((st.phase==='play'&&!st.q)||(st.phase==='gym'&&st.gym&&!st.q)){bootInto();return;}
+    render();
+    if(st.phase==='gym')armGymTimer();
+    return;
+  }
+  captureActive();
+  profiles.activeId=id;
+  const parsed=kid.data?parseGameSave(kid.data):null;
+  st=mkState(parsed);
+  reshuffleDecks();
+  subjectBag=[];
+  lastSubject=null;
+  whoMode='list';
+  pendingDelete=null;
+  writeRoster();
+  bootInto();
+}
+// Same name, or the same buddy picture, and a child who can't read can open
+// the wrong game. Both have to be different. Editing keeps your own.
+function profileClash(name,avatar,exceptId){
+  const n=cleanName(name).toLowerCase();
+  const nameKid=profiles.kids.find(k=>k.id!==exceptId&&k.name.toLowerCase()===n)||null;
+  const avaKid=avatar?profiles.kids.find(k=>k.id!==exceptId&&kidPictureNum(k)===avatar)||null:null;
+  return {nameKid,avaKid};
+}
+function profileClashMessage(name,avatar,exceptId){
+  if(!String(name||'').trim()||!avatar)return '';
+  const {nameKid,avaKid}=profileClash(name,avatar,exceptId);
+  if(nameKid&&avaKid&&nameKid.id===avaKid.id)return `${nameKid.name} already has that name and that Pokémon.`;
+  if(nameKid&&avaKid)return `Someone is already called ${nameKid.name}, and ${avaKid.name} already has that Pokémon.`;
+  if(nameKid)return `Someone is already called ${nameKid.name}. Pick a different name.`;
+  if(avaKid)return `${avaKid.name} already has that Pokémon. Pick a different one.`;
+  return '';
+}
+function profileNameMessage(name,exceptId){
+  if(!String(name||'').trim())return '';
+  const n=cleanName(name).toLowerCase();
+  const nameKid=profiles.kids.find(k=>k.id!==exceptId&&k.name.toLowerCase()===n);
+  return nameKid?`Someone is already called ${nameKid.name}. Pick a different name.`:'';
+}
+// The picture they tap is the Pokémon they battle with. A line starter uses the
+// normal pick. Pikachu and Eevee are not the first of a stored line, but they
+// still start at the same level and can grow the same way.
+function beginWithPokemon(num,shiny){
+  const pi=NUM_TO_PI[num];
+  if(pi===undefined)return false;
+  const line=starterLineForNum(num);
+  if(line>=0){pickStarter(line,shiny);return true;}
+  shiny=!!shiny;
+  st.team=[{pi,level:STARTER_START_LEVEL,xp:0,shiny}];
+  st.activeIdx=0;
+  markDex(pi,shiny);
+  st.subjectReturn='play';
+  st.phase='subject';
+  view='game';
+  save();
+  render();
+  return true;
+}
+function createProfile(name,avatar){
+  if(profiles.kids.length>=PROFILE_MAX)return;
+  if(profileClashMessage(name,avatar,null))return;
+  captureActive();
+  const kid={id:newProfileId(),name:cleanName(name),avatar,data:null};
+  profiles.kids.push(kid);
+  profiles.activeId=kid.id;
+  st=mkState();
+  reshuffleDecks();
+  subjectBag=[];
+  lastSubject=null;
+  whoMode='list';
+  pendingDelete=null;
+  if(beginWithPokemon(avatar,rollShiny()))return;
+  view='game';
+  writeRoster();
+  render();
+}
+function editProfile(id,name){
+  const kid=profiles.kids.find(k=>k.id===id);
+  if(!kid)return;
+  if(profileNameMessage(name,id))return;
+  kid.name=cleanName(name);
+  kid.askName=false;
+  whoMode='list';
+  whoDraft={name:'',avatar:null,editId:null};
+  writeRoster();
+  renderWho();
+}
+function deleteProfile(id){
+  const was=profiles.activeId===id;
+  profiles.kids=profiles.kids.filter(k=>k.id!==id);
+  pendingDelete=null;
+  whoMode='list';
+  if(was){profiles.activeId=null;st=mkState();}
+  if(!profiles.kids.length){
+    clearSave();
+    profiles={activeId:null,kids:[]};
+    openingWho=true;
+    view='who';
+    renderWho();
+    return;
+  }
+  writeRoster();
+  view='who';
+  renderWho();
+}
+function askResetProfile(){
+  if(document.getElementById('reset-confirm'))return;
+  const kid=activeKid();
+  const name=kid?kid.name:'this trainer';
+  const blurb=kid?kidBlurb(kid):'';
+  const card=document.createElement('div');
+  card.className='card';
+  card.id='reset-confirm';
+  const face=kid?faceForKid(kid):null;
+  card.innerHTML=`<div class="who-ava confirm-ava">${face?pkSprite(face.pi,72,face.shiny):''}</div><div class="parent-title" style="text-align:center">Reset ${escapeHtml(name)}?</div><p class="remove-copy" id="reset-who">${escapeHtml(blurb)}</p><p class="remove-copy">${escapeHtml(name)}'s Pokémon, badges, and answers would be gone. Everyone else stays safe.</p><button type="button" class="who-go" id="reset-no">Keep ${escapeHtml(name)}</button><button type="button" class="who-danger" id="reset-yes">Reset ${escapeHtml(name)}'s game</button>`;
+  const hdr=pdxEl.querySelector('.hdr');
+  if(hdr&&hdr.nextSibling)pdxEl.insertBefore(card,hdr.nextSibling);
+  else pdxEl.appendChild(card);
+  document.getElementById('reset-no').addEventListener('click',()=>card.remove());
+  document.getElementById('reset-yes').addEventListener('click',()=>{card.remove();resetCurrentProfile();});
+}
+function resetCurrentProfile(){
+  const kid=activeKid();
+  st=mkState();
+  if(kid)kid.data=null;
+  whoMode='list';
+  writeRoster();
+  view='game';
+  render();
+}
+function openProfiles(){
+  pauseGymTimer();
+  if(activeKid())captureActive();
+  whoMode='list';
+  pendingDelete=null;
+  view='who';
+  renderWho();
+}
+function trySaveProfile(){
+  const input=document.getElementById('profile-name');
+  const name=input?input.value:'';
+  if(!String(name).trim())return;
+  if(whoDraft.editId){
+    if(profileNameMessage(name,whoDraft.editId))return;
+    editProfile(whoDraft.editId,name);
+  } else {
+    if(!whoDraft.avatar)return;
+    if(profileClashMessage(name,whoDraft.avatar,null))return;
+    createProfile(name,whoDraft.avatar);
+  }
+}
+function renderWho(){
+  view='who';
+  gameEl.style.display='none';
+  pdxEl.style.display='none';
+  parentEl.style.display='none';
+  parentEl.innerHTML='';
+  profilesEl.style.display='block';
+  document.getElementById('bottom-nav').style.display='none';
+  document.getElementById('nav-game').classList.remove('nav-active');
+  document.getElementById('nav-pdx').classList.remove('nav-active');
+  const link=document.getElementById('parents-link');
+  if(link)link.hidden=false;
+  placeParentsLink(true);
+  const wrap=document.querySelector('.wrap');
+  if(wrap)wrap.classList.remove('wide');
+  let h=`<div id="who-screen"><div class="hdr"><span class="app-name">Pokémon Learning Adventure</span></div>`;
+  if(whoMode==='confirm'&&pendingDelete){
+    const kid=profiles.kids.find(k=>k.id===pendingDelete);
+    const name=kid?kid.name:'this trainer';
+    const face=kid?faceForKid(kid):null;
+    const blurb=kid?kidBlurb(kid):'Ready to start';
+    h+=`<div class="card" id="remove-confirm"><div class="who-ava confirm-ava">${face?pkSprite(face.pi,96,face.shiny):''}</div><div class="parent-title" style="text-align:center">Delete ${escapeHtml(name)}?</div><p class="remove-copy" id="remove-who">${escapeHtml(blurb)}</p><p class="remove-copy">${escapeHtml(name)}'s Pokémon, badges, and answers would be gone. Everyone else stays safe.</p><button type="button" class="who-go" id="remove-no">Keep ${escapeHtml(name)}</button><button type="button" class="who-danger" id="remove-yes">Delete ${escapeHtml(name)}'s game</button></div></div>`;
+    profilesEl.innerHTML=h;
+    document.getElementById('remove-no').addEventListener('click',()=>{pendingDelete=null;whoMode='list';renderWho();});
+    document.getElementById('remove-yes').addEventListener('click',()=>deleteProfile(pendingDelete));
+    return;
+  }
+  if(whoMode==='create'||whoMode==='edit'){
+    const editing=whoMode==='edit';
+    const editKid=editing?profiles.kids.find(k=>k.id===whoDraft.editId):null;
+    const face=editKid?faceForKid(editKid):null;
+    h+=`<div class="card who-form">`;
+    h+=bigBackHTML('who-form-back','Back');
+    h+=`<div class="parent-title">${editing?'Change the name':'New trainer'}</div>`;
+    if(editing){
+      h+=`<div class="who-ava confirm-ava">${face?pkSprite(face.pi,96,face.shiny):''}</div>`;
+      h+=`<p class="parent-lead">This only changes the name. ${escapeHtml(face?PKM[face.pi].n:'This Pokémon')} stays.</p>`;
+    } else {
+      h+=`<p class="parent-lead">Tap the Pokémon you want to play with.</p><div class="ava-grid">`;
+      AVATAR_IDS.forEach(id=>{
+        const num='#'+id;
+        const sel=whoDraft.avatar===num?' sel':'';
+        h+=`<button type="button" class="ava-opt${sel}" data-avatar="${id}" aria-label="${escapeHtml(PKM[avatarPi(num)].n)}">${pkSprite(avatarPi(num),52,false)}</button>`;
+      });
+      h+=`</div>`;
+    }
+    const clash=editing?profileNameMessage(whoDraft.name,whoDraft.editId):profileClashMessage(whoDraft.name,whoDraft.avatar,null);
+    const ready=editing?!!(String(whoDraft.name).trim()&&!clash):!!(String(whoDraft.name).trim()&&whoDraft.avatar&&!clash);
+    const hint=clash||ready?'':(editing?'Type a name.':'Type a name and tap a Pokémon.');
+    h+=`<div class="who-form-foot"><label class="who-label" for="profile-name">Your name</label><input id="profile-name" class="who-field" maxlength="16" autocomplete="off" autocapitalize="words" enterkeyhint="done" value="${escapeHtml(whoDraft.name)}">`;
+    h+=`<p class="form-hint" id="profile-hint"${hint?'':' hidden'}>${escapeHtml(hint)}</p>`;
+    h+=`<p class="parent-err" id="profile-err"${clash?'':' hidden'}>${escapeHtml(clash)}</p>`;
+    h+=`<button type="button" class="who-go stick" id="profile-save"${ready?'':' disabled'}>${editing?'Save':'This is me!'}</button>`;
+    if(editing&&editKid)h+=`<button type="button" class="who-danger" id="edit-remove">Remove ${escapeHtml(editKid.name)}</button>`;
+    h+=`</div></div></div>`;
+    profilesEl.innerHTML=h;
+    document.getElementById('who-form-back').addEventListener('click',()=>{whoMode='list';whoDraft={name:'',avatar:null,editId:null};renderWho();});
+    const input=document.getElementById('profile-name');
+    const sync=()=>{
+      whoDraft.name=input.value;
+      const msg=editing?profileNameMessage(input.value,whoDraft.editId):profileClashMessage(input.value,whoDraft.avatar,null);
+      const err=document.getElementById('profile-err');
+      if(err){err.hidden=!msg;err.textContent=msg;}
+      const ok=editing?!!(input.value.trim()&&!msg):!!(input.value.trim()&&whoDraft.avatar&&!msg);
+      const go=document.getElementById('profile-save');
+      if(go)go.disabled=!ok;
+      const hintEl=document.getElementById('profile-hint');
+      if(hintEl){
+        const next=msg||ok?'':(editing?'Type a name.':'Type a name and tap a Pokémon.');
+        hintEl.hidden=!next;
+        hintEl.textContent=next;
+      }
+    };
+    input.addEventListener('input',sync);
+    input.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();trySaveProfile();}});
+    profilesEl.querySelectorAll('[data-avatar]').forEach(b=>b.addEventListener('click',()=>{
+      whoDraft.avatar='#'+b.dataset.avatar;
+      profilesEl.querySelectorAll('[data-avatar]').forEach(x=>x.classList.toggle('sel',x===b));
+      sync();
+    }));
+    document.getElementById('profile-save').addEventListener('click',trySaveProfile);
+    const rm=document.getElementById('edit-remove');
+    if(rm&&editKid)rm.addEventListener('click',()=>{pendingDelete=editKid.id;whoMode='confirm';renderWho();});
+    return;
+  }
+  const back=activeKid()?bigBackHTML('who-back','Back to the game'):'';
+  const lead=profiles.kids.length?'Tap your Pokémon. Each trainer keeps their own.':'Add a trainer to start.';
+  h+=`${back}<div class="card" style="text-align:center"><div class="parent-title">Who's playing?</div><p class="who-lead">${lead}</p><div class="who-grid">`;
+  profiles.kids.forEach(kid=>{
+    const now=kid.id===profiles.activeId?' now':'';
+    const face=faceForKid(kid);
+    h+=`<div class="who-card"><button type="button" class="who-play${now}" data-pick="${escapeHtml(kid.id)}"><div class="who-ava">${pkSprite(face.pi,72,face.shiny)}</div><div class="who-name">${escapeHtml(kid.name)}</div><div class="who-sub">${escapeHtml(kidBlurb(kid))}</div></button><button type="button" class="who-edit" data-edit="${escapeHtml(kid.id)}" aria-label="Edit ${escapeHtml(kid.name)}">Edit</button></div>`;
+  });
+  if(profiles.kids.length<PROFILE_MAX){
+    h+=`<button type="button" class="who-new" id="profile-new">${pkSprite(avatarPi('#025'),40,false)}Add a trainer</button>`;
+  } else {
+    h+=`<p class="who-lead">This tablet already has ${PROFILE_MAX} trainers.</p>`;
+  }
+  h+=`</div></div></div>`;
+  profilesEl.innerHTML=h;
+  const bb=document.getElementById('who-back');
+  if(bb)bb.addEventListener('click',()=>{
+    if(!activeKid())return;
+    view='game';
+    if((st.phase==='play'&&!st.q)||(st.phase==='gym'&&!st.q))bootInto();
+    else{render();if(st.phase==='gym')armGymTimer();}
+  });
+  const nw=document.getElementById('profile-new');
+  if(nw)nw.addEventListener('click',()=>{
+    whoMode='create';
+    whoDraft={name:'',avatar:null,editId:null};
+    renderWho();
+  });
+  profilesEl.querySelectorAll('[data-pick]').forEach(b=>b.addEventListener('click',()=>selectProfile(b.dataset.pick)));
+  profilesEl.querySelectorAll('[data-edit]').forEach(b=>b.addEventListener('click',()=>{
+    const kid=profiles.kids.find(k=>k.id===b.dataset.edit);
+    if(!kid)return;
+    whoMode='edit';
+    whoDraft={name:kid.name,avatar:kidPictureNum(kid),editId:kid.id};
+    renderWho();
+  }));
+}
+function subjectSnap(data,sub){
+  const s=(data.stats||{})[sub]||{};
+  const level=Math.min(maxLevel(sub),Math.max(1,s.level|0||1));
+  let badges=[];
+  if(data.badges&&Array.isArray(data.badges[sub]))badges=data.badges[sub].map(t=>t|0).filter(t=>t>=1&&t<maxLevel(sub));
+  else for(let t=1;t<level;t++)badges.push(t);
+  badges=[...new Set(badges)].sort((a,b)=>a-b);
+  return{level,cor:Math.max(0,s.cor|0),att:Math.max(0,s.att|0),badges};
+}
+function plainTier(sub,level){
+  const map=TIER_PLAIN[sub]||{};
+  const top=maxLevel(sub);
+  const lv=Math.min(top,Math.max(1,level|0));
+  const words=map[lv]||'their current questions';
+  return lv>=top?words+' — the hardest '+SNAME[sub].toLowerCase()+' questions right now':words;
+}
+function recentRows(practice,sub){
+  if(!practice||!Array.isArray(practice.recent))return [];
+  return practice.recent.filter(r=>r&&(!sub||r.s===sub)).slice(-10);
+}
+function recentBits(practice,sub){
+  const last=recentRows(practice,sub);
+  if(!last.length)return null;
+  return{right:last.filter(r=>r.ok).length,n:last.length,help:last.filter(r=>r.ok&&r.help).length};
+}
+function missList(practice){
+  if(!practice||!practice.topics)return [];
+  return Object.keys(practice.topics).map(k=>{
+    const parts=k.split('|');
+    const t=practice.topics[k];
+    const recent=topicRecentOf(t);
+    if(!SUBS.includes(parts[0])||!topicStillMissing(recent))return null;
+    return{sub:parts[0],topic:parts[1],n:recent.filter(x=>x===0).length,ex:Array.isArray(t.ex)?t.ex:[]};
+  }).filter(t=>t&&t.n>0).sort((a,b)=>b.n-a.n).slice(0,5);
+}
+// `why` is 'help' when the question was queued because they got it right after
+// a hint. Those are still asked again in the game, but they were scored right,
+// so the parent page does not call them misses. Older saves have no why.
+function liveRematches(data,why){
+  const rev=Array.isArray(data.review)?data.review:[];
+  const out=[];
+  rev.forEach(r=>{
+    if(!r||!SUBS.includes(r.sub))return;
+    const helped=r.why==='help';
+    if(why==='help'? !helped : helped)return;
+    const bank=QB[r.sub]&&QB[r.sub][r.lv]&&QB[r.sub][r.lv][r.idx];
+    if(!bank||bank[0]!==r.q)return;
+    out.push({sub:r.sub,q:String(r.q).replace(/\{P\}/g,'your Pokémon')});
+  });
+  return out.slice(0,6);
+}
+function practiceLine(kid){
+  const data=kid&&kid.data;
+  if(!data||!Array.isArray(data.team)||!data.team.length)return "Hasn't started playing yet.";
+  const practice=data.practice&&typeof data.practice==='object'?data.practice:freshPractice();
+  const misses=missList(practice);
+  if(misses.length){
+    const topics=misses.slice(0,3).map(m=>String(m.topic).toLowerCase());
+    if(topics.length===1)return `Practice ${topics[0]}.`;
+    if(topics.length===2)return `Practice ${topics[0]} and ${topics[1]}.`;
+    return `Practice ${topics.slice(0,-1).join(', ')}, and ${topics[topics.length-1]}.`;
+  }
+  const overall=recentBits(practice,null);
+  const totalAtt=SUBS.reduce((n,sub)=>n+subjectSnap(data,sub).att,0);
+  if(overall)return 'Nothing to practice right now.';
+  if(totalAtt>0)return 'Play a little more and this will say what to practice.';
+  return "Hasn't started playing yet.";
+}
+function scoreLine(kid){
+  const data=kid&&kid.data;
+  if(!data||!Array.isArray(data.team)||!data.team.length)return '';
+  const practice=data.practice&&typeof data.practice==='object'?data.practice:freshPractice();
+  const overall=recentBits(practice,null);
+  if(overall){
+    let s=`Last ${overall.n} answer${overall.n===1?'':'s'}: ${overall.right} right`;
+    if(overall.help===1)s+=', 1 after a hint';
+    else if(overall.help>1)s+=`, ${overall.help} after a hint`;
+    return s;
+  }
+  const cor=SUBS.reduce((n,sub)=>n+subjectSnap(data,sub).cor,0);
+  const att=SUBS.reduce((n,sub)=>n+subjectSnap(data,sub).att,0);
+  return att?`${cor} right out of ${att}`:'';
+}
+function parentKidHTML(kid){
+  const data=kid.data;
+  const name=escapeHtml(kid.name);
+  const face=faceForKid(kid);
+  const score=scoreLine(kid);
+  let h=`<div class="card" data-kid-name="${name}"><div class="parent-kid">${pkSprite(face.pi,64,face.shiny)}<div><h2>${name}</h2>`;
+  h+=`<p class="parent-practice">${escapeHtml(practiceLine(kid))}</p>`;
+  if(score)h+=`<p class="parent-score">${escapeHtml(score)}</p>`;
+  h+=`</div></div>`;
+  if(!data||!Array.isArray(data.team)||!data.team.length)return h+`</div>`;
+  const practice=data.practice&&typeof data.practice==='object'?data.practice:freshPractice();
+  const badges=[];
+  SUBS.forEach(sub=>{
+    subjectSnap(data,sub).badges.forEach(t=>badges.push(badgeName(sub,t)));
+  });
+  h+=`<p>Badges: ${escapeHtml(badges.length?badges.join(', '):'No badges yet')}</p>`;
+  const misses=missList(practice);
+  const overall=recentBits(practice,null);
+  const totalAtt=SUBS.reduce((n,sub)=>n+subjectSnap(data,sub).att,0);
+  if(misses.length||overall||totalAtt>0){
+    h+=`<div class="parent-focus">`;
+    if(misses.length){
+      misses.forEach(m=>{
+        h+=`<div class="parent-miss">${escapeHtml(m.topic)} — missed ${m.n} time${m.n===1?'':'s'}</div>`;
+        m.ex.forEach(ex=>{h+=`<p class="parent-ex">${escapeHtml(ex)}</p>`;});
+      });
+    }
+    h+=`</div>`;
+  }
+  const again=liveRematches(data,'miss');
+  if(again.length){
+    h+=`<div class="parent-again"><h3>Trying these again</h3>`;
+    again.forEach(r=>{h+=`<p>${escapeHtml(SNAME[r.sub])}: ${escapeHtml(r.q)}</p>`;});
+    h+=`</div>`;
+  }
+  const hinted=liveRematches(data,'help');
+  if(hinted.length){
+    h+=`<div class="parent-again"><h3>Right after a hint</h3><p class="parent-note">Got these right after asking for help. The game will ask them again.</p>`;
+    hinted.forEach(r=>{h+=`<p>${escapeHtml(SNAME[r.sub])}: ${escapeHtml(r.q)}</p>`;});
+    h+=`</div>`;
+  }
+  return h+`</div>`;
+}
+function parentBackLabel(){
+  if(viewBeforeParent==='who')return "Back to who's playing";
+  if(viewBeforeParent==='pdx')return 'Back to the Pokédex';
+  return 'Back to the game';
+}
+function rollParentQuiz(){
+  // A teen times 6, 7, 8, or 9, and only when the answer is over 100.
+  // The hardest multiplication in the game is single-digit facts and times 10,
+  // so a child who has reached that step still hasn't practiced this.
+  let a,b,ans;
+  do{
+    a=13+Math.floor(Math.random()*7);
+    b=6+Math.floor(Math.random()*4);
+    ans=a*b;
+  }while(ans<=100);
+  parentQuiz={a,b,ans};
+}
+function parentPadHTML(){
+  const draft=/^\d{1,3}$/.test(parentDraft)?parentDraft:'';
+  let keys='';
+  for(const d of ['1','2','3','4','5','6','7','8','9'])keys+=`<button type="button" class="pad-key" data-parent-digit="${d}">${d}</button>`;
+  keys+=`<button type="button" class="pad-key pad-erase" data-parent-erase="1" aria-label="Erase">&#9003;</button>`;
+  keys+=`<button type="button" class="pad-key" data-parent-digit="0">0</button>`;
+  keys+=`<button type="button" class="pad-key" disabled aria-hidden="true" tabindex="-1" style="visibility:hidden"></button>`;
+  return `<div class="pad-wrap"><div class="pad-read${draft?'':' empty'}" id="parent-read" aria-live="polite">${draft||'&#8212;'}</div><div class="numpad">${keys}</div></div>`;
+}
+function wireParentPad(){
+  parentEl.querySelectorAll('[data-parent-digit]').forEach(b=>b.addEventListener('click',()=>{
+    const d=b.dataset.parentDigit;
+    if(!/^\d$/.test(d)||parentDraft.length>=3)return;
+    parentDraft+=d;
+    const read=document.getElementById('parent-read');
+    if(read){read.textContent=parentDraft;read.classList.remove('empty');}
+  }));
+  parentEl.querySelectorAll('[data-parent-erase]').forEach(b=>b.addEventListener('click',()=>{
+    parentDraft=parentDraft.slice(0,-1);
+    const read=document.getElementById('parent-read');
+    if(read){
+      read.textContent=parentDraft||'—';
+      read.classList.toggle('empty',!parentDraft);
+    }
+  }));
+}
+function submitParentQuiz(){
+  const raw=String(parentDraft||'');
+  if(!/^\d+$/.test(raw)){parentMsg='Tap the answer first.';renderParent();return;}
+  if(Number(raw)!==parentQuiz.ans){
+    parentMsg="That doesn't open the page. Here's another one.";
+    parentDraft='';
+    rollParentQuiz();
+    renderParent();
+    return;
+  }
+  parentUnlocked=true;
+  parentMsg='';
+  parentDraft='';
+  renderParent();
+}
+function closeParent(){
+  parentUnlocked=false;
+  parentQuiz=null;
+  parentMsg='';
+  parentDraft='';
+  const back=(viewBeforeParent==='who'||viewBeforeParent==='pdx')?viewBeforeParent:'game';
+  if(back==='who')renderWho();
+  else if(back==='pdx')switchView('pdx');
+  else{view='game';showGameChrome();if(st.phase==='gym')armGymTimer();}
+}
+function openParent(){
+  if(view!=='parent')viewBeforeParent=view;
+  parentUnlocked=false;
+  parentQuiz=null;
+  parentMsg='';
+  parentDraft='';
+  if(activeKid()){captureActive();writeRoster();}
+  view='parent';
+  renderParent();
+}
+function renderParent(){
+  view='parent';
+  gameEl.style.display='none';
+  pdxEl.style.display='none';
+  profilesEl.style.display='none';
+  parentEl.style.display='block';
+  document.getElementById('bottom-nav').style.display='none';
+  document.getElementById('nav-game').classList.remove('nav-active');
+  document.getElementById('nav-pdx').classList.remove('nav-active');
+  const link=document.getElementById('parents-link');
+  if(link)link.hidden=true;
+  const wrap=document.querySelector('.wrap');
+  if(wrap)wrap.classList.add('wide');
+  let h=bigBackHTML('parent-back',parentBackLabel());
+  h+=`<div class="hdr"><span class="app-name">Pokémon Learning Adventure</span></div>`;
+  if(!parentUnlocked){
+    if(!parentQuiz)rollParentQuiz();
+    h+=`<div class="card" id="parent-check"><div class="parent-kicker">Grown-ups</div><div class="parent-title">Parents</div><p class="parent-lead">A grown-up question, so a child stays in the game. Tap the answer, then see how they're doing.</p><div class="parent-q" id="parent-q">What is ${parentQuiz.a} times ${parentQuiz.b}?</div>${parentPadHTML()}<button type="button" class="who-go stick" id="parent-go" style="margin-top:10px">See how they're doing</button>${parentMsg?`<p class="parent-err" id="parent-err">${escapeHtml(parentMsg)}</p>`:''}</div>`;
+    parentEl.innerHTML=h;
+    wireParentPad();
+    document.getElementById('parent-go').addEventListener('click',submitParentQuiz);
+    document.getElementById('parent-back').addEventListener('click',closeParent);
+    return;
+  }
+  h+=`<div id="parent-report"><div class="parent-kicker">For parents</div><div class="parent-title">How they're doing</div><p class="parent-lead">Each child has their own game. One line says what to practice together.</p>`;
+  if(!profiles.kids.length){
+    h+=`<div class="card"><p class="parent-lead">No trainers yet. A child can make one from the game.</p></div>`;
+  } else {
+    h+=`<div class="parent-grid">`;
+    profiles.kids.forEach(kid=>{h+=parentKidHTML(kid);});
+    h+=`</div>`;
+  }
+  h+=`</div>`;
+  parentEl.innerHTML=h;
+  document.getElementById('parent-back').addEventListener('click',closeParent);
+}
+
+let profiles={activeId:null,kids:[]};
+let openingWho=false;
+let whoMode='list';
+let whoDraft={name:'',avatar:null,editId:null};
+let pendingDelete=null;
+let parentUnlocked=false;
+let parentQuiz=null;
+let parentMsg='';
+let parentDraft='';
+let viewBeforeParent='game';
 let st=mkState(loadSaved());
-let view='game';
+let view=openingWho?'who':'game';
 const gameEl=document.getElementById("game");
 const pdxEl=document.getElementById("pokedex-page");
+const profilesEl=document.getElementById("profiles-page");
+const parentEl=document.getElementById("parent-page");
 
 /* Curriculum targets for each difficulty bucket in QB. This was a live object
    when questions were generated from prompts; it is kept as reference for
@@ -2849,14 +3834,46 @@ function qCardHTML(resultMsg,btnLabel){
   return h+`</div>`;
 }
 
+function nameAskHTML(){
+  const kid=activeKid();
+  if(!kid||!kid.askName)return '';
+  const face=faceForKid(kid);
+  return `<div class="card" id="name-ask"><div class="who-ava">${pkSprite(face.pi,64,face.shiny)}</div><div class="parent-title" style="text-align:center">What's your name?</div><label class="who-label" for="name-ask-input">Your name</label><input id="name-ask-input" class="who-field" maxlength="16" autocomplete="off" autocapitalize="words" enterkeyhint="done"><p class="parent-err" id="name-ask-err" hidden></p><button type="button" class="who-go" id="name-ask-save">This is me!</button></div>`;
+}
+function saveAskedName(){
+  const kid=activeKid();
+  const input=document.getElementById('name-ask-input');
+  if(!kid||!input)return;
+  const name=String(input.value||'').trim();
+  if(!name)return;
+  const msg=profileNameMessage(name,kid.id);
+  const err=document.getElementById('name-ask-err');
+  if(msg){if(err){err.hidden=false;err.textContent=msg;}return;}
+  kid.name=cleanName(name);
+  kid.askName=false;
+  writeRoster();
+  render();
+}
+function wireNameAsk(root){
+  const nameSave=root.querySelector('#name-ask-save');
+  if(nameSave)nameSave.addEventListener('click',saveAskedName);
+  const nameIn=root.querySelector('#name-ask-input');
+  if(nameIn)nameIn.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();saveAskedName();}});
+}
+
 function render(){
+  if(view==='who'){renderWho();return;}
+  if(view==='parent'){renderParent();return;}
+  // A Pokédex visit must not be kicked back to the game just because a timer
+  // repainted the question underneath it.
+  if(view!=='pdx')showGameChrome();
   const showSubj=st.phase==='play'||st.phase==='wild';
   // The streak lives beside the subject pill on the question card now, not here.
   const hdrRight=showSubj
     ?`<button class="subj-btn" id="subj-btn">${SUBJ_ICON[st.subject]} ${subjShort(st.subject)}<span class="subj-btn-car">&#9662;</span></button>`
     :'';
-  const hdr=`<div class="hdr"><span class="app-name">Pokémon Learning Adventure</span><span class="hdr-right">${hdrRight}</span></div>`;
-  let h=hdr;
+  const hdr=`<div class="hdr hdr-tight">${whoButtonHTML('who-btn')}<span class="app-name">Pokémon</span><span class="hdr-right">${hdrRight}</span></div>`;
+  let h=hdr+nameAskHTML();
 
   if(st.phase==='starter'){
     h+=`<div class="starter-card"><div style="font-size:20px;font-weight:700;color:#1A1A2E;margin-bottom:3px;text-align:center">Choose your starter!</div><div style="font-size:13px;color:#6B7280;margin-bottom:14px;text-align:center">Pick your partner for this learning adventure</div>`;
@@ -2874,6 +3891,8 @@ function render(){
     gameEl.innerHTML=h;
     GENS.forEach(genLines=>{genLines.forEach(li=>{document.getElementById(`pick-${li}`).addEventListener('click',()=>choosePickedStarter(li));});});
     const pr=document.getElementById('pick-random');if(pr)pr.addEventListener('click',pickRandomStarter);
+    const whoEarly=gameEl.querySelector('#who-btn');if(whoEarly)whoEarly.addEventListener('click',openProfiles);
+    wireNameAsk(gameEl);
     return;
   }
 
@@ -3052,6 +4071,8 @@ function render(){
   const gno=gameEl.querySelector('#gym-forfeit-no');if(gno)gno.addEventListener('click',cancelEndGym);
   const candy=gameEl.querySelector('#candy-btn');if(candy)candy.addEventListener('click',useCandy);
   const awardGo=gameEl.querySelector('#award-go');if(awardGo)awardGo.addEventListener('click',dismissAward);
+  const whoB=gameEl.querySelector('#who-btn');if(whoB)whoB.addEventListener('click',openProfiles);
+  wireNameAsk(gameEl);
   armGymTimer();
 }
 
@@ -3067,7 +4088,7 @@ function pdxEntryHTML(pi,shiny){
 }
 
 function renderPokedex(){
-  let h=`<div class="hdr"><span class="app-name">Pokédex</span><button class="reset-btn" id="reset-btn"><span class="reset-fill" id="reset-fill"></span><span class="reset-lbl" id="reset-lbl">Hold to start over</span></button></div>`;
+  let h=`<div class="hdr">${whoButtonHTML('who-btn-pdx')}<span class="app-name">Pokédex</span><button class="reset-btn" id="reset-btn"><span class="reset-fill" id="reset-fill"></span><span class="reset-lbl" id="reset-lbl">Hold to reset this trainer</span></button></div>`;
   const bits=[];
   SUBS.forEach(sub=>(st.badges[sub]||[]).forEach(t=>bits.push(badgeHTML(sub,t,false))));
   h+=`<div class="card pdx-badges"><div class="pdx-badge-hd">Gym badges</div>${bits.length?`<div class="badge-row">${bits.join('')}</div>`:'<div class="gym-wait">Win a Gym battle to earn your first badge.</div>'}</div>`;
@@ -3085,6 +4106,7 @@ function renderPokedex(){
   });
   pdxEl.innerHTML=h;
   wireReset();
+  const whoP=pdxEl.querySelector('#who-btn-pdx');if(whoP)whoP.addEventListener('click',openProfiles);
 }
 
 // Held rather than tapped so a stray finger can't wipe the Pokedex.
@@ -3099,7 +4121,7 @@ function wireReset(){
     if(timer){clearTimeout(timer);timer=null;}
     if(raf){cancelAnimationFrame(raf);raf=null;}
     fill.style.width='0%';
-    lbl.textContent='Hold to start over';
+    lbl.textContent='Hold to reset this trainer';
   }
   function tick(){
     const p=Math.min(1,(Date.now()-t0)/HOLD);
@@ -3114,10 +4136,8 @@ function wireReset(){
     raf=requestAnimationFrame(tick);
     timer=setTimeout(()=>{
       stop();
-      clearSave();
-      st=mkState();
-      switchView('game');
-      render();
+      // The hold only asks. A big Keep button is what actually protects them.
+      askResetProfile();
     },HOLD);
   });
   ['pointerup','pointerleave','pointercancel'].forEach(ev=>btn.addEventListener(ev,stop));
@@ -3126,17 +4146,31 @@ function wireReset(){
 function switchView(v){
   if(v!=='game')pauseGymTimer();
   view=v;
-  document.getElementById('nav-game').classList.toggle('nav-active',v==='game');
-  document.getElementById('nav-pdx').classList.toggle('nav-active',v==='pdx');
   if(v==='game'){
-    gameEl.style.display='block';
-    pdxEl.style.display='none';
+    showGameChrome();
     armGymTimer();
-  } else {
-    gameEl.style.display='none';
-    pdxEl.style.display='block';
-    renderPokedex();
+    return;
   }
+  if(v==='pdx'){
+    gameEl.style.display='none';
+    profilesEl.style.display='none';
+    profilesEl.innerHTML='';
+    parentEl.style.display='none';
+    parentEl.innerHTML='';
+    pdxEl.style.display='block';
+    document.getElementById('bottom-nav').style.display='flex';
+    document.getElementById('nav-game').classList.remove('nav-active');
+    document.getElementById('nav-pdx').classList.add('nav-active');
+    const link=document.getElementById('parents-link');
+    if(link)link.hidden=false;
+    placeParentsLink(false);
+    const wrap=document.querySelector('.wrap');
+    if(wrap)wrap.classList.remove('wide');
+    renderPokedex();
+    return;
+  }
+  if(v==='who'){renderWho();return;}
+  if(v==='parent'){renderParent();return;}
 }
 
 
@@ -3663,6 +4697,10 @@ function pickStarter(lineIdx,shiny){
   // Straight into the subject chooser; chooseSubject is what drops him into play.
   st.subjectReturn='play';
   st.phase='subject';
+  if(!activeKid())ensureProfile();
+  // Tests and the starter buttons both land here, sometimes while the
+  // "who's playing" screen is still the one on display.
+  view='game';
   save();
   render();
 }
@@ -3937,8 +4975,16 @@ function commitAttempt(ok,choice,nextDraft){
   if(firstTry){
     const helped=st.helped;
     // Before the streak moves, so a Rematch he wins lands its bonus alongside
-    // whatever the answer itself pays.
-    const rematchWon=recordReview(st.q.tmpl,ok&&!helped)&&!!st.q.rematch;
+    // whatever the answer itself pays. Help still queues a Rematch; that rule
+    // is unchanged. The parent page reads `why` so a helped success is not
+    // shown as a miss.
+    const clean=ok&&!helped;
+    const rematchWon=recordReview(st.q.tmpl,clean)&&!!st.q.rematch;
+    if(!clean){
+      const queued=findReview(st.q.tmpl);
+      if(queued)queued.why=ok&&helped?'help':'miss';
+    }
+    if(st.q&&st.q.tmpl)notePractice(st.q.tmpl,!ok?'miss':(helped?'help':'right'));
     if(ok&&helped){
       // Asked for help and landed it: the streak is paused, not broken. Nothing
       // that climbs with the streak moves -- not the streak, not the catch pips,
@@ -4029,6 +5075,7 @@ function commitAttempt(ok,choice,nextDraft){
 
 document.getElementById("nav-game").addEventListener("click",()=>switchView('game'));
 document.getElementById("nav-pdx").addEventListener("click",()=>switchView('pdx'));
+document.getElementById("parents-link").addEventListener("click",openParent);
 
 // iPad swipe-away and tab close don't always fire a normal teardown
 window.addEventListener('pagehide',noteGymHide);
@@ -4037,23 +5084,10 @@ document.addEventListener('visibilitychange',()=>{
   else armGymTimer();
 });
 
-gameEl.style.display="block";
-document.getElementById("bottom-nav").style.display="flex";
-// a restored game resumes straight into a fresh question; a new one picks a starter first.
-// A Gym in progress re-deals the open question. If that one was already solved,
-// resume on the next one so a reload can't score the same hit twice.
-if(st.phase==='gym'&&st.gym){
-  if(st.gym.solved){
-    st.gym.solved=false;
-    st.gym.qi++;
-    if(st.gym.qi>=st.gym.queue.length){finishGymLose();render();}
-    else dealGymQuestion();
-  } else dealGymQuestion(true);
-} else if(st.phase==='play'){
-  st.holdSnooze=true;
-  loadQuestion();
-}
-else render();
+// A tablet with two trainers asks who's playing first. One trainer (including
+// a save from before profiles) goes straight back into their game.
+if(view==='who')renderWho();
+else bootInto();
 </script>
 </body>
 </html>
