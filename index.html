@@ -13,8 +13,9 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;min-heigh
 #game{display:none}
 #pokedex-page{display:none}
 .hdr{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:14px;padding-right:56px}
-.hdr-tight{flex-wrap:nowrap}
-.hdr-tight .app-name{flex:1 1 auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hdr-tight{flex-wrap:nowrap;align-items:stretch}
+.hdr-tight .app-name{flex:1 1 auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;align-items:center}
+.hdr-tight .hdr-right{display:flex;align-items:center}
 .app-name{font-size:15px;font-weight:600;color:#1A1A2E;min-width:0}
 .card{background:#fff;border-radius:16px;padding:18px;margin-bottom:12px;box-shadow:0 2px 8px rgba(0,0,0,0.06)}
 /* The extra top padding is only applied when the corner button is actually there.
@@ -133,6 +134,18 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;min-heigh
   body:has(.numpad) .numpad{gap:4px}
   body:has(.numpad) .pad-key{min-height:40px;font-size:20px}
   body:has(.numpad) .pad-check{min-height:40px}
+}
+/* A phone on its side has almost no height. The picture is already gone;
+   the name card goes too, and the keys get a little shorter, so Check
+   stays above the bottom bar. */
+@media (max-height:420px){
+  body:has(.numpad) .pcard{display:none}
+  body:has(.numpad) .hdr{margin-bottom:2px}
+  body:has(.numpad) .card{padding:6px 8px;margin-bottom:4px}
+  body:has(.numpad) .qtext{font-size:14px;line-height:1.3;margin-bottom:4px}
+  body:has(.numpad) .pad-read{min-height:28px;font-size:20px;margin-bottom:2px}
+  body:has(.numpad) .pad-key{min-height:34px;font-size:18px}
+  body:has(.numpad) .pad-check{min-height:34px}
 }
 .streak-pill.maxed{background:#FFEDD5;color:#C2410C}
 .streak-pill.bump{animation:streak-pop 0.45s ease}

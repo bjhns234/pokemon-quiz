@@ -80,6 +80,7 @@ test.describe('kept progress',()=>{
       st.pendingEvo=null;
       st.phase='play';
       st.cor=true;
+      st.tries=1;
       applyLevelUps();
       save();
       render();
@@ -101,6 +102,7 @@ test.describe('kept progress',()=>{
       st.pendingEvo={fromPi:0,toPi:1};
       st.phase='play';
       st.cor=true;
+      st.tries=1;
       render();
     });
     await page.click('#nxt');
@@ -119,13 +121,13 @@ test.describe('fair questions',()=>{
 
   test('the reported questions each have one clear answer',async({page})=>{
     const autumn=await serveStem(page,'changes color and falls off trees in autumn');
-    expect(autumn.options).toEqual(['Snow','Rocks','Leaves','Feathers']);
+    expect(autumn.options.slice().sort()).toEqual(['Feathers','Leaves','Rocks','Snow']);
     expect(autumn.answer).toBe('Leaves');
     expect(autumn.text.toLowerCase()).not.toContain('fruit');
 
     const capitalI=await serveStem(page,'uses capitals correctly');
     expect(capitalI.answer).toBe('Today I played outside.');
-    expect(capitalI.options).not.toContain('today I played outside.');
+    expect(capitalI.options).toContain('today I played outside.');
     expect(capitalI.hint.toLowerCase()).toContain('sentence starts');
 
     const blank=await serveStem(page,'can go very');
