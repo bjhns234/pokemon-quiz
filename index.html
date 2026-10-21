@@ -7,14 +7,25 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;min-height:100vh;display:flex;align-items:flex-start;justify-content:center;padding:20px 20px 80px}
-.wrap{width:100%;max-width:520px}
+html{height:100%}
+/* One column: scrolling questions, then the Game / Pokédex bar.
+   The bar is in the flow, so it can never sit on top of a question,
+   an answer, or Ask for help. 100dvh tracks the real screen when a
+   phone browser shows or hides its own bars. */
+body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;height:100dvh;max-height:100dvh;display:flex;align-items:stretch;justify-content:center;overflow:hidden;padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px)}
+.wrap{width:100%;max-width:520px;height:100%;min-height:0;display:flex;flex-direction:column;position:relative}
 .wrap.wide{max-width:980px}
-#game{display:none}
+#app-main{flex:1 1 auto;min-height:0;overflow:auto;padding:12px 16px 10px;padding-top:max(12px,env(safe-area-inset-top,0px));scroll-padding-bottom:12px}
+#game{display:none;flex-direction:column;min-height:0}
 #pokedex-page{display:none}
-.hdr{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:14px}
-.hdr-tight{flex-wrap:nowrap}
-.hdr-tight .app-name{flex:1 1 auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* The right padding is the sound button's lane. The button is 52px and sits 4px
+   in from the column edge, so 60px keeps Math / Reading / Science clear of it. */
+.hdr{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:14px;padding-right:60px}
+.hdr-tight{flex-wrap:nowrap;align-items:stretch}
+.hdr-tight .app-name{flex:1 1 auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;align-items:center}
+.hdr-tight .hdr-right{display:flex;align-items:center;flex:0 0 auto}
+.hdr-tight .who-btn{min-width:0;overflow:hidden}
+.hdr-tight .who-btn span{min-width:0}
 .app-name{font-size:15px;font-weight:600;color:#1A1A2E;min-width:0}
 .card{background:#fff;border-radius:16px;padding:18px;margin-bottom:12px;box-shadow:0 2px 8px rgba(0,0,0,0.06)}
 /* The extra top padding is only applied when the corner button is actually there.
@@ -82,23 +93,6 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;min-heigh
 .hv-group.hv-count{box-shadow:0 0 0 3px #F59E0B;background:#FFFBEB}
 .pad-note{text-align:center;font-size:13px;font-weight:700;color:#9A3412;margin:-2px 0 8px}
 .pad-note[hidden]{display:none}
-@media (orientation:landscape) and (max-height:820px){
-  body{padding:8px 12px 58px}
-  .hdr{margin-bottom:6px}
-  .card{padding:10px 14px;margin-bottom:8px}
-  .psvg{margin:2px 0}
-  .psvg img{width:80px;height:80px}
-  .qtext{margin-bottom:8px}
-  .pad-wrap{margin-bottom:6px}
-  .pad-read{min-height:40px;font-size:28px;margin-bottom:6px}
-  .numpad{gap:6px}
-  .pad-key{min-height:42px;font-size:22px}
-  .pad-check{min-height:40px}
-  /* The Parents link is a quiet extra row in portrait. On a short landscape
-     iPad that row pushes the Check button under the nav, so park it in the
-     empty left margin instead of the column. */
-  .parents-link{position:fixed;top:4px;left:10px;margin:0;z-index:120}
-}
 .streak-pill.maxed{background:#FFEDD5;color:#C2410C}
 .streak-pill.bump{animation:streak-pop 0.45s ease}
 .streak-pill.record{background:linear-gradient(90deg,#FDE68A,#FCD34D);color:#92400E;box-shadow:0 0 0 1.5px #F59E0B}
@@ -123,11 +117,14 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;min-heigh
 .tags{background:#FEF3C7;color:#92400E}
 .qtext{font-size:16px;color:#1A1A2E;line-height:1.6;margin-bottom:16px;font-weight:500}
 .ans-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
-.ans-btn{background:#F9FAFB;border:2px solid #E5E7EB;border-radius:12px;padding:14px 10px;font-size:15px;font-weight:600;color:#374151;cursor:pointer;text-align:center;transition:all 0.15s;line-height:1.3;font-family:inherit;width:100%}
+.ans-btn{position:relative;background:#F9FAFB;border:2px solid #E5E7EB;border-radius:12px;padding:14px 10px;font-size:15px;font-weight:600;color:#374151;cursor:pointer;text-align:center;transition:all 0.15s;line-height:1.3;font-family:inherit;width:100%}
 .ans-btn:hover:not(:disabled){border-color:#FF5722;color:#FF5722;background:#FFF3E0}
 .ans-btn.cor{background:#ECFDF5;border-color:#10B981;color:#065F46}
 .ans-btn.wrg{background:#FEF2F2;border-color:#EF4444;color:#991B1B}
 .ans-btn:disabled{cursor:default}
+.hang-on{position:absolute;inset:4px;display:flex;align-items:center;justify-content:center;background:#FFF7ED;color:#9A3412;border-radius:8px;font-size:13px;font-weight:800;opacity:0;pointer-events:none}
+.hang-on.show{animation:hang-on 1.2s ease}
+@keyframes hang-on{0%{opacity:0}12%{opacity:1}70%{opacity:1}100%{opacity:0}}
 /* Purely cosmetic: handleAnswer's timestamp check is what actually blocks the
    tap, so a stalled animation in a backgrounded tab can never lock him out. */
 .ans-grid.arming .ans-btn,.numpad.arming .pad-key{animation:ans-arm var(--arm,1500ms) ease}
@@ -138,7 +135,7 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;min-heigh
 .pad-read.empty{color:#D1D5DB}
 .pad-read.ok{background:#ECFDF5;border-color:#10B981;color:#065F46}
 .numpad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.pad-key{min-height:58px;border:2px solid #E5E7EB;border-radius:14px;background:#F9FAFB;font-size:26px;font-weight:800;color:#1A1A2E;cursor:pointer;font-family:inherit;touch-action:manipulation;user-select:none;-webkit-user-select:none}
+.pad-key{position:relative;min-height:58px;border:2px solid #E5E7EB;border-radius:14px;background:#F9FAFB;font-size:26px;font-weight:800;color:#1A1A2E;cursor:pointer;font-family:inherit;touch-action:manipulation;user-select:none;-webkit-user-select:none}
 .pad-key:hover{border-color:#FF5722;color:#FF5722;background:#FFF3E0}
 .pad-key:active{transform:scale(0.97)}
 .pad-key:focus{outline:none}
@@ -180,6 +177,8 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;min-heigh
 .grass-opt:hover{border-color:#16A34A;background:#F0FDF4}
 .starter-opt-name{font-size:12px;font-weight:700;color:#1A1A2E;margin-top:5px;margin-bottom:3px}
 .starter-opt-type{font-size:10px;font-weight:600;padding:2px 7px;border-radius:20px;display:inline-block}
+.subj-ask{font-size:20px;font-weight:700;color:#1A1A2E;margin-bottom:3px;text-align:center}
+.subj-ask-sub{font-size:13px;color:#6B7280;margin-bottom:16px;text-align:center}
 .subj-choice-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .subj-opt{background:#F9FAFB;border:2px solid #E5E7EB;border-radius:14px;padding:16px 8px 14px;cursor:pointer;transition:all 0.18s;text-align:center;display:flex;flex-direction:column;align-items:center;gap:5px;font-family:inherit}
 .subj-opt:hover{transform:translateY(-3px);box-shadow:0 6px 16px rgba(0,0,0,0.1)}
@@ -192,7 +191,7 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;min-heigh
 .opts:hover{border-color:#92400E;background:#FFFBEB}
 .optx:hover{border-color:#6D28D9;background:#F5F3FF}
 .hdr-right{display:flex;align-items:center;gap:8px}
-.subj-btn{border:1px solid #E5E7EB;background:#fff;color:#374151;font-size:12px;font-weight:600;padding:5px 10px;border-radius:8px;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+.subj-btn{border:1px solid #E5E7EB;background:#fff;color:#374151;font-size:14px;font-weight:700;padding:8px 12px;min-height:44px;border-radius:8px;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
 .subj-btn:hover{border-color:#1A1A2E;color:#1A1A2E}
 .subj-btn-car{color:#9CA3AF;font-size:10px}
 .fire-type{background:#FEE2E2;color:#DC2626}
@@ -272,8 +271,8 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;min-heigh
    rather than beside them, so leaving an encounter is never a mis-tap. */
 .flee-btn{display:block;margin:14px auto 2px;background:transparent;border:1.5px solid rgba(255,255,255,0.3);color:rgba(255,255,255,0.8);font-family:inherit;font-size:12px;font-weight:700;padding:7px 20px;border-radius:20px;cursor:pointer;transition:background 0.15s,border-color 0.15s}
 .flee-btn:hover{background:rgba(255,255,255,0.12);border-color:rgba(255,255,255,0.55);color:#fff}
-#bottom-nav{display:none;position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:520px;flex-direction:row;background:white;border-top:1px solid #E5E7EB;z-index:100}
-.nav-tab{flex:1;background:none;border:none;border-top:2px solid transparent;padding:12px 8px 10px;font-size:14px;font-weight:600;color:#9CA3AF;cursor:pointer;font-family:inherit;transition:color 0.15s}
+#bottom-nav{display:none;position:relative;flex:0 0 auto;width:100%;flex-direction:row;background:white;border-top:1px solid #E5E7EB;z-index:5;padding-bottom:env(safe-area-inset-bottom,0px)}
+.nav-tab{flex:1;background:none;border:none;border-top:2px solid transparent;padding:12px 8px 10px;min-height:44px;font-size:14px;font-weight:600;color:#4B5563;cursor:pointer;font-family:inherit;transition:color 0.15s}
 .nav-tab.nav-active{color:#1A1A2E;border-top-color:#1A1A2E}
 #catch-overlay{display:none;position:fixed;inset:0;background:linear-gradient(180deg,#0d2b0d,#1a4a1a 55%,#2a5e2a);z-index:999;flex-direction:column;align-items:center;justify-content:center}
 #catch-overlay.active{display:flex}
@@ -432,7 +431,9 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;min-heigh
 /* On a short screen (a phone with the keyboard open) the buddy grid keeps a
    row and scrolls inside the card. The name and confirm button stay under it. */
 @media (max-height:700px){
-  .who-form{display:flex;flex-direction:column;max-height:calc(100dvh - 96px);overflow:hidden}
+  #app-main:has(.who-form){display:flex;flex-direction:column;overflow:hidden}
+  #profiles-page:has(.who-form),#who-screen:has(.who-form){flex:1 1 auto;min-height:0;display:flex;flex-direction:column;overflow:hidden}
+  .who-form{display:flex;flex-direction:column;flex:1 1 auto;min-height:0;max-height:none;overflow:hidden}
   .who-form .ava-grid{overflow:auto;min-height:132px;flex:1 1 132px;margin:0 0 6px;align-content:start}
   .who-form-foot{flex:0 0 auto;background:#fff}
   .who-form .big-back{padding:10px 14px;margin-bottom:6px}
@@ -447,13 +448,31 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;min-heigh
 .form-hint{font-size:14px;font-weight:700;color:#374151;text-align:center;margin:4px 0 8px}
 .confirm-ava{margin-bottom:16px}
 .remove-copy{font-size:15px;color:#374151;line-height:1.45;margin:8px 0 14px;text-align:center}
-.who-btn{display:inline-flex;align-items:center;gap:6px;border:1px solid #E5E7EB;background:#fff;border-radius:999px;padding:2px 10px 2px 3px;font-family:inherit;font-weight:800;font-size:14px;color:#1A1A2E;cursor:pointer;max-width:46%}
+.who-btn{display:inline-flex;align-items:center;gap:6px;border:1px solid #E5E7EB;background:#fff;border-radius:999px;padding:4px 12px 4px 4px;min-height:44px;font-family:inherit;font-weight:800;font-size:14px;color:#1A1A2E;cursor:pointer;max-width:46%}
 .who-btn img{width:28px;height:28px;object-fit:contain}
 .who-btn span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 /* Small and separate from the Game / Pokédex tabs, so it isn't a thing to tap
    while playing. It sits in the page, not over the buttons. */
-.parents-link{display:block;margin:0 auto 8px;background:transparent;border:none;color:#374151;font-size:13px;font-weight:800;text-decoration:underline;cursor:pointer;font-family:inherit;padding:2px 8px}
+.parents-link{display:flex;align-items:center;justify-content:center;width:max-content;margin:0 auto 8px;background:transparent;border:none;color:#374151;font-size:16px;font-weight:800;text-decoration:underline;cursor:pointer;font-family:inherit;padding:8px 16px;min-height:44px}
 .parents-link[hidden]{display:none}
+.name-line{display:flex;flex-wrap:nowrap;align-items:center;gap:6px;background:#fff;border-radius:16px;padding:6px 8px;margin-bottom:8px;box-shadow:0 2px 8px rgba(0,0,0,0.06)}
+.name-line:has(.parent-err:not([hidden])){flex-wrap:wrap}
+.name-line-lbl{font-size:14px;font-weight:800;color:#1A1A2E;flex:0 1 auto;white-space:nowrap}
+.name-line .who-field{flex:1 1 60px;min-width:0;width:auto;min-height:44px;margin:0;padding:8px 10px}
+.name-line-go{flex:0 0 auto;min-height:44px;border:none;border-radius:12px;background:#1A1A2E;color:#fff;font-family:inherit;font-weight:800;font-size:14px;padding:8px 10px;cursor:pointer;white-space:nowrap}
+.name-line .parent-err{flex:1 1 100%;margin:0}
+/* On a narrow phone the label, the field, and the button cannot share
+   one row — the field shrinks to a sliver. The label takes its own line. */
+@media (max-width:420px){
+  .name-line{flex-wrap:wrap}
+  .name-line-lbl{flex:1 0 100%}
+  .name-line .who-field{flex:1 1 120px;min-width:120px}
+}
+/* Sits in the column's top-right, in the header's right padding, so it
+   never covers the subject button. 52px wide, 4px in from the column edge. */
+.mute-btn{position:absolute;z-index:1001;top:max(8px,env(safe-area-inset-top,0px));right:4px;width:52px;min-width:44px;height:44px;display:flex;align-items:center;justify-content:center;gap:2px;padding:0 3px;border-radius:999px;border:2px solid #1A1A2E;background:#fff;color:#1A1A2E;font-family:inherit;font-weight:800;font-size:11px;line-height:1;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.12);white-space:nowrap}
+.mute-btn .mute-ico{font-size:15px;line-height:1}
+.mute-btn .mute-lbl{line-height:1}
 .parent-kicker{font-size:12px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#374151}
 .parent-title{font-size:24px;font-weight:800;color:#1A1A2E;margin:2px 0 6px}
 .parent-lead{font-size:14px;color:#6B7280;line-height:1.45;margin-bottom:12px}
@@ -462,6 +481,7 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;min-heigh
 .parent-ans:focus{outline:none;border-color:#1A1A2E}
 .parent-err{color:#9A3412;font-size:14px;font-weight:700;text-align:center;margin-top:8px}
 #parent-check{max-width:520px;margin-left:auto;margin-right:auto}
+#parent-check .who-go.stick{position:static;bottom:auto}
 .parent-grid{display:grid;grid-template-columns:1fr;gap:12px;align-items:start}
 @media (min-width:700px){
   .parent-grid{grid-template-columns:1fr 1fr}
@@ -483,16 +503,246 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;min-heigh
 .parent-again{margin-top:10px}
 .parent-again h3{font-size:14px;font-weight:800;color:#5B21B6;margin-bottom:4px}
 .parent-again p{font-size:14px;color:#1A1A2E;margin:3px 0}
+/* Short screens. These come last so they win over the base sizes.
+   The bar is already in the flow; this only keeps the picture, the
+   question, and the buttons on screen together. */
+@media (max-height:900px){
+  .psvg img{width:100px;height:100px}
+}
+@media (max-height:900px) and (min-height:821px){
+  .pad-check{grid-column:auto}
+}
+@media (orientation:landscape) and (max-height:820px){
+  #app-main{padding:6px 12px 6px}
+  .hdr{margin-bottom:6px}
+  .card{padding:10px 14px;margin-bottom:8px}
+  .psvg{margin:2px 0}
+  .psvg img{width:80px;height:80px}
+  .qtext{margin-bottom:8px;font-size:16px;line-height:1.35}
+  .pad-wrap{margin-bottom:6px}
+  .pad-read{min-height:40px;font-size:28px;margin-bottom:6px}
+  .numpad{gap:6px}
+  .pad-key{min-height:44px;font-size:22px}
+  .pad-check{min-height:44px}
+}
+/* A phone portrait still shows the Pokémon, the XP, and the badges.
+   The picture is smaller so Check stays on screen. */
+@media (max-width:560px) and (min-height:500px){
+  #app-main{padding:8px 12px 8px}
+  .hdr{margin-bottom:6px}
+  .card{padding:10px 12px;margin-bottom:8px}
+  .psvg{margin:2px 0}
+  .psvg img{width:84px;height:84px}
+  .pname{font-size:18px}
+  .qtext{margin-bottom:8px}
+  .pad-wrap{margin-bottom:6px}
+  .pad-read{min-height:44px;font-size:30px;margin-bottom:6px}
+  .pad-key{min-height:48px}
+  .pad-check{grid-column:auto;min-height:48px}
+}
+/* A narrow phone (about 320 wide) can show the picture, XP, and badges
+   and still keep Check on screen. The picture and the keys scale down. */
+@media (max-width:400px) and (max-height:640px){
+  .hdr{margin-bottom:2px}
+  .card{padding:4px 8px;margin-bottom:4px}
+  .pcard{padding:4px 8px}
+  .pcard .pnum{display:none}
+  .pname{font-size:16px}
+  .psvg{margin:0}
+  .psvg img{width:44px;height:44px}
+  .xp-row{margin-bottom:1px}
+  .xp-track{height:6px}
+  .badge-row{margin-top:2px}
+  .q-head{margin-bottom:2px}
+  .qtext{margin-bottom:4px;font-size:15px;line-height:1.25}
+  .pad-read{min-height:32px;font-size:24px;margin-bottom:2px}
+  .numpad{gap:4px}
+  .pad-key,.pad-check{min-height:40px;font-size:20px}
+  .help-btn{padding:6px 8px;font-size:13px}
+}
+/* A sideways phone. Reading keeps a small picture and its choices.
+   Math hides the picture only while the keys are up. After the answer
+   the picture comes back small, and Next stays on screen. */
+@media (max-height:520px){
+  #app-main{padding:4px 8px 4px}
+  .hdr{margin-bottom:2px}
+  .card{padding:6px 8px;margin-bottom:4px}
+  .pcard{padding:4px 8px}
+  .pcard .pnum,.pcard .xp-row,.pcard .xp-track,.pcard .badge-row,.pcard .candy-btn,.pcard .great-note{display:none}
+  .pname{font-size:16px}
+  .psvg{margin:0}
+  .psvg img{width:48px;height:48px}
+  .q-head{margin-bottom:2px}
+  .qtext{margin-bottom:4px;font-size:14px;line-height:1.25}
+  .ans-grid{gap:6px;margin-bottom:4px}
+  .ans-btn{padding:8px 6px;min-height:40px}
+  .help-btn{padding:6px 8px;font-size:13px;line-height:1.2}
+  .nxt-btn{padding:10px}
+  .pad-wrap{margin-bottom:4px}
+  .pad-read{min-height:28px;font-size:20px;margin-bottom:4px}
+  .numpad{gap:4px}
+  .pad-key,.pad-check{min-height:40px;font-size:18px}
+  .pad-check{grid-column:auto}
+  body:has(.numpad) .pcard{display:none}
+  body:has(.numpad) .q-head{display:none}
+}
+@media (max-height:360px){
+  #app-main{padding:2px 8px 2px}
+  .hdr{margin-bottom:0}
+  .q-head{display:none}
+  .card{padding:4px 8px;margin-bottom:2px}
+  .qtext{margin-bottom:2px;font-size:13px;line-height:1.2}
+  .psvg img{width:40px;height:40px}
+  .pad-read{min-height:22px;font-size:16px;margin-bottom:2px}
+  .pad-wrap{margin-bottom:2px}
+  .numpad{gap:4px;grid-template-columns:repeat(4,1fr)}
+  #parent-check .numpad{grid-template-columns:repeat(3,1fr)}
+  .pad-key,.pad-check{min-height:40px;font-size:16px}
+  .help-btn{padding:4px 8px;font-size:13px}
+  .ans-btn{padding:6px 4px;min-height:36px;font-size:14px}
+}
+/* An old save asks for a name. Phones and short screens drop the picture
+   so the question stays up. A tablet or a laptop keeps the picture, the
+   XP, and the badges. */
+@media (max-width:700px),(max-height:520px){
+  body:has(#name-ask) .pcard .pnum,
+  body:has(#name-ask) .pcard .psvg,
+  body:has(#name-ask) .pcard .xp-row,
+  body:has(#name-ask) .pcard .xp-track,
+  body:has(#name-ask) .pcard .badge-row,
+  body:has(#name-ask) .pcard .candy-btn,
+  body:has(#name-ask) .pcard .great-note{display:none}
+  body:has(#name-ask) .pcard{padding:6px 10px;margin-bottom:6px}
+  body:has(#name-ask) .pcard .pname{font-size:16px}
+}
+@media (max-height:520px){
+  body:has(#name-ask) .pcard{display:none}
+  body:has(#name-ask) .hdr{margin-bottom:2px}
+  body:has(#name-ask) .name-line{margin-bottom:4px;padding:4px 8px}
+  body:has(#name-ask) .q-head{display:none}
+  body:has(#name-ask) .card{padding:6px 8px;margin-bottom:4px}
+  body:has(#name-ask) .qtext{margin-bottom:4px;font-size:14px;line-height:1.25}
+  body:has(#name-ask) .ans-btn{min-height:36px;padding:6px 4px}
+}
+/* Parents PIN on a short sideways phone. The button stays under the
+   keys instead of sticking on top of them, and every key stays on screen. */
+@media (max-height:520px){
+  #app-main:has(#parent-check){display:flex;flex-direction:column;overflow:hidden;padding:4px 8px}
+  #parent-page:has(#parent-check){flex:1 1 auto;min-height:0;display:flex;flex-direction:column;overflow:hidden}
+  #parent-page:has(#parent-check) .hdr{display:none}
+  #parent-page:has(#parent-check) .big-back{flex:0 0 auto;padding:4px 10px;margin-bottom:2px;min-height:32px;font-size:14px}
+  #parent-check{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;overflow:hidden;padding:4px 8px;margin:0}
+  #parent-check .parent-kicker,#parent-check .parent-lead{display:none}
+  #parent-check .parent-title{font-size:15px;margin:0}
+  #parent-check .parent-q{font-size:14px;margin:0 0 2px}
+  #parent-check .pad-wrap{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;margin:0}
+  #parent-check .pad-read{flex:0 0 auto;min-height:22px;font-size:18px;margin-bottom:2px}
+  #parent-check .numpad{flex:1 1 auto;min-height:0;gap:4px;grid-template-rows:repeat(4,minmax(36px,1fr))}
+  #parent-check .pad-key{min-height:36px;height:100%;font-size:18px}
+  #parent-check .who-go.stick{position:static;flex:0 0 auto;margin-top:2px;padding:6px}
+}
+/* Short sideways phone: the four subjects have to sit fully above the bar.
+   The blurbs wrap to two lines and push Science and Mix it up onto the tabs. */
+@media (max-height:400px){
+  #game:has(.subj-choice-grid) .hdr{margin-bottom:2px}
+  .starter-card:has(.subj-choice-grid){padding:4px 8px 6px;margin-bottom:0}
+  .subj-ask{font-size:15px;margin-bottom:0}
+  .subj-ask-sub{display:none}
+  .subj-choice-grid{gap:6px}
+  .subj-opt{padding:4px 6px;gap:1px}
+  .subj-opt-ico{font-size:18px}
+  .subj-opt-sub{display:none}
+  .subj-opt-name{font-size:14px;line-height:1.15}
+}
+/* A Gym ending or a prize has to keep Back to practice / Yay! on screen.
+   The note can scroll inside the card. The button stays at the bottom of
+   the area above the bar. */
+@media (max-height:520px){
+  #app-main:has(.gym-end),
+  #app-main:has(.award-card){display:flex;flex-direction:column;overflow:hidden;padding:4px 8px}
+  #game:has(.gym-end),
+  #game:has(.award-card){flex:1 1 auto;min-height:0;overflow:hidden}
+  #game:has(.gym-end) > .hdr,
+  #game:has(.award-card) > .hdr{flex:0 0 auto;margin-bottom:2px}
+  #game:has(.gym-end) > .gym-card{flex:0 0 auto;padding:4px 8px;margin-bottom:2px}
+  #game:has(.gym-end) .gym-card .psvg{margin:0}
+  #game:has(.gym-end) .gym-card .psvg img{width:36px;height:36px}
+  #game:has(.gym-end) .gym-name{font-size:15px}
+  #game:has(.gym-end) .gym-role{margin:0}
+  #game:has(.gym-end) .heart{font-size:16px}
+  #game:has(.gym-end) .hp{margin-top:0}
+  #game:has(.gym-end) > .you-row{flex:0 0 auto;margin:0 0 2px}
+  #game:has(.gym-end) > .gym-end,
+  #game:has(.award-card) > .award-card{flex:1 1 auto;min-height:0;margin-bottom:0;display:flex;flex-direction:column;overflow:hidden;padding:6px 8px}
+  .gym-end-scroll,.award-scroll{flex:1 1 auto;min-height:0;overflow:auto}
+  .gym-end p{font-size:13px;margin:2px 0 4px;line-height:1.3}
+  .gym-end .gym-hint{padding:4px 8px;margin:0 0 4px;font-size:12px}
+  #game:has(.gym-end) #gym-back,
+  #game:has(.award-card) #award-go{flex:0 0 auto;min-height:40px;padding:8px 12px}
+  .award-kicker{font-size:11px}
+  .award-title{font-size:16px;margin:2px 0}
+  .award-sub,.award-prize{font-size:13px;margin:2px 0}
+  .badge.big{font-size:14px;padding:4px 8px;margin:2px 0}
+  .award-scroll .psvg{margin:2px 0}
+  .award-scroll .psvg img{width:48px;height:48px}
+}
+/* Counting pictures in a hint are tall. On a short screen they shrink, and
+   the Pokémon card steps aside, so the picture stays above the bar. */
+@media (max-height:520px){
+  body:has(.hint-visual) .pcard{display:none}
+  body:has(.hint-visual) .q-head{display:none}
+  body:has(.hint-visual) .card{padding:4px 8px;margin-bottom:4px}
+  .help-box{padding:6px 8px;font-size:13px;line-height:1.3}
+  .help-keep{margin-top:2px;font-size:12px}
+  .hint-visual{margin-top:4px;padding:4px 4px 2px}
+  .help-box .hint-visual{margin-top:4px}
+  .hv-mark{width:22px;height:22px}
+  .hv-mark svg{width:20px;height:20px}
+  .hv-group{padding:3px;gap:2px}
+  .hv-op{font-size:16px}
+  .hv-cap{margin-top:2px;font-size:12px}
+  .ten-frame{grid-template-columns:repeat(5,18px);grid-auto-rows:18px;gap:2px;padding:3px}
+  .ten-frame .hv-mark,.tf-cell.empty,.tf-cell.slot{width:18px;height:18px}
+  .ten-frame .hv-mark svg{width:14px;height:14px}
+}
+/* Adding or renaming a trainer on a short sideways phone. The buddy grid
+   scrolls inside the card. The name and the button stay on screen.
+   Inline display:block on the profiles page would otherwise ignore the
+   column and clip the button with no way to scroll. */
+@media (max-height:420px){
+  #app-main:has(.who-form){display:flex;flex-direction:column;overflow:hidden;padding:2px 8px 4px}
+  #app-main:has(.who-form) .parents-link{min-height:0;padding:2px 8px;margin:0;font-size:14px}
+  #profiles-page:has(.who-form),
+  #who-screen:has(.who-form){flex:1 1 auto;min-height:0;display:flex !important;flex-direction:column;overflow:hidden}
+  #who-screen:has(.who-form) .hdr{flex:0 0 auto;margin-bottom:2px}
+  .who-form{flex:1 1 auto;min-height:0;overflow:hidden;padding:4px 8px;margin-bottom:0;display:flex;flex-direction:column}
+  .who-form .big-back{flex:0 0 auto;padding:4px 8px;margin-bottom:2px;min-height:32px;font-size:14px}
+  .who-form .parent-title{flex:0 0 auto;font-size:16px;margin:0}
+  .who-form .parent-lead{flex:0 0 auto;font-size:12px;line-height:1.25;margin:0 0 2px}
+  .who-form .confirm-ava{flex:0 0 auto;margin:0}
+  .who-form .confirm-ava img{width:36px;height:36px}
+  .who-form .ava-grid{flex:1 1 auto;min-height:0;overflow:auto;gap:4px;margin:0}
+  .who-form .ava-opt{padding:2px}
+  .who-form .ava-opt img{width:36px;height:36px}
+  .who-form-foot{flex:0 0 auto}
+  .who-form .who-field{margin:0 0 2px;padding:6px 8px;min-height:36px;font-size:16px}
+  .who-form .form-hint,.who-form .parent-err{font-size:12px;margin:0 0 2px}
+  .who-form .who-go{padding:6px;min-height:36px}
+  .who-form .who-danger{margin:2px auto 0;padding:2px}
+}
 </style>
 </head>
 <body>
 <div class="wrap">
+<button type="button" id="mute-btn" class="mute-btn" aria-pressed="false" aria-label="Sound on"><span class="mute-ico" aria-hidden="true">&#128266;</span><span class="mute-lbl">On</span></button>
+<main id="app-main">
 <button type="button" id="parents-link" class="parents-link">Parents</button>
 
 <div id="game"></div>
 <div id="pokedex-page"></div>
 <div id="profiles-page"></div>
 <div id="parent-page"></div>
+</main>
 
 <div id="bottom-nav">
   <button class="nav-tab nav-active" id="nav-game">&#127918; Game</button>
@@ -1012,7 +1262,7 @@ math:{
   ["What number comes after 5?",["4","5","6","7"],2,"Counting star!","Count from 1 out loud and stop right after 5."],
   ["{P} had 4 apples. Eats 1. How many left?",["2","3","4","5"],1,"Smart subtract!","Hold up 4 fingers. Fold 1 down. How many are still up?"],
   ["What shape has 3 sides?",["Circle","Square","Triangle","Rectangle"],2,"Shape detective!","Tri- means three, like a tricycle has 3 wheels!"],
-  ["What shape is a pizza?",["Triangle","Circle","Square","Rectangle"],1,"Shape genius!","A pizza is round with no corners!"],
+  ["What shape is a whole pizza?",["Triangle","Circle","Square","Rectangle"],1,"Shape genius!","A whole pizza is round with no corners!"],
   ["Which 3D shape has a pointy top and a round bottom?",["Cube","Sphere","Cylinder","Cone"],3,"3D genius!","Which shape comes to a point at the top?"],
   ["What is 5 - 2?",["1","2","3","4"],2,"Subtraction star!","Count back 2 from 5!"],
   ["What number comes before 4?",["2","3","4","5"],1,"Number order!","Say the numbers in order and stop just before 4."],
@@ -1170,7 +1420,7 @@ math:{
   ["What is 20 divided by 4?",["4","5","6","8"],1,"Division ace!","Count by 4s up to 20 and count your jumps."],
   ["8 Poke Balls go into 2 equal bags. How many in each bag?",["2","3","4","5"],2,"Fair share!","Deal them out one at a time into two bags."],
   ["What is 18 divided by 3?",["5","7","9","6"],3,"Divide genius!","Count by 3s up to 18 and count your jumps."],
-  ["{P} has 16 berries and 4 friends. Everyone gets the same. How many each?",["4","3","5","6"],0,"Equal shares!","Deal them out one at a time around the four friends."],
+  ["4 friends share 16 berries evenly. How many does each friend get?",["4","3","5","6"],0,"Equal shares!","Deal the berries out one at a time to the four friends."],
   ["A team of 6 shares 24 berries evenly. How many does each get?",["3","4","5","6"],1,"Team share!","Count by 6s up to 24 and count your jumps."],
   ["What is HALF of 20?",["5","8","10","12"],2,"Halves hero!","Split 20 into two equal parts."],
   ["What is HALF of 14?",["6","8","9","7"],3,"Halving pro!","Split 14 into two equal parts."],
@@ -1284,8 +1534,8 @@ reading:{
   ["{P} hid under the bed. Where did {P} hide?",["On the roof","Under the bed","In a tree","Behind a rock"],1,"Where reader!","What place did the sentence mention?"],
   ["What do you call the person who WRITES a book?",["Illustrator","Author","Publisher","Reader"],1,"Book expert!","This person thinks up the story and writes all the words down."],
   ["What does the ILLUSTRATOR of a book do?",["Writes the words","Draws the pictures","Prints the book","Sells the book"],1,"Book artist!","The illustrator creates all the pictures!"],
-  ["Which sentence starts CORRECTLY?",["the bird flew.","The bird flew.","THE bird flew.","tHe bird flew."],1,"Capital starter!","Every sentence must start with a capital letter!"],
-  ["Which sentence uses the word I correctly?",["Today i played outside.","Today I played outside.","today I played outside.","today i played outside."],1,"Capital I!","The word I is always written as a capital letter!"],
+  ["Which sentence is capitalized correctly?",["the bird flew.","The bird flew.","THE bird flew.","tHe bird flew."],1,"Capital starter!","The first letter is a capital. The rest of that word stays small."],
+  ["Which sentence uses capitals correctly?",["Today i played outside.","Today I played outside.","today I played outside.","today i played outside."],1,"Capital I!","A sentence starts with a capital letter, and the word I is a capital letter too."],
   ["Which mark ends a TELLING sentence — like 'The cat sat'?",["?","!",".",","],2,"Period pro!","A period ends a sentence that tells something!"],
   ["Which mark ends a QUESTION?",[".",",","?","!"],2,"Question mark star!","A question mark ends a sentence that asks something!"],
   ["Which mark shows EXCITEMENT — like 'I won'?",[".",",","?","!"],3,"Excited ending!","An exclamation mark shows excitement or surprise!"],
@@ -1297,7 +1547,7 @@ reading:{
 ],
 2:[
   ["{P} sat on a ___. Which word fits?",["Purple","Log","Loudly","Never"],1,"Reading genius!","Which word makes the sentence make sense?"],
-  ["What word fits? {P} is very ___.",["Under","Fast","Purple","Never"],1,"Smart reader!","Try each word in the sentence. Which one tells how {P} can move?"],
+  ["What word fits? {P} can go very ___.",["Under","Fast","Purple","Never"],1,"Smart reader!","Try each word in the sentence. Which one tells how {P} can move?"],
   ["Which word rhymes with FIRE?",["Water","Jump","Tire","Rain"],2,"Rhyme rockstar!","Rhyming words end the same. Try saying each one right after FIRE."],
   ["What sound does a cat make?",["Woof","Moo","Meow","Quack"],2,"Animal expert!","Think about the sound a cat makes when it wants your attention."],
   ["What word fits? {P} can ___ very fast.",["Purple","Run","Never","Under"],1,"Reading star!","Which word shows what {P} can do?"],
@@ -1340,7 +1590,7 @@ reading:{
   ["Which word has a LONG vowel sound?",["Frog","Drum","Tune","Sled"],2,"Long vowel star!","A long vowel says its letter's name, like the O in 'go' or the E in 'me'. Say each word out loud."],
   ["{P} woke up early and ate breakfast. When did {P} eat?",["At night","In the evening","Early in the morning","At lunchtime"],2,"When reader!","When did the sentence say {P} ate?"],
   ["Which word starts with SH?",["Train","Frog","Sheep","Ball"],2,"SH spotter!","Make a quiet shhh sound. Which word starts that way?"],
-  ["Which word rhymes with BLOCK?",["Brick","Clock","Stone","Wall"],1,"Rhyme wizard!","Big... twig... do they sound the same?"],
+  ["Which word rhymes with BLOCK?",["Brick","Clock","Stone","Wall"],1,"Rhyme wizard!","Say BLOCK, then say each word. Which ending sounds the same?"],
   ["Which word has a SHORT vowel sound?",["Age","Tea","Log","Sky"],2,"Short vowel champ!","A short vowel is a quick sound, like the A in 'hat' or the U in 'bug'. The other words say a letter's name."],
   ["Which word starts with SH — like SHEEP?",["Train","Shoe","Ball","Frog"],1,"SH spotter!","SH makes one special sound — SHHH!"],
   ["Which word starts with CH — like CHEESE?",["Train","Fish","Chip","Ball"],2,"CH starter!","CH makes one sound — like CHHHH!"],
@@ -1357,7 +1607,7 @@ reading:{
 3:[
   ["{P} ran ___ the tall mountain.",["up","purple","loudly","never"],0,"Sentence superstar!","Which word tells where {P} ran?"],
   ["{P} was ___ because it won the race.",["under","happy","purple","loudly"],1,"Great reading!","Which word shows how {P} felt?"],
-  ["The sky is ___ today.",["purple","sing","blue","run"],2,"Sentence genius!","Look up on a sunny day. What color do you see?"],
+  ["The sky is ___ on a sunny day.",["purple","sing","blue","run"],2,"Sentence genius!","Look up on a sunny day. What color do you see?"],
   ["{P} jumped ___ the big puddle.",["over","purple","loudly","never"],0,"Reading rockstar!","Which word tells how {P} jumped?"],
   ["Which sentence makes sense?",["The cat barked loudly.","The dog barked loudly.","The fish barked loudly.","The bird barked loudly."],1,"Logic master!","Which animal makes a barking sound?"],
   ["{P} felt ___ when it evolved!",["never","under","excited","purple"],2,"Feeling words!","How would you feel if you got bigger and stronger? Pick the feeling word."],
@@ -1398,7 +1648,7 @@ reading:{
   ["SLEEP-LESS means ___.",["Full of sleep","Very sleepy","Without sleep","Needs sleep"],2,"Suffix genius!","-less means 'without' — sleepless means without...?"],
   ["{P} helped others and felt happy. This story teaches ___.",["Keep everything for yourself","Helping others makes you happy too","Never help anyone","Always ask for rewards"],1,"Moral master!","What did {P} learn from helping?"],
   ["Which word has a LONG vowel sound?",["Fun","Dog","Sky","Cup"],2,"Long vowel ace!","A long vowel says its letter's name, like the O in 'go' or the E in 'me'. Say each word out loud."],
-  ["The word UN-wrap means ___.",["Wrap again","Wrap tightly","Open by unwrapping","Not wrap"],2,"Prefix detective!","UN means the opposite — unwrap is the opposite of wrap!"],
+  ["The word UN-wrap means ___.",["Wrap again","Wrap tightly","Open by unwrapping","Hide it away"],2,"Prefix detective!","Unwrap means you open something that was wrapped."],
   ["Which word has TWO syllables?",["Spread","Sprint","Garden","Squeal"],2,"Syllable champ!","Clap it out: Gar-den — how many claps?"],
   ["PEACE-FUL means ___.",["Without peace","Full of peace","Needs peace","Sort of peaceful"],1,"Suffix star!","-ful means full of — peaceful means full of...?"],
 ],
@@ -1507,7 +1757,7 @@ science:{
   ["What do plants need to grow?",["Toys","Sunlight","Pillows","Music"],1,"Plant scientist!","Plants make food from something that shines down from the sky. What is it?"],
   ["How many legs does a spider have?",["4","6","8","10"],2,"Bug scientist!","Count the legs on a spider — more than a dog!"],
   ["What does {P} use its NOSE for?",["Seeing","Hearing","Smelling","Tasting"],2,"Senses explorer!","What do you use to smell flowers?"],
-  ["Which animal can swim?",["Cat","Duck","Horse","Rabbit"],1,"Swim scientist!","Which animal has webbed feet for paddling?"],
+  ["Which animal has webbed feet for swimming?",["Cat","Duck","Horse","Rabbit"],1,"Swim scientist!","Which animal has webbed feet for paddling?"],
   ["What falls from the sky when it rains?",["Water drops","Sand grains","Dry leaves","Tiny rocks"],0,"Weather watcher!","What do you see falling on a rainy day?"],
   ["Which body part does {P} use to TASTE food?",["Tongue","Eyelid","Eardrum","Nostril"],0,"Taste scientist!","Which part is inside your mouth and can tell sweet from sour?"],
   ["What does a dog need to stay alive?",["Water and food","Toys and games","Music and TV","Hats and coats"],0,"Animal needs ace!","What do all living things need?"],
@@ -1519,13 +1769,13 @@ science:{
   ["What do plants get from the sun?",["Rain","Snow","Sunlight","Lightning"],2,"Plant needs star!","What do plants need to make their food?"],
   ["Which type of weather is windy with lightning?",["Snow","Sunshine","Storm","Drizzle"],2,"Storm watcher!","Which weather is loud and flashy?"],
   ["{P} pushed a rock and it rolled away. What did {P} do?",["Pulled it","Lifted it","Pushed it","Threw it"],2,"Push/pull star!","When you push something, you move it away from you!"],
-  ["Which animal hops?",["Fish","Frog","Bird","Snake"],1,"Animal mover!","Which animal moves by jumping and hopping?"],
-  ["What color is the sun?",["Blue","Red","Yellow","Green"],2,"Sun scientist!","What color do you see in the sky during the day?"],
+  ["Which animal hops on lily pads?",["Fish","Frog","Bird","Snake"],1,"Animal mover!","Which animal jumps from pad to pad in a pond?"],
+  ["What color is the sun in the daytime?",["Blue","Red","Yellow","Green"],2,"Sun scientist!","It is the same color as a lemon."],
   ["Which animal has feathers?",["Dog","Fish","Bird","Cat"],2,"Bird scientist!","Which animal wears feathers instead of fur?"],
   ["{P} pulled a wagon full of berries. What did {P} do to the wagon?",["Pushed it","Pulled it","Kicked it","Threw it"],1,"Pull scientist!","When you pull something, you bring it toward you!"],
   ["What does {P} need to eat and drink to stay healthy?",["Food and water","Paint and ink","Songs and fun","Rocks and mud"],0,"Health scientist!","What does your body need every day?"],
   ["Which animal lives underground?",["Bird","Fish","Mole","Eagle"],2,"Habitat expert!","Which animal digs tunnels to live?"],
-  ["What falls from trees in autumn?",["Flowers","Fruit","Leaves","Seeds"],2,"Autumn scientist!","What changes color and falls in fall?"],
+  ["What changes color and falls off trees in autumn?",["Snow","Rocks","Leaves","Feathers"],2,"Autumn scientist!","What changes color and falls in fall?"],
   ["{P} flies a kite. What does the wind do to it?",["Pulls it down","Lifts it up","Buries it","Stops it"],1,"Wind explorer!","What does the wind help a kite do?"],
   ["Which animal has a shell?",["Turtle","Rabbit","Parrot","Badger"],0,"Animal armor ace!","Which animal carries its home on its back?"],
   ["What is ice made from?",["Snow","Water","Air","Dirt"],1,"States scientist!","Put a cup in the freezer overnight. What was in it before it froze?"],
@@ -1534,7 +1784,7 @@ science:{
   ["What happens to a puddle on a hot sunny day?",["It dries up","It gets bigger","It freezes","It turns red"],0,"Evaporation star!","What happens when the sun heats up water?"],
   ["Which sense helps {P} hear music?",["Hearing","Eyesight","Smelling","Tasting"],0,"Senses ace!","What sense do you use to listen to your favorite song?"],
   ["What do bees collect from flowers?",["Water","Nectar","Leaves","Dirt"],1,"Bee scientist!","What sticky sweet stuff do bees gather?"],
-  ["Which animal uses its long tongue to catch insects?",["Dog","Fish","Frog","Bird"],2,"Frog expert!","Which jumping animal catches bugs with its tongue?"],
+  ["Which pond animal catches bugs with its tongue?",["Dog","Fish","Frog","Bird"],2,"Frog expert!","Which jumping animal catches bugs with its tongue?"],
   ["What do we call the white stuff that falls in winter?",["Rain","Hail","Snow","Fog"],2,"Winter watcher!","What cold white fluffy stuff falls from the sky in winter?"],
   ["What is the moon?",["A large rock in the sky","A ball of fire","A cloud that glows","The sun seen at night"],0,"Space scientist!","The moon is a big round rock that orbits Earth!"],
   ["What kind of weather is very hot and bright?",["Rainy","Cloudy","Snowy","Sunny"],3,"Weather watcher!","What kind of weather makes you want to wear sunscreen?"],
@@ -1547,7 +1797,7 @@ science:{
 ],
 2:[
   ["{P} waters a plant. Which part drinks the water from the soil?",["Leaves","Flower","Roots","Stem"],2,"Plant scientist!","Which part grows down underneath the ground?"],
-  ["Where does a bear live?",["Ocean","Desert","Forest","Sky"],2,"Habitat expert!","Where do you see bears in nature?"],
+  ["Where does a black bear live?",["Ocean","Desert","Forest","Sky"],2,"Habitat expert!","Black bears live among the trees."],
   ["What do rabbits eat?",["Carrots","Beetles","Pebbles","Seaweed"],0,"Animal diet expert!","What do you give a bunny to eat?"],
   ["Which season has the MOST sunshine and warmest weather?",["Winter","Fall","Spring","Summer"],3,"Season scientist!","Which season is the hottest and sunniest?"],
   ["Where do penguins live?",["Ice and snow","Hot sand","Jungle","Treetops"],0,"Habitat champion!","Where is it very very cold?"],
@@ -1595,7 +1845,7 @@ science:{
   ["What keeps a turtle safe from predators?",["Fast legs","Hard shell","Sharp teeth","Long neck"],1,"Turtle expert!","What body armor does a turtle have?"],
   ["Which is a NOCTURNAL animal — active at night?",["Eagle","Owl","Parrot","Bee"],1,"Nocturnal star!","Which animal hunts and flies at night?"],
   ["A baby whale is called a ___.",["Pup","Cub","Calf","Joey"],2,"Marine mammal ace!","What do we call a baby whale?"],
-  ["What do all young animals have in common with their parents?",["Same body parts and features","Exactly the same colors and spots","Exactly the same size and weight","Exactly the same food and home"],0,"Baby animal champ!","A puppy and a dog both have 4 legs, fur and a tail. What do they share?"],
+  ["A baby dog grows up. What does the puppy share with the grown-up dog?",["Same body parts and features","Exactly the same colors and spots","Exactly the same size and weight","Wings and feathers"],0,"Baby animal champ!","A puppy and a dog both have 4 legs, fur and a tail. What do they share?"],
   ["What do tadpoles grow into?",["Fish","Birds","Frogs","Snakes"],2,"Life cycle expert!","A tadpole lives in water and grows up to be a..."],
   ["Where does a baby bird come from?",["A pond","An egg","A flower","A cloud"],1,"Life cycle star!","What breaks open when a baby bird hatches?"],
 ],
@@ -1614,7 +1864,7 @@ science:{
   ["Which is a FAST Earth event?",["An earthquake","Canyon forming","Mountain growing","Fossil forming"],0,"Earth science ace!","Which happens in seconds — not thousands of years?"],
   ["Which word describes something ROUGH?",["Rough sandpaper","Smooth glass jar","Soft cotton ball","Slippery wet ice"],0,"Texture scientist!","Rough means bumpy — like sandpaper!"],
   ["{P} watches a piece of paper burn. Is that REVERSIBLE?",["No — you can't unburn paper","Yes — the ash can turn back","Yes — water brings it back","Yes — ash always regrows"],0,"Change scientist!","Once paper burns, can you get it back?"],
-  ["Which animal would {P} find in the OCEAN?",["Polar bear","Dolphin","Camel","Eagle"],1,"Habitat genius!","Which animal swims in salty ocean water?"],
+  ["Which animal lives in the ocean all the time?",["Polar bear","Dolphin","Camel","Eagle"],1,"Habitat genius!","Which animal spends its whole life in the salty sea?"],
   ["Which word describes something BENDY?",["Hard rock","Stiff board","Rubber hose","Solid metal"],2,"Property scientist!","Bendy means it can bend without breaking!"],
   ["{P} mixes two paint colors. Is that REVERSIBLE?",["No — mixed colors are hard to separate","Yes — the colors separate as they dry","Yes — stirring backward unmixes them","Yes — a filter pulls them apart again"],0,"Change expert!","Once you mix paints, can you easily get the separate colors back?"],
   ["Which animal lives in the DESERT?",["Penguin","Camel","Dolphin","Frog"],1,"Desert habitat ace!","Which animal is built for hot, dry, sandy places?"],
@@ -1640,7 +1890,7 @@ science:{
   ["Which animal would {P} find in the GRASSLANDS?",["Penguin","Camel","Polar bear","Zebra"],3,"Savanna star!","Which striped animal roams the wide grassy plains?"],
   ["Which property tells us if something is HEAVY or LIGHT?",["Color","Texture","Weight","Temperature"],2,"Property detective!","Which property — how much does it weigh?"],
   ["{P} bakes a loaf of bread. Is that REVERSIBLE?",["No — you can't turn bread back to dough","Yes — you can unbake it in a freezer","Yes — adding water makes dough again","Yes — the yeast reverses it all"],0,"Baking scientist!","Once bread is baked, can you get the dough back?"],
-  ["Which animal burrows underground in the DESERT?",["Polar bear","Prairie dog","Penguin","Toucan"],1,"Desert burrower!","Which small animal digs tunnels to stay cool in the heat?"],
+  ["Which animal lives in grasslands and digs burrows?",["Polar bear","Prairie dog","Penguin","Toucan"],1,"Grassland burrower!","Which small animal digs tunnels in the grass?"],
   ["Which material floats in water?",["Light wood","Iron nail","Heavy rock","Glass marble"],0,"Float scientist!","Which material is light enough to float?"],
   ["{P} watches a puddle dry up in the sun. Is that REVERSIBLE — can the water come back?",["Yes — vapor can condense back to water","No — the water is gone forever and for good","No — the puddle turned into dry air","No — water can never come back again"],0,"Water cycle star!","Water vapor can cool and turn back into water — condensation!"],
   ["Which animal lives on ICE and swims in freezing water?",["Polar bear","Desert camel","Kangaroo","Bengal tiger"],0,"Arctic ace!","Which large white bear swims in freezing Arctic water?"],
@@ -2034,8 +2284,9 @@ function mkState(saved){
     s.bestStreak=saved.bestStreak;
     s.review=saved.review;
     s.practice=saved.practice||freshPractice();
-    // An award or a Gym in progress is resumed. Anything else interrupted
-    // (a wild encounter, an evolution) is still forfeited.
+    // An award or a Gym in progress is resumed. A wild fight still in
+    // progress is not. A catch or evolution is written down the moment it
+    // happens, so leaving during the animation keeps the Pokémon.
     s.phase=saved.award?'award':saved.gym?'gym':saved.team.length>0?'play':'starter';
   }
   return s;
@@ -2043,7 +2294,9 @@ function mkState(saved){
 
 // ---- save / restore -------------------------------------------------------
 // Only durable progress is stored. An in-flight practice question, a wild
-// encounter, a pending evolution, the streak and toasts are rebuilt fresh.
+// fight that is not caught yet, the streak and toasts are rebuilt fresh.
+// A pending evolution is already the new Pokémon in this payload, so a
+// reload during the "what's happening" button keeps the new form.
 // An open Gym question is kept: tries, help, ruled-out answers, thinking time.
 const SAVE_KEY='pkq-save';
 const SAVE_V=1;
@@ -2062,7 +2315,14 @@ function gamePayload(){
     activeIdx:st.activeIdx,
     // keyed by dex number, not array index, so PKM can grow without
     // silently remapping someone's team onto the wrong Pokemon
-    team:st.team.map(t=>({num:PKM[t.pi].num,level:t.level,xp:t.xp,shiny:!!t.shiny})),
+    team:st.team.map(t=>{
+      // The animation can still be showing the old form. The save already
+      // has the evolved one, from the moment the level-up happened.
+      let pi=t.pi;
+      const evo=st.pendingEvo;
+      if(evo&&t===activeTM()&&evo.fromPi===pi&&PKM[evo.toPi])pi=evo.toPi;
+      return {num:PKM[pi].num,level:t.level,xp:t.xp,shiny:!!t.shiny};
+    }),
     dex:st.pdx.map((caught,i)=>caught?PKM[i].num:null).filter(Boolean),
     shinyDex:st.sdx.map((caught,i)=>caught?PKM[i].num:null).filter(Boolean),
     stats:st.stats,
@@ -2568,7 +2828,7 @@ function showGameChrome(){
   parentEl.style.display='none';
   parentEl.innerHTML='';
   pdxEl.style.display='none';
-  gameEl.style.display='block';
+  gameEl.style.display='flex';
   document.getElementById('bottom-nav').style.display='flex';
   document.getElementById('nav-game').classList.add('nav-active');
   document.getElementById('nav-pdx').classList.remove('nav-active');
@@ -2584,7 +2844,7 @@ function bootInto(){
     if(st.gym.solved){
       st.gym.solved=false;
       st.gym.qi++;
-      if(st.gym.qi>=st.gym.queue.length){finishGymLose();render();return;}
+      if(st.gym.qi>=st.gym.queue.length){finishGymQueue();render();return;}
       dealGymQuestion();
     } else dealGymQuestion(true);
   } else if(st.phase==='play'){
@@ -2599,9 +2859,10 @@ function selectProfile(id){
     whoMode='list';
     pendingDelete=null;
     view='game';
-    if((st.phase==='play'&&!st.q)||(st.phase==='gym'&&st.gym&&!st.q)){bootInto();return;}
+    if((st.phase==='play'&&!st.q)||(st.phase==='gym'&&st.gym&&!st.q)){bootInto();histPush('game');return;}
     render();
     if(st.phase==='gym')armGymTimer();
+    histPush('game');
     return;
   }
   captureActive();
@@ -2615,6 +2876,7 @@ function selectProfile(id){
   pendingDelete=null;
   writeRoster();
   bootInto();
+  histPush('game');
 }
 // Same name, or the same buddy picture, and a child who can't read can open
 // the wrong game. Both have to be different. Editing keeps your own.
@@ -2656,6 +2918,7 @@ function beginWithPokemon(num,shiny){
   view='game';
   save();
   render();
+  histPush('game');
   return true;
 }
 function createProfile(name,avatar){
@@ -2686,6 +2949,7 @@ function editProfile(id,name){
   whoDraft={name:'',avatar:null,editId:null};
   writeRoster();
   renderWho();
+  histDropIf('who-form');
 }
 function deleteProfile(id){
   const was=profiles.activeId===id;
@@ -2732,11 +2996,13 @@ function resetCurrentProfile(){
 }
 function openProfiles(){
   pauseGymTimer();
+  hideMoments();
   if(activeKid())captureActive();
   whoMode='list';
   pendingDelete=null;
   view='who';
   renderWho();
+  histToWho();
 }
 function trySaveProfile(){
   const input=document.getElementById('profile-name');
@@ -2807,7 +3073,7 @@ function renderWho(){
     if(editing&&editKid)h+=`<button type="button" class="who-danger" id="edit-remove">Remove ${escapeHtml(editKid.name)}</button>`;
     h+=`</div></div></div>`;
     profilesEl.innerHTML=h;
-    document.getElementById('who-form-back').addEventListener('click',()=>{whoMode='list';whoDraft={name:'',avatar:null,editId:null};renderWho();});
+    document.getElementById('who-form-back').addEventListener('click',()=>{whoMode='list';whoDraft={name:'',avatar:null,editId:null};renderWho();histDropIf('who-form');});
     const input=document.getElementById('profile-name');
     const sync=()=>{
       whoDraft.name=input.value;
@@ -2857,12 +3123,14 @@ function renderWho(){
     view='game';
     if((st.phase==='play'&&!st.q)||(st.phase==='gym'&&!st.q))bootInto();
     else{render();if(st.phase==='gym')armGymTimer();}
+    histPush('game');
   });
   const nw=document.getElementById('profile-new');
   if(nw)nw.addEventListener('click',()=>{
     whoMode='create';
     whoDraft={name:'',avatar:null,editId:null};
     renderWho();
+    histPush('who-form');
   });
   profilesEl.querySelectorAll('[data-pick]').forEach(b=>b.addEventListener('click',()=>selectProfile(b.dataset.pick)));
   profilesEl.querySelectorAll('[data-edit]').forEach(b=>b.addEventListener('click',()=>{
@@ -2871,6 +3139,7 @@ function renderWho(){
     whoMode='edit';
     whoDraft={name:kid.name,avatar:kidPictureNum(kid),editId:kid.id};
     renderWho();
+    histPush('who-form');
   }));
 }
 function subjectSnap(data,sub){
@@ -3066,6 +3335,7 @@ function closeParent(){
   if(back==='who')renderWho();
   else if(back==='pdx')switchView('pdx');
   else{view='game';showGameChrome();if(st.phase==='gym')armGymTimer();}
+  histDropIf('parent');
 }
 function openParent(){
   if(view!=='parent')viewBeforeParent=view;
@@ -3076,6 +3346,7 @@ function openParent(){
   if(activeKid()){captureActive();writeRoster();}
   view='parent';
   renderParent();
+  histPush('parent');
 }
 function renderParent(){
   view='parent';
@@ -3307,6 +3578,21 @@ function finishGymLose(){
   g.over='lose';
   st.gymOffer[g.sub]={tier:g.tier,cool:GYM_COOLDOWN};
 }
+// The question list ran out while both sides still had hearts. Help, and a
+// correct answer after a miss, do not move hearts, so this is not a loss.
+function finishGymSafe(){
+  const g=st.gym;
+  if(!g||g.over)return;
+  g.over='safe';
+  st.gymOffer[g.sub]={tier:g.tier,cool:0};
+}
+function finishGymQueue(){
+  const g=st.gym;
+  if(!g||g.over)return;
+  if(g.kid<=0){finishGymLose();return;}
+  if(g.lead<=0){finishGymWin();return;}
+  finishGymSafe();
+}
 function leaveAfterGym(){
   st.gym=null;
   st.phase='play';
@@ -3325,7 +3611,7 @@ function startGym(sub){
 }
 function dealGymQuestion(resume){
   const g=st.gym;if(!g)return;
-  if(g.qi<0||g.qi>=g.queue.length){finishGymLose();render();return;}
+  if(g.qi<0||g.qi>=g.queue.length){finishGymQueue();render();return;}
   st.q=serveQuestion(g.sub,g.tier,g.queue[g.qi],questionPname());
   st.sel=null;st.cor=false;st.anim='';st.lastXp=0;st.draft='';
   st.phase='gym';
@@ -3384,7 +3670,7 @@ function onGymNext(){
   if(!st.cor)return;
   g.solved=false;
   g.qi++;
-  if(g.qi>=g.queue.length){finishGymLose();save();render();return;}
+  if(g.qi>=g.queue.length){finishGymQueue();save();render();return;}
   dealGymQuestion();
   save();
 }
@@ -3666,6 +3952,7 @@ function parseMathVisual(stem){
   if((m=s.match(/(\d+) Poke Balls go into (\d+) equal/)))return {op:'div',a:+m[1],b:+m[2]};
   if((m=s.match(/(\d+) \w+ into (\d+) equal/)))return {op:'div',a:+m[1],b:+m[2]};
   if((m=s.match(/(\d+) berries and (\d+) friends/)))return {op:'div',a:+m[1],b:+m[2]};
+  if((m=s.match(/(\d+) friends share (\d+) berries/)))return {op:'div',a:+m[2],b:+m[1]};
   if((m=s.match(/team of (\d+) shares (\d+)/)))return {op:'div',a:+m[2],b:+m[1]};
   if(nums.length!==2)return null;
   if(/^(Count by|What number comes|Which number is|How many)/i.test(s))return null;
@@ -3791,6 +4078,27 @@ function qCardHTML(resultMsg,btnLabel){
   if(gymTimerApplies()){
     h+=`<div class="gym-time" id="gym-time"><span class="gym-time-lbl">Thinking time</span><span class="gym-time-track"><span class="gym-time-fill" id="gym-time-fill"></span></span></div>`;
   }
+  // The picture rides along only while the text hint is actually up: asked for
+  // before answering, or shown after a miss. A solved question and a Pokemon
+  // that already fled don't carry one.
+  const hintUp=(!resolved&&st.tries===0&&st.helped)||(st.tries>0&&!st.cor&&!st.wildEscape);
+  // A Gym badge has to be earned without the picture. The text hint still shows.
+  const visual=hintUp&&st.phase!=='gym'?visualHintHTML(q):'';
+  // Before the first answer only: after a miss the hint is already on screen. His
+  // own Pokemon is the one asked, even mid-encounter -- the wild one isn't his to ask.
+  let helpHTML='';
+  if(!resolved&&st.tries===0){
+    const helper=PKM[activePi()].n;
+    if(st.helped){
+      // Says outright that the streak is safe, because fear of losing it is the
+      // entire reason he was skipping -- the box has to answer that fear, not
+      // just carry the hint.
+      const keep=st.streak>1?`Get it right and your &#128293; ${st.streak} streak stays!`:'Take your time &#8212; you can do it!';
+      helpHTML=`<div class="help-box"><div class="help-say"><strong>${helper} says:</strong> ${q.hint}</div>${visual}<div class="help-keep">${keep}</div></div>`;
+    } else {
+      helpHTML=`<button class="help-btn" id="help-btn">&#128161; Ask ${helper} for help</button>`;
+    }
+  }
   if(isTypedQuestion(q)){
     h+=numpadHTML(q,resolved,arming,armLeft);
   }else{
@@ -3804,26 +4112,7 @@ function qCardHTML(resultMsg,btnLabel){
     });
     h+=`</div>`;
   }
-  // The picture rides along only while the text hint is actually up: asked for
-  // before answering, or shown after a miss. A solved question and a Pokemon
-  // that already fled don't carry one.
-  const hintUp=(!resolved&&st.tries===0&&st.helped)||(st.tries>0&&!st.cor&&!st.wildEscape);
-  // A Gym badge has to be earned without the picture. The text hint still shows.
-  const visual=hintUp&&st.phase!=='gym'?visualHintHTML(q):'';
-  // Before the first answer only: after a miss the hint is already on screen. His
-  // own Pokemon is the one asked, even mid-encounter -- the wild one isn't his to ask.
-  if(!resolved&&st.tries===0){
-    const helper=PKM[activePi()].n;
-    if(st.helped){
-      // Says outright that the streak is safe, because fear of losing it is the
-      // entire reason he was skipping -- the box has to answer that fear, not
-      // just carry the hint.
-      const keep=st.streak>1?`Get it right and your &#128293; ${st.streak} streak stays!`:'Take your time &#8212; you can do it!';
-      h+=`<div class="help-box"><div class="help-say"><strong>${helper} says:</strong> ${q.hint}</div>${visual}<div class="help-keep">${keep}</div></div>`;
-    } else {
-      h+=`<button class="help-btn" id="help-btn">&#128161; Ask ${helper} for help</button>`;
-    }
-  }
+  if(helpHTML)h+=helpHTML;
   if(st.tries>0){
     // Empty is the common case now -- no phase says anything here on a correct answer
     // -- and an empty .result-msg would still paint its padding as a bare stripe.
@@ -3837,8 +4126,7 @@ function qCardHTML(resultMsg,btnLabel){
 function nameAskHTML(){
   const kid=activeKid();
   if(!kid||!kid.askName)return '';
-  const face=faceForKid(kid);
-  return `<div class="card" id="name-ask"><div class="who-ava">${pkSprite(face.pi,64,face.shiny)}</div><div class="parent-title" style="text-align:center">What's your name?</div><label class="who-label" for="name-ask-input">Your name</label><input id="name-ask-input" class="who-field" maxlength="16" autocomplete="off" autocapitalize="words" enterkeyhint="done"><p class="parent-err" id="name-ask-err" hidden></p><button type="button" class="who-go" id="name-ask-save">This is me!</button></div>`;
+  return `<div class="name-line" id="name-ask"><label class="name-line-lbl" for="name-ask-input">What's your name?</label><input id="name-ask-input" class="who-field" maxlength="16" autocomplete="off" autocapitalize="words" enterkeyhint="done" aria-label="Your name"><button type="button" class="name-line-go" id="name-ask-save">This is me</button><p class="parent-err" id="name-ask-err" hidden></p></div>`;
 }
 function saveAskedName(){
   const kid=activeKid();
@@ -3873,7 +4161,7 @@ function render(){
     ?`<button class="subj-btn" id="subj-btn">${SUBJ_ICON[st.subject]} ${subjShort(st.subject)}<span class="subj-btn-car">&#9662;</span></button>`
     :'';
   const hdr=`<div class="hdr hdr-tight">${whoButtonHTML('who-btn')}<span class="app-name">Pokémon</span><span class="hdr-right">${hdrRight}</span></div>`;
-  let h=hdr+nameAskHTML();
+  let h=hdr;
 
   if(st.phase==='starter'){
     h+=`<div class="starter-card"><div style="font-size:20px;font-weight:700;color:#1A1A2E;margin-bottom:3px;text-align:center">Choose your starter!</div><div style="font-size:13px;color:#6B7280;margin-bottom:14px;text-align:center">Pick your partner for this learning adventure</div>`;
@@ -3897,7 +4185,7 @@ function render(){
   }
 
   if(st.phase==='subject'){
-    h+=`<div class="starter-card"><div style="font-size:20px;font-weight:700;color:#1A1A2E;margin-bottom:3px;text-align:center">What do you want to practice?</div><div style="font-size:13px;color:#6B7280;margin-bottom:16px;text-align:center">${st.q&&!st.cor&&!st.wildEscape?'Starts after this question':'You can change this any time'}</div><div class="subj-choice-grid">`;
+    h+=`<div class="starter-card"><div class="subj-ask">What do you want to practice?</div><div class="subj-ask-sub">${st.q&&!st.cor&&!st.wildEscape?'Starts after this question':'You can change this any time'}</div><div class="subj-choice-grid">`;
     SUBJ_CHOICES.forEach(s=>{
       h+=`<button class="subj-opt ${SUBJ_OPT_CLS[s]}${s===st.subject?' sel':''}" data-subj="${s}"><span class="subj-opt-ico">${SUBJ_ICON[s]}</span><span class="subj-opt-name">${subjTitle(s)}</span><span class="subj-opt-sub">${SUBJ_BLURB[s]}</span></button>`;
     });
@@ -3941,6 +4229,7 @@ function render(){
     const candyBtn=st.items.candy>0&&!st.pendingEvo?`<button class="candy-btn" id="candy-btn">&#127853; Rare Candy · ${st.items.candy}</button>`:'';
     const greatNote=st.items.great>0?`<div class="great-note">Great Ball ready</div>`:'';
     h+=`<div class="card pcard${canSwitch?' has-switch':''}">${switchBtn}<div class="pnum">${p.num} &bull; ${typeBadgesInline(p.type)} Type</div><div class="pname">${p.n}${tm.shiny?` <span class="shiny-badge">${SHINY_STAR} Shiny</span>`:''} <span class="lvl-badge${st.lvlUpMsg?' lvl-up':''}">Lv ${tm.level}</span></div><div class="psvg ${st.anim}">${pkSprite(tm.pi,148,tm.shiny)}</div><div class="xp-row"><span>XP</span><span class="xp-right">${st.lastXp?`<span class="xp-gain">+${st.lastXp} XP</span>`:''}${tm.xp}/${xpMx}</span></div><div class="xp-track"><div class="xp-fill" style="width:${pct}%"></div></div>${badgeRowHTML()}${candyBtn}${greatNote}</div>`;
+    h+=nameAskHTML();
     if(st.streakMsg){
       h+=`<div class="streak-toast">&#128293; ${st.streakMsg}</div>`;
     }
@@ -4018,9 +4307,18 @@ function render(){
     h+=`<div class="you-row">You ${heartsHTML(g.kid,GYM_KID_HP,'you')}</div>`;
     if(g.over==='lose'){
       const hint=st.q&&st.q.hint?`<div class="gym-hint">${st.q.hint}</div>`:'';
-      h+=`<div class="card gym-end"><p>Brave try. Practice a little more, and ${leader} will be ready for a rematch.</p>${hint}<button class="gym-go" id="gym-back">Back to practice</button></div>`;
+      h+=`<div class="card gym-end"><div class="gym-end-scroll"><p>Brave try. Practice a little more, and ${leader} will be ready for a rematch.</p>${hint}</div><button class="gym-go" id="gym-back">Back to practice</button></div>`;
+    } else if(g.over==='safe'){
+      // Help on the later questions does not undo hits that already landed.
+      // Saying nobody was touched makes a one-heart leader feel like a glitch.
+      const safeMsg=g.lead<GYM_LEAD_HP
+        ?`You landed some hits. The leader still has ${g.lead===1?'a heart':'hearts'} left, so the badge waits. Try the battle again and finish it on your own.`
+        :`Everybody still has hearts, so this is not a loss. Help keeps your hearts safe, and it doesn't hit the leader. Try the next one on your own.`;
+      h+=`<div class="card gym-end"><div class="gym-end-scroll"><p>${safeMsg}</p></div><button class="gym-go" id="gym-back">Back to practice</button></div>`;
     } else {
-      const rm=st.cor?'':(st.q&&st.q.hint)||'You can do it!';
+      const rm=st.cor
+        ?(st.helped?"Help keeps your hearts safe, and it doesn't hit the leader. Try the next one on your own.":'')
+        :((st.q&&st.q.hint)||'You can do it!');
       h+=qCardHTML(rm, 'Next &#8594;');
       if(st.cor&&g.confirmEnd){
         h+=`<div class="gym-confirm"><p>End this Gym battle? You can try again after a little more practice.</p><div class="gym-confirm-row"><button class="gym-end-btn" id="gym-forfeit-yes" type="button">End the battle</button><button class="gym-later" id="gym-forfeit-no" type="button">Keep going</button></div></div>`;
@@ -4044,13 +4342,22 @@ function render(){
       prizeBit=`${partnerBit}<div class="award-prize">+${a.xp} XP</div><div class="award-prize">Rare Candy ×${a.candy}</div><div class="award-prize">Great Ball ×${a.great} — it helps on your next wild Pokémon.</div>`;
     }
     const grew=a.grew?`<div class="award-prize">${PKM[activePi()].n} grew stronger!</div>`:'';
-    h+=`<div class="card award-card"><div class="award-kicker">Gym prize</div><div class="award-pop">${badgeHTML(a.sub,a.tier,true)}</div><div class="award-title">You earned the ${badgeName(a.sub,a.tier)}!</div><div class="award-sub">New ${SNAME[a.sub]} questions are waiting.</div>${prizeBit}${grew}<button class="award-go" id="award-go">Yay!</button></div>`;
+    h+=`<div class="card award-card"><div class="award-scroll"><div class="award-kicker">Gym prize</div><div class="award-pop">${badgeHTML(a.sub,a.tier,true)}</div><div class="award-title">You earned the ${badgeName(a.sub,a.tier)}!</div><div class="award-sub">New ${SNAME[a.sub]} questions are waiting.</div>${prizeBit}${grew}</div><button class="award-go" id="award-go">Yay!</button></div>`;
   }
 
   gameEl.innerHTML=h;
-  gameEl.querySelectorAll('[data-i]').forEach(b=>b.addEventListener('click',()=>handleAnswer(+b.dataset.i)));
-  gameEl.querySelectorAll('[data-digit]').forEach(b=>b.addEventListener('click',e=>typeDigit(b.dataset.digit,e.detail)));
-  gameEl.querySelectorAll('[data-pad]').forEach(b=>b.addEventListener('click',()=>b.dataset.pad==='erase'?eraseDigit():submitTyped()));
+  gameEl.querySelectorAll('[data-i]').forEach(b=>b.addEventListener('click',()=>{
+    if(Date.now()<st.armAt){flashHangOn(b);return;}
+    handleAnswer(+b.dataset.i);
+  }));
+  gameEl.querySelectorAll('[data-digit]').forEach(b=>b.addEventListener('click',e=>{
+    if(Date.now()<st.armAt){flashHangOn(b);return;}
+    typeDigit(b.dataset.digit,e.detail);
+  }));
+  gameEl.querySelectorAll('[data-pad]').forEach(b=>b.addEventListener('click',()=>{
+    if(Date.now()<st.armAt){flashHangOn(b);return;}
+    if(b.dataset.pad==='erase')eraseDigit();else submitTyped();
+  }));
   gameEl.querySelectorAll('[data-switch-idx]').forEach(b=>b.addEventListener('click',()=>switchPokemon(+b.dataset.switchIdx)));
   const swb=gameEl.querySelector('#switch-btn');if(swb)swb.addEventListener('click',openSwitchPicker);
   const swc=gameEl.querySelector('#switch-cancel');if(swc)swc.addEventListener('click',closeSwitchPicker);
@@ -4144,7 +4451,7 @@ function wireReset(){
 }
 
 function switchView(v){
-  if(v!=='game')pauseGymTimer();
+  if(v!=='game'){pauseGymTimer();hideMoments();}
   view=v;
   if(v==='game'){
     showGameChrome();
@@ -4182,6 +4489,7 @@ function openSubjectPicker(){
   st.subjectReturn=st.phase;
   st.phase='subject';
   render();
+  histPush('subject');
 }
 
 function chooseSubject(sub){
@@ -4198,6 +4506,16 @@ function chooseSubject(sub){
   // question after picking a starter has nothing to go back to.
   if(st.q)render();
   else loadQuestion();
+  // A brand-new trainer's chooser replaced the name form, so it is the
+  // only screen above who's playing. Picking a subject turns that entry
+  // into the question. Dropping it would leave the question off the stack
+  // and the next Back would leave the game.
+  if(!navSilent&&navReady&&hist[hist.length-1]==='subject'&&hist[hist.length-2]==='who'){
+    hist[hist.length-1]='game';
+    try{history.replaceState({pkq:'game',n:hist.length},'');}catch(e){}
+    return;
+  }
+  histDropIf('subject');
 }
 
 // The name {P} is filled with: the wild Pokemon during an encounter, his own otherwise.
@@ -4312,7 +4630,8 @@ function playEvolution(fromIdx,toIdx,shiny,onDone){
     lbl.style.animation='';
     onDone();
   }
-  const step=(fn,ms)=>setTimeout(()=>{try{fn();}catch(e){finish();}},ms);
+  const token=momentGen;
+  const step=(fn,ms)=>setTimeout(()=>{if(token!==momentGen)return;try{fn();}catch(e){finish();}},ms);
 
   // Half-cycle delays decaying geometrically: slow, ominous blinks accelerating
   // into a strobe. Total flash time is ~2x their sum, since each index is
@@ -4405,6 +4724,27 @@ function _getAudioCtx(){
   if(_audioCtx.state==='suspended'){_audioCtx.resume();}
   return _audioCtx;
 }
+let _sfxNodes=[];
+function _trackSfx(osc,gain){
+  _sfxNodes.push({osc,gain});
+  osc.addEventListener('ended',()=>{
+    const i=_sfxNodes.findIndex(n=>n.osc===osc);
+    if(i>=0)_sfxNodes.splice(i,1);
+  });
+}
+function stopSfx(){
+  const ctx=_audioCtx;
+  const when=ctx?ctx.currentTime:0;
+  const nodes=_sfxNodes.splice(0,_sfxNodes.length);
+  nodes.forEach(({osc,gain})=>{
+    try{
+      gain.gain.cancelScheduledValues(when);
+      gain.gain.setValueAtTime(0,when);
+    }catch(e){}
+    try{osc.stop(when);}catch(e){}
+    try{osc.disconnect();}catch(e){}
+  });
+}
 function _tone(f,dur,type='sine',vol=0.14,when=0){
   const ctx=_getAudioCtx();if(!ctx)return;
   const t0=ctx.currentTime+when;
@@ -4415,6 +4755,7 @@ function _tone(f,dur,type='sine',vol=0.14,when=0){
   g.gain.exponentialRampToValueAtTime(0.0001,t0+dur);
   osc.connect(g);g.connect(ctx.destination);
   osc.start(t0);osc.stop(t0+dur+0.05);
+  _trackSfx(osc,g);
 }
 function _sweep(f1,f2,dur,type='sine',vol=0.14){
   const ctx=_getAudioCtx();if(!ctx)return;
@@ -4428,8 +4769,10 @@ function _sweep(f1,f2,dur,type='sine',vol=0.14){
   g.gain.exponentialRampToValueAtTime(0.0001,t0+dur);
   osc.connect(g);g.connect(ctx.destination);
   osc.start(t0);osc.stop(t0+dur+0.05);
+  _trackSfx(osc,g);
 }
 function playSfx(name){
+  if(soundMuted())return;
   if(name==='throw'){_sweep(880,260,0.42,'triangle',0.12);}
   else if(name==='capture'){_sweep(360,140,0.32,'sine',0.18);}
   else if(name==='wobble'){_tone(520,0.06,'square',0.09);_tone(380,0.08,'square',0.07,0.04);}
@@ -4526,6 +4869,8 @@ const BALL_SHAKE_MS=1900;
 const BALL_SHAKE_BEATS=[140,780,1410];
 
 function playCatch(pkIdx,shiny,onDone){
+  const token=momentGen;
+  const later=(fn,ms)=>setTimeout(()=>{if(token!==momentGen)return;fn();},ms);
   const ov=document.getElementById('catch-overlay');
   const pkmImg=document.getElementById('catch-pkm-img');
   const ball=document.getElementById('catch-ball');
@@ -4539,20 +4884,20 @@ function playCatch(pkIdx,shiny,onDone){
   pkmImg.style.cssText='display:block;object-fit:contain;width:180px;height:180px;filter:none;transition:none;transform:none;opacity:1;animation:none';
   ball.innerHTML=BALL_SVG;ball.style.display='none';ball.style.animation='none';
   lbl.textContent=`A wild ${shiny?'SHINY ':''}${PKM[pkIdx].n} appeared!`;
-  setTimeout(()=>{
+  later(()=>{
     ball.style.display='block';ball.offsetWidth;
     ball.style.animation='ball-fly 0.75s cubic-bezier(0.15,0.5,0.5,1) forwards';
     playSfx('throw');
-    setTimeout(()=>{
+    later(()=>{
       pkmImg.style.cssText='display:block;object-fit:contain;width:180px;height:180px;animation:pkm-absorb 0.55s ease-in forwards';
       playSfx('capture');
       lbl.textContent='...';
-      setTimeout(()=>{
+      later(()=>{
         ball.style.animation='ball-wobble-seq 1.9s ease-in-out forwards';
-        setTimeout(()=>playSfx('wobble'),140);
-        setTimeout(()=>playSfx('wobble'),780);
-        setTimeout(()=>playSfx('wobble'),1410);
-        setTimeout(()=>{
+        later(()=>playSfx('wobble'),140);
+        later(()=>playSfx('wobble'),780);
+        later(()=>playSfx('wobble'),1410);
+        later(()=>{
           ball.style.animation='ball-pop 0.45s ease forwards';
           playSfx('gotcha');
           lbl.textContent=`Gotcha! ${shiny?'SHINY ':''}${PKM[pkIdx].n} was caught!`;
@@ -4564,9 +4909,9 @@ function playCatch(pkIdx,shiny,onDone){
           // A shiny needs the overlay held open long enough for the banner to
           // finish; at the regular pace it would be cut off mid-animation on the
           // one catch that most deserves to be seen.
-          setTimeout(()=>{
+          later(()=>{
             ov.style.transition='opacity 0.4s ease';ov.style.opacity='0';
-            setTimeout(()=>{_clearFanfare(ov);ov.classList.remove('active');ov.style.cssText='';onDone();},400);
+            later(()=>{_clearFanfare(ov);ov.classList.remove('active');ov.style.cssText='';onDone();},400);
           },shiny?2600:1200);
         },1900);
       },550);
@@ -4703,6 +5048,7 @@ function pickStarter(lineIdx,shiny){
   view='game';
   save();
   render();
+  histPush('game');
 }
 
 // Mirrors openSubjectPicker: remember where he came from, take over the screen,
@@ -4714,18 +5060,20 @@ function openSwitchPicker(){
   st.switchReturn=st.phase;
   st.phase='switch';
   render();
+  histPush('switch');
 }
 function closeSwitchPicker(){
   st.phase=st.switchReturn||'play';
   st.switchReturn=null;
   render();
+  histDropIf('switch');
 }
 function switchPokemon(idx){
   const back=st.switchReturn||'play';
   st.phase=back;
   st.switchReturn=null;
   // Tapping the one already out is a cancel, not a switch: no new question.
-  if(!st.team[idx]||idx===st.activeIdx){render();return;}
+  if(!st.team[idx]||idx===st.activeIdx){render();histDropIf('switch');return;}
   st.activeIdx=idx;
   save();
   // 187 questions bake the active Pokemon's name in through {P} at serve time, so
@@ -4734,6 +5082,7 @@ function switchPokemon(idx){
   // now it's redrawn with the new name and stays the same question.
   refillQuestion();
   render();
+  histDropIf('switch');
 }
 
 function applyLevelUps(){
@@ -4753,20 +5102,25 @@ function applyLevelUps(){
 function processEvolution(){
   if(!st.pendingEvo){afterTurn();return;}
   const {fromPi,toPi}=st.pendingEvo;
-  st.pendingEvo=null;
-  // The shiny flag lives on the team member, not on the PKM entry, so evolving
-  // only moves `pi` forward and the colour rides along untouched. That is what
-  // makes a shiny evolve into a shiny with no separate shiny evolution table.
-  const shiny=!!(activeTM()&&activeTM().shiny);
-  playEvolution(fromPi,toPi,shiny,()=>{
-    const tm=activeTM();
+  // Written down before the animation. A reload during "what's happening",
+  // or during the animation itself, already has the new Pokémon.
+  const tm=activeTM();
+  if(tm&&tm.pi===fromPi){
     tm.pi=toPi;
     markDex(toPi,!!tm.shiny);
+  }
+  st.pendingEvo=null;
+  save();
+  const shiny=!!(tm&&tm.shiny);
+  const after=()=>{
     applyLevelUps();
     save();
-    if(st.pendingEvo){processEvolution();}
-    else{afterTurn();}
-  });
+    if(view!=='game')return;
+    if(st.pendingEvo)processEvolution();
+    else afterTurn();
+  };
+  if(view!=='game'){after();return;}
+  playEvolution(fromPi,toPi,shiny,after);
 }
 
 // Encounters are no longer walled off by region. Whichever starter he picked, wild
@@ -4866,15 +5220,16 @@ function onNext(){
     }
     if(st.wild&&st.wild.correctStreak>=CATCH_STREAK_NEEDED){
       const wp=st.wild.pi;const wlev=st.wild.level;const wsh=!!st.wild.shiny;
-      playCatch(wp,wsh,()=>{
-        spendGreatBall();
-        st.team.push({pi:wp,level:wlev,xp:0,shiny:wsh});
-        markDex(wp,wsh);
-        st.wild=null;
-        st.phase='play';
-        save();
-        loadQuestion();
-      });
+      // The ball, the team, and the Pokédex are saved before the animation,
+      // so closing or going back during Gotcha still keeps the Pokémon.
+      spendGreatBall();
+      st.team.push({pi:wp,level:wlev,xp:0,shiny:wsh});
+      markDex(wp,wsh);
+      st.wild=null;
+      st.wildEscape=false;
+      st.phase='play';
+      save();
+      playCatch(wp,wsh,()=>{if(view==='game')loadQuestion();});
       return;
     }
     loadQuestion();return;
@@ -5073,9 +5428,221 @@ function commitAttempt(ok,choice,nextDraft){
   render();
 }
 
-document.getElementById("nav-game").addEventListener("click",()=>switchView('game'));
-document.getElementById("nav-pdx").addEventListener("click",()=>switchView('pdx'));
+document.getElementById("nav-game").addEventListener("click",()=>{
+  if(view==='game')return;
+  switchView('game');
+  if(hist[hist.length-1]==='pdx')histDropIf('pdx');
+  else histPush('game');
+});
+document.getElementById("nav-pdx").addEventListener("click",()=>{
+  if(view==='pdx')return;
+  switchView('pdx');
+  histPush('pdx');
+});
 document.getElementById("parents-link").addEventListener("click",openParent);
+
+const MUTE_KEY='pkq-muted';
+function soundMuted(){
+  try{return localStorage.getItem(MUTE_KEY)==='1';}catch(e){return false;}
+}
+function paintMute(){
+  const b=document.getElementById('mute-btn');
+  if(!b)return;
+  const muted=soundMuted();
+  b.setAttribute('aria-pressed',muted?'true':'false');
+  b.setAttribute('aria-label',muted?'Sound off':'Sound on');
+  const ico=b.querySelector('.mute-ico');
+  const lbl=b.querySelector('.mute-lbl');
+  if(ico)ico.textContent=muted?'\u{1F507}':'\u{1F50A}';
+  if(lbl)lbl.textContent=muted?'Off':'On';
+}
+function setMuted(muted){
+  try{localStorage.setItem(MUTE_KEY,muted?'1':'0');}catch(e){}
+  if(muted)stopSfx();
+  paintMute();
+}
+function flashHangOn(el){
+  if(!el)return;
+  const old=el.querySelector('.hang-on');
+  if(old)old.remove();
+  const n=document.createElement('span');
+  n.className='hang-on show';
+  n.textContent='Hang on a second';
+  el.appendChild(n);
+  setTimeout(()=>{if(n.parentNode)n.remove();},1200);
+}
+
+let hist=['who'];
+let navReady=false;
+let navLock=false;
+let navSilent=false;
+let momentGen=0;
+function hideMoments(){
+  momentGen++;
+  ['catch-overlay','evo-overlay','pick-overlay'].forEach(id=>{
+    const ov=document.getElementById(id);
+    if(!ov)return;
+    ov.classList.remove('active');
+    ov.style.cssText='';
+  });
+}
+function histState(screen){
+  const state={pkq:screen,n:hist.length};
+  if(screen==='who-form'){
+    state.whoMode=whoMode;
+    state.editId=whoDraft.editId;
+    state.name=whoDraft.name;
+    state.avatar=whoDraft.avatar;
+  }
+  return state;
+}
+function histPush(screen){
+  if(!navReady||navSilent)return;
+  if(hist[hist.length-1]===screen)return;
+  // The new-trainer form is already left behind once a name is saved.
+  // Replace it so one Back returns to who's playing. A brand-new trainer
+  // is sitting on the subject chooser, so Forward must return there and
+  // not deal a question.
+  if(hist[hist.length-1]==='who-form'&&(screen==='game'||screen==='subject')){
+    const landed=st.phase==='subject'?'subject':screen;
+    hist[hist.length-1]=landed;
+    try{history.replaceState(histState(landed),'');}catch(e){}
+    return;
+  }
+  hist.push(screen);
+  try{history.pushState(histState(screen),'');}catch(e){}
+}
+function histDropIf(screen){
+  if(!navReady||navSilent)return;
+  if(hist[hist.length-1]!==screen)return;
+  hist.pop();
+  navLock=true;
+  try{history.back();}catch(e){navLock=false;}
+}
+function histToWho(){
+  if(!navReady||navSilent)return;
+  const at=hist.lastIndexOf('who');
+  if(at<0){
+    hist=['who'];
+    try{history.replaceState({pkq:'who',n:1},'');}catch(e){}
+    return;
+  }
+  if(at===hist.length-1)return;
+  const drop=hist.length-1-at;
+  hist=hist.slice(0,at+1);
+  navLock=true;
+  try{history.go(-drop);}catch(e){navLock=false;}
+}
+function closePickers(){
+  if(st.phase==='subject'){st.phase=st.subjectReturn||'play';st.subjectReturn=null;}
+  if(st.phase==='switch'){st.phase=st.switchReturn||'play';st.switchReturn=null;}
+}
+function applyHistory(screen,extra){
+  hideMoments();
+  if(screen==='who'){
+    whoMode='list';
+    pendingDelete=null;
+    whoDraft={name:'',avatar:null,editId:null};
+    pauseGymTimer();
+    if(activeKid())captureActive();
+    view='who';
+    renderWho();
+    return;
+  }
+  if(screen==='who-form'){
+    pauseGymTimer();
+    const mode=extra&&extra.whoMode;
+    if(mode==='edit'||mode==='create'){
+      whoMode=mode;
+      whoDraft={name:(extra.name||''),avatar:extra.avatar||null,editId:extra.editId||null};
+    }
+    view='who';
+    renderWho();
+    return;
+  }
+  if(screen==='parent'){
+    if(view!=='parent'){
+      viewBeforeParent=(view==='who'||view==='pdx')?view:'game';
+      parentUnlocked=false;
+      parentQuiz=null;
+      parentMsg='';
+      parentDraft='';
+      if(activeKid()){captureActive();writeRoster();}
+      view='parent';
+      renderParent();
+    }
+    return;
+  }
+  if(screen==='pdx'){closePickers();switchView('pdx');return;}
+  if(screen==='subject'){
+    view='game';
+    if(st.phase!=='subject'){
+      st.subjectReturn=st.phase==='switch'?(st.switchReturn||'play'):st.phase;
+      st.phase='subject';
+    }
+    showGameChrome();
+    render();
+    return;
+  }
+  if(screen==='switch'){
+    view='game';
+    if(st.phase!=='switch'){
+      st.switchReturn=st.phase==='subject'?(st.subjectReturn||'play'):st.phase;
+      st.phase='switch';
+    }
+    showGameChrome();
+    render();
+    return;
+  }
+  closePickers();
+  view='game';
+  showGameChrome();
+  if((st.phase==='play'&&!st.q)||(st.phase==='gym'&&st.gym&&!st.q))bootInto();
+  else{render();if(st.phase==='gym')armGymTimer();}
+}
+function onPopState(e){
+  if(navLock){navLock=false;return;}
+  const screen=e.state&&e.state.pkq;
+  if(!screen)return;
+  const n=e.state.n|0;
+  if(n>0&&n<hist.length)hist=hist.slice(0,n);
+  else if(n===hist.length+1)hist.push(screen);
+  else if(n>0)hist[n-1]=screen;
+  navSilent=true;
+  try{applyHistory(screen,e.state);}finally{navSilent=false;}
+}
+function installHistory(){
+  hist=view==='who'?['who']:['who','game'];
+  try{
+    history.replaceState({pkq:hist[0],n:1},'');
+    if(hist.length>1)history.pushState({pkq:'game',n:2},'');
+  }catch(e){}
+  navReady=true;
+  window.addEventListener('popstate',onPopState);
+}
+
+document.getElementById('mute-btn').addEventListener('click',()=>setMuted(!soundMuted()));
+paintMute();
+
+// A real keyboard fills the math pad. Enter checks the number, and it must
+// not also press whichever key still has focus (that turned 35 into 355).
+// Backspace erases. Typing in a name field is left alone.
+document.addEventListener('keydown',e=>{
+  const t=e.target;
+  if(t&&(t.tagName==='INPUT'||t.tagName==='TEXTAREA'||t.isContentEditable))return;
+  if(view!=='game'||!st.q||!isTypedQuestion(st.q)||st.cor||st.wildEscape)return;
+  if(e.metaKey||e.ctrlKey||e.altKey)return;
+  if(/^[0-9]$/.test(e.key)){
+    e.preventDefault();
+    typeDigit(e.key,0);
+  }else if(e.key==='Enter'){
+    e.preventDefault();
+    submitTyped();
+  }else if(e.key==='Backspace'){
+    e.preventDefault();
+    eraseDigit();
+  }
+});
 
 // iPad swipe-away and tab close don't always fire a normal teardown
 window.addEventListener('pagehide',noteGymHide);
@@ -5086,6 +5653,8 @@ document.addEventListener('visibilitychange',()=>{
 
 // A tablet with two trainers asks who's playing first. One trainer (including
 // a save from before profiles) goes straight back into their game.
+// Browser Back steps through these screens and only leaves from who's playing.
+installHistory();
 if(view==='who')renderWho();
 else bootInto();
 </script>
