@@ -14,14 +14,30 @@ async function newTrainer(page,name,avatar){
   await page.click('#profile-save');
 }
 
+async function tapParentAnswer(page,text){
+  for(const d of String(text))await page.locator(`[data-parent-digit="${d}"]`).click();
+}
+
 async function passParentGate(page){
   const q=await page.locator('#parent-q').innerText();
   const m=q.match(/(\d+)\s*times\s*(\d+)/i);
   expect(m,'parent check should be a multiplication').not.toBeNull();
   const a=Number(m[1]),b=Number(m[2]);
   expect(a*b).toBeGreaterThan(100);
-  await page.fill('#parent-answer',String(a*b));
+  await tapParentAnswer(page,String(a*b));
   await page.click('#parent-go');
+}
+
+// Parents lives on Who's playing and the Pokédex, not on the question.
+async function openParents(page){
+  const link=page.locator('#parents-link');
+  if(!(await link.isVisible()))await page.click('#nav-pdx');
+  await link.click();
+}
+
+async function openRemove(page,name){
+  await page.getByRole('button',{name:`Edit ${name}`}).click();
+  await page.getByRole('button',{name:`Remove ${name}`}).click();
 }
 
 test('an old single save becomes the first trainer and is not mixed with a new one',async({page})=>{
@@ -72,7 +88,8 @@ test('two trainers keep separate Pokémon, and deleting one takes a confirm',asy
   await page.fill('#profile-name','Maya');
   await page.click('[data-avatar="001"]');
   await page.click('#profile-save');
-  await expect(page.getByText('Choose your starter')).toBeVisible();
+  await expect(page.getByText('What do you want to practice?')).toBeVisible();
+  await expect(page.getByText('Choose your starter')).toHaveCount(0);
   await page.evaluate(()=>{pickStarter(0,false);chooseSubject('math');});
   await serve(page,{sub:'math',lv:1,idx:0});
   await answer(page,true);
@@ -114,16 +131,25 @@ test('two trainers keep separate Pokémon, and deleting one takes a confirm',asy
   expect(await state(page,()=>PKM[st.team[0].pi].num)).toBe('#001');
 
   await page.click('#who-btn');
-  await page.getByRole('button',{name:'Remove Leo'}).click();
+  await expect(page.getByRole('button',{name:/^Remove /})).toHaveCount(0);
+  const playBox=await page.locator('.who-play').first().boundingBox();
+  const editBox=await page.locator('.who-edit').first().boundingBox();
+  expect(editBox.y).toBeGreaterThanOrEqual(playBox.y+playBox.height+8);
+  await openRemove(page,'Leo');
   await expect(page.locator('#remove-confirm')).toContainText('Delete Leo?');
-  await expect(page.locator('#remove-who')).toContainText('Buddy: Charmander');
+  await expect(page.locator('#remove-who')).toContainText('Charmander');
   await expect(page.locator('#remove-who')).toContainText('Lv 5');
+  await expect(page.locator('#remove-confirm')).not.toContainText('forever');
+  await expect(page.locator('#remove-yes')).not.toHaveClass(/who-go/);
+  const keepBox=await page.locator('#remove-no').boundingBox();
+  const delBox=await page.locator('#remove-yes').boundingBox();
+  expect(keepBox.height).toBeGreaterThan(delBox.height+8);
   await expect(page.locator('[data-pick]').filter({hasText:'Leo'})).toHaveCount(0);
   await page.click('#remove-no');
   await expect(page.locator('[data-pick]').filter({hasText:'Leo'})).toBeVisible();
   await expect(page.locator('[data-pick]').filter({hasText:'Maya'})).toBeVisible();
 
-  await page.getByRole('button',{name:'Remove Leo'}).click();
+  await openRemove(page,'Leo');
   await page.click('#remove-yes');
   await expect(page.locator('[data-pick]').filter({hasText:'Leo'})).toHaveCount(0);
   await expect(page.locator('[data-pick]').filter({hasText:'Maya'})).toBeVisible();
@@ -169,7 +195,9 @@ test('resetting one trainer does not wipe the other',async({page})=>{
   await page.waitForTimeout(2300);
   await page.mouse.up();
   await expect(page.locator('#reset-confirm')).toContainText('Reset Maya?');
-  await expect(page.locator('#reset-who')).toContainText('Buddy: Bulbasaur');
+  await expect(page.locator('#reset-who')).toContainText('Bulbasaur');
+  await expect(page.locator('#reset-confirm')).not.toContainText('forever');
+  await expect(page.locator('#reset-yes')).not.toHaveClass(/who-go/);
   expect(await state(page,()=>st.items.candy)).toBe(3);
   expect(await state(page,()=>st.team.length)).toBe(1);
   await page.click('#reset-no');
@@ -257,7 +285,7 @@ test('the parent page stays behind a math check and shows each child apart',asyn
   await page.click('#parents-link');
   await expect(page.locator('#parent-report')).toHaveCount(0);
   await expect(page.locator('#parent-q')).toBeVisible();
-  await page.fill('#parent-answer','0');
+  await page.locator('[data-parent-digit="0"]').click();
   await page.click('#parent-go');
   await expect(page.locator('#parent-report')).toHaveCount(0);
   await expect(page.locator('#parent-err')).toBeVisible();
@@ -265,9 +293,9 @@ test('the parent page stays behind a math check and shows each child apart',asyn
   await passParentGate(page);
   const mayaCard=page.locator('[data-kid-name="Maya"]');
   const samCard=page.locator('[data-kid-name="Sam"]');
-  await expect(mayaCard).toContainText('1st-grade adding and subtracting');
+  await expect(mayaCard).toContainText('Practice adding and rhyming.');
   await expect(mayaCard).toContainText('Bolt Badge');
-  await expect(mayaCard).toContainText('8 right out of 10');
+  await expect(mayaCard).not.toContainText('8 right out of 10');
   await expect(mayaCard).toContainText('Last 5 answers: 2 right');
   await expect(mayaCard).toContainText('Adding');
   await expect(mayaCard).toContainText('missed 2 times');
@@ -277,16 +305,21 @@ test('the parent page stays behind a math check and shows each child apart',asyn
   await expect(mayaCard).toContainText('What is 1 + 2?');
   await expect(mayaCard).not.toContainText('Charge Badge');
   await expect(mayaCard).not.toContainText('Missed topics start from this update');
+  await expect(mayaCard).not.toContainText('1st-grade adding and subtracting');
 
-  await expect(samCard).toContainText('2nd-grade adding, subtracting, counting, odd and even, and shapes');
+  await expect(samCard).toContainText('Play a little more and this will say what to practice.');
   await expect(samCard).not.toContainText('time, and money');
+  await expect(samCard).not.toContainText('2nd-grade');
   await expect(samCard).toContainText('Bolt Badge');
   await expect(samCard).toContainText('Charge Badge');
-  await expect(samCard).toContainText('3 right out of 5');
-  await expect(samCard).toContainText('Missed topics start from this update');
+  await expect(samCard).toContainText('5 right out of 7');
+  await expect(samCard).not.toContainText('3 right out of 5');
   await expect(samCard).not.toContainText('What is 8 + 7?');
   await expect(samCard).not.toContainText('Rhyming');
-  await expect(page.locator('#parent-back')).toHaveText("Back to who's playing");
+  await expect(page.locator('#parent-back')).toContainText("Back to who's playing");
+  const cols=await page.evaluate(()=>[...document.querySelectorAll('[data-kid-name]')].map(el=>el.getBoundingClientRect().x));
+  expect(cols).toHaveLength(2);
+  expect(Math.abs(cols[0]-cols[1])).toBeGreaterThan(40);
   expect(errors).toEqual([]);
 });
 
@@ -307,7 +340,7 @@ test('two trainers cannot share a name or a buddy, and delete names which one',a
 
   await page.fill('#profile-name','Leo');
   await page.click('[data-avatar="001"]');
-  await expect(page.locator('#profile-err')).toContainText('Maya already has that buddy');
+  await expect(page.locator('#profile-err')).toContainText('Maya already has that Pokémon');
   await expect(page.locator('#profile-save')).toBeDisabled();
 
   await page.click('[data-avatar="004"]');
@@ -317,15 +350,18 @@ test('two trainers cannot share a name or a buddy, and delete names which one',a
   await expect(page.locator('[data-pick]').filter({hasText:'Leo'})).toBeVisible();
 
   await page.getByRole('button',{name:'Edit Leo'}).click();
+  await expect(page.locator('[data-avatar]')).toHaveCount(0);
+  await expect(page.getByText('This only changes the name.')).toBeVisible();
   await page.fill('#profile-name','Maya');
   await expect(page.locator('#profile-err')).toContainText('already called Maya');
   await expect(page.locator('#profile-save')).toBeDisabled();
   await page.click('#who-form-back');
 
-  await page.getByRole('button',{name:'Remove Maya'}).click();
+  await openRemove(page,'Maya');
   await expect(page.locator('#remove-confirm')).toContainText('Delete Maya?');
-  await expect(page.locator('#remove-who')).toContainText('Buddy: Bulbasaur');
-  await expect(page.locator('#remove-who')).toContainText('Ready to start');
+  await expect(page.locator('#remove-who')).toContainText('Bulbasaur');
+  await expect(page.locator('#remove-who')).toContainText('Lv 5');
+  await expect(page.locator('#remove-confirm')).not.toContainText('forever');
   await page.click('#remove-no');
   await expect(page.locator('[data-pick]').filter({hasText:'Maya'})).toBeVisible();
   expect(errors).toEqual([]);
@@ -337,9 +373,10 @@ test('a miss is remembered for the parent page from the next answer on',async({p
   await serve(page,{sub:'math',lv:1,idx:0});
   expect(await state(page,()=>st.q.question)).toContain('1 + 2');
   await answer(page,false);
-  await page.click('#parents-link');
+  await openParents(page);
   await passParentGate(page);
   const card=page.locator('[data-kid-name="Trainer"]');
+  await expect(card).toContainText('Practice adding.');
   await expect(card).toContainText('Adding');
   await expect(card).toContainText('missed 1 time');
   await expect(card).toContainText('What is 1 + 2?');
@@ -360,12 +397,11 @@ test('asking for help and getting it right counts as right for a parent',async({
   }));
   expect(scored).toEqual({cor:1,att:1,streak:0,review:1,why:'help'});
 
-  await page.click('#parents-link');
+  await openParents(page);
   await passParentGate(page);
   const card=page.locator('[data-kid-name="Trainer"]');
-  await expect(card).toContainText('Last 1 answer: 1 right');
-  await expect(card).toContainText('1 right out of 1');
-  await expect(card).toContainText('Got 1 right after asking for help');
+  await expect(card).toContainText('Last 1 answer: 1 right, 1 after a hint');
+  await expect(card).not.toContainText('1 right out of 1');
   await expect(card).toContainText('Right after a hint');
   await expect(card).toContainText('What is 1 + 2?');
   await expect(card).not.toContainText('Trying these again');
@@ -386,7 +422,7 @@ test('a topic drops off once they keep getting it right',async({page})=>{
     await serve(page,{sub:'math',lv:1,idx:idxs[(i+1)%idxs.length]});
     await answer(page,true);
   }
-  await page.click('#parents-link');
+  await openParents(page);
   await passParentGate(page);
   const card=page.locator('[data-kid-name="Trainer"]');
   await expect(card).toContainText(/Adding — missed/);
@@ -399,7 +435,7 @@ test('a topic drops off once they keep getting it right',async({page})=>{
   await page.click('#parents-link');
   await passParentGate(page);
   await expect(card).not.toContainText(/Adding — missed/);
-  await expect(card).toContainText('Nothing keeps missing');
+  await expect(card).toContainText('Nothing to practice right now.');
   await expect(card).toContainText('Last 10 answers: 10 right');
   expect(errors).toEqual([]);
 });
@@ -461,17 +497,24 @@ test('the parent check is a multiplication the game does not practice',async({pa
   rolls.forEach(r=>expect(r.ans).toBeGreaterThan(hardest));
 
   await page.click('#parents-link');
+  await expect(page.locator('#parent-answer')).toHaveCount(0);
+  await expect(page.locator('#parent-go')).toHaveText("See how they're doing");
+  const back=await page.locator('#parent-back').boundingBox();
+  const go=await page.locator('#parent-go').boundingBox();
+  expect(back.y).toBeLessThan(go.y);
+  expect(back.height).toBeGreaterThanOrEqual(go.height-4);
   const q=await page.locator('#parent-q').innerText();
   expect(q).toMatch(/times/i);
   expect(q).not.toContain('+');
   const m=q.match(/(\d+)\s*times\s*(\d+)/i);
-  await page.fill('#parent-answer',String(Number(m[1])+Number(m[2])));
+  await tapParentAnswer(page,String(Number(m[1])+Number(m[2])));
   await page.click('#parent-go');
   await expect(page.locator('#parent-report')).toHaveCount(0);
   await expect(page.locator('#parent-err')).toBeVisible();
+  await expect(page.locator('#parent-err')).not.toContainText('Not quite');
   await passParentGate(page);
   await expect(page.locator('#parent-report')).toBeVisible();
-  await expect(page.locator('#parent-back')).toHaveText("Back to who's playing");
+  await expect(page.locator('#parent-back')).toContainText("Back to who's playing");
   expect(errors).toEqual([]);
 });
 
@@ -491,4 +534,111 @@ test('questions can be described to a parent in plain topics',async({page})=>{
     return out;
   });
   expect(samples).toEqual([]);
+});
+
+test('a fresh tablet asks to add a trainer, and the buddy stays above a short screen',async({page})=>{
+  const errors=await openGame(page);
+  await expect(page.getByText('Add a trainer to start.')).toBeVisible();
+  await expect(page.getByText('Tap your name')).toHaveCount(0);
+  await expect(page.locator('#profile-new')).toContainText('Add a trainer');
+  await expect(page.locator('#profile-new img')).toHaveCount(1);
+
+  await page.click('#profile-new');
+  await expect(page.locator('#profile-hint')).toHaveText('Type a name and tap a Pokémon.');
+  await expect(page.locator('#profile-save')).toBeDisabled();
+  const order=await page.evaluate(()=>{
+    const ava=document.querySelector('.ava-grid');
+    const name=document.getElementById('profile-name');
+    const save=document.getElementById('profile-save');
+    return !!(ava&&name&&save
+      && (ava.compareDocumentPosition(name)&Node.DOCUMENT_POSITION_FOLLOWING)
+      && (name.compareDocumentPosition(save)&Node.DOCUMENT_POSITION_FOLLOWING));
+  });
+  expect(order).toBe(true);
+  const back=await page.locator('#who-form-back').boundingBox();
+  const go=await page.locator('#profile-save').boundingBox();
+  expect(back.height).toBeGreaterThanOrEqual(go.height-4);
+
+  await page.setViewportSize({width:390,height:480});
+  const fit=await page.evaluate(()=>{
+    const ava=document.querySelector('.ava-grid').getBoundingClientRect();
+    const save=document.getElementById('profile-save').getBoundingClientRect();
+    const h=window.innerHeight;
+    return ava.height>40&&ava.top>=0&&ava.bottom<=h+1&&save.top>=ava.top&&save.bottom<=h+1;
+  });
+  expect(fit).toBe(true);
+  await page.fill('#profile-name','Maya');
+  await expect(page.locator('#profile-hint')).toHaveText('Type a name and tap a Pokémon.');
+  await page.click('[data-avatar="001"]');
+  await expect(page.locator('#profile-hint')).toBeHidden();
+  await expect(page.locator('#profile-save')).toBeEnabled();
+  expect(errors).toEqual([]);
+});
+
+test('the question header fits a phone, and Parents is on the Pokédex',async({page})=>{
+  const errors=await openGame(page);
+  await startGame(page,'math');
+  await page.setViewportSize({width:360,height:740});
+  await expect(page.locator('#parents-link')).toBeHidden();
+  await expect(page.locator('.app-name')).toHaveText('Pokémon');
+  const row=await page.evaluate(()=>{
+    const hdr=document.querySelector('#game .hdr');
+    const bits=[...hdr.children].map(el=>el.getBoundingClientRect());
+    const top=bits[0].top;
+    const overflow=document.documentElement.scrollWidth-document.documentElement.clientWidth;
+    return {
+      oneRow:bits.every(b=>Math.abs(b.top-top)<10),
+      inside:bits.every(b=>b.right<=361&&b.left>=-1),
+      overflow,
+    };
+  });
+  expect(row.oneRow).toBe(true);
+  expect(row.inside).toBe(true);
+  expect(row.overflow).toBeLessThanOrEqual(1);
+  await expect(page.locator('#who-btn')).toBeVisible();
+  await expect(page.locator('#subj-btn')).toBeVisible();
+  await page.click('#nav-pdx');
+  await expect(page.locator('#parents-link')).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+test('an old save asks for a name without leaving the game',async({page})=>{
+  const errors=await openGame(page,{save:legacy});
+  await expect(page.locator('#name-ask')).toContainText("What's your name?");
+  expect(await state(page,()=>st.phase)).toBe('play');
+  await expect(page.locator('#bottom-nav')).toBeVisible();
+  await expect(page.locator('.qtext')).toBeVisible();
+  await page.click('#name-ask-save');
+  expect(await state(page,()=>activeKid().name)).toBe('Trainer');
+  await page.fill('#name-ask-input','Maya');
+  await page.click('#name-ask-save');
+  await expect(page.locator('#name-ask')).toHaveCount(0);
+  expect(await state(page,()=>activeKid().name)).toBe('Maya');
+  const box=await page.evaluate(()=>JSON.parse(localStorage.getItem('pkq-save')));
+  expect(box.kids[0].name).toBe('Maya');
+  expect(box.kids[0].askName).toBeUndefined();
+  expect(box.team).toBeUndefined();
+  expect(errors).toEqual([]);
+});
+
+test('a card uses the Pokémon they battle with, and that picture cannot be copied',async({page})=>{
+  const maya={v:1,activeIdx:0,team:[{num:'#001',level:8,xp:1}]};
+  const leo={v:1,activeIdx:0,team:[{num:'#004',level:5,xp:0}]};
+  const errors=await openGame(page,{save:{v:1,roster:1,activeId:null,kids:[
+    {id:'maya',name:'Maya',avatar:'#025',data:maya},
+    {id:'leo',name:'Leo',avatar:'#004',data:leo},
+  ]}});
+  const src=await page.locator('[data-pick]').filter({hasText:'Maya'}).locator('img').getAttribute('src');
+  expect(src).toMatch(/\/1\.png$/);
+  await expect(page.locator('[data-pick]').filter({hasText:'Maya'})).toContainText('Bulbasaur');
+  await page.locator('[data-pick]').filter({hasText:'Maya'}).click();
+  expect(await page.locator('#who-btn img').getAttribute('src')).toMatch(/\/1\.png$/);
+  await page.click('#who-btn');
+  await page.click('#profile-new');
+  await page.fill('#profile-name','Sam');
+  await page.click('[data-avatar="001"]');
+  await expect(page.locator('#profile-err')).toContainText('Maya already has that Pokémon');
+  await page.click('[data-avatar="025"]');
+  await expect(page.locator('#profile-save')).toBeEnabled();
+  expect(errors).toEqual([]);
 });
