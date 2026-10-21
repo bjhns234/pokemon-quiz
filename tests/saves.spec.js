@@ -5,12 +5,18 @@ const {test,expect}=require('@playwright/test');
 const {openGame,state}=require('./helpers');
 
 const base={v:1,starter:0,activeIdx:0,team:[{num:'#001',level:7,xp:3}],dex:['#001'],
+  timerOff:true,gateMisses:2,gateLock:9e15,
   stats:{math:{cor:5,att:6,level:2,cs:1,ws:0},reading:{cor:0,att:0,level:1,cs:0,ws:0},science:{cor:0,att:0,level:1,cs:0,ws:0}}};
 
 test('a save from before subjects, records, shinies and Rematches still loads',async({page})=>{
   const errors=await openGame(page,{save:base});
   const s=await state(page,()=>({phase:st.phase,team:st.team.map(t=>[PKM[t.pi].num,t.level,!!t.shiny]),subject:st.subject,best:st.bestStreak,review:st.review,math:st.stats.math.level,hasQ:!!st.q}));
   expect(s).toEqual({phase:'play',team:[['#001',7,false]],subject:'mix',best:0,review:[],math:2,hasQ:true});
+  // Tiers already reached stay reached: badge the cleared tier, and don't
+  // queue a battle he would have skipped before Gyms existed.
+  expect(await state(page,()=>({badges:st.badges,timerOff:'timerOff' in st,items:st.items,offer:st.gymOffer.math,gym:st.gym}))).toEqual({
+    badges:{math:[1],reading:[],science:[]},timerOff:false,items:{candy:0,great:0},offer:null,gym:null,
+  });
   expect(errors).toEqual([]);
 });
 

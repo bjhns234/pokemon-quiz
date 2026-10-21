@@ -350,6 +350,50 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;min-heigh
 /* Each swap gets a tiny kick, so the reel reads as landing rather than sliding. */
 @keyframes pick-tick{0%{transform:scale(0.9)}60%{transform:scale(1.06)}100%{transform:scale(1)}}
 @keyframes pick-land{0%{transform:scale(0.4) rotate(-30deg);opacity:0}55%{opacity:1}75%{transform:scale(1.22) rotate(6deg)}100%{transform:scale(1) rotate(0deg);opacity:1}}
+/* Gym battles. Hearts stay pink and gold — a miss is a hint, not a scolding. */
+.gym-card{text-align:center;background:linear-gradient(180deg,#fff,#f8f5ff)}
+.gym-role{font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#7C3AED;margin-bottom:2px}
+.gym-name{font-size:20px;font-weight:800;color:#1A1A2E}
+.hp{display:inline-flex;gap:4px;margin-top:4px}
+.heart{font-size:22px;color:#F9A8D4;line-height:1}
+.heart.on{color:#DB2777}
+.hp.lead .heart{color:#FCD34D}
+.hp.lead .heart.on{color:#D97706}
+.gym-end-btn{font-family:inherit;font-weight:800;border:2px solid #F59E0B;background:#FFFBEB;color:#92400E;border-radius:12px;padding:12px 14px;font-size:14px;cursor:pointer}
+.gym-confirm{text-align:center;margin-top:8px}
+.gym-confirm p{font-size:14px;font-weight:650;color:#92400E;margin:0 0 10px}
+.gym-confirm-row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.you-row{display:flex;justify-content:center;align-items:center;gap:8px;margin:0 0 10px;font-size:13px;font-weight:700;color:#6B7280}
+.gym-invite{background:#fff;border:2px solid #DDD6FE;border-radius:16px;padding:14px;margin-bottom:12px;text-align:center;box-shadow:0 2px 8px rgba(124,58,237,0.08)}
+.gym-invite-txt{font-size:16px;font-weight:800;color:#5B21B6;margin-bottom:10px}
+.gym-invite-row{display:flex;gap:8px;justify-content:center}
+.gym-go,.gym-later,.candy-btn,.award-go,.gate-go{font-family:inherit;font-weight:800;border:none;border-radius:12px;cursor:pointer}
+.gym-go,.award-go{background:#7C3AED;color:#fff;padding:12px 18px;font-size:16px}
+.gym-later{background:#F3F4F6;color:#6B7280;padding:12px 14px;font-size:14px}
+.gym-wait{background:#F5F3FF;color:#6D28D9;border-radius:12px;padding:10px 12px;margin-bottom:12px;font-size:14px;font-weight:600;text-align:center}
+.gym-hint{text-align:center;padding:11px 14px;border-radius:10px;font-size:14px;margin-bottom:8px;font-weight:600;background:#F5F3FF;color:#5B21B6}
+.gym-time{margin:8px 0 12px}
+.gym-time-lbl{display:block;font-size:11px;font-weight:700;color:#9CA3AF;letter-spacing:0.04em;margin-bottom:4px;text-align:center}
+.gym-time-track{display:block;height:8px;border-radius:99px;background:#EDE9FE;overflow:hidden}
+.gym-time-fill{display:block;height:100%;width:100%;background:linear-gradient(90deg,#C4B5FD,#A78BFA);transform-origin:left center;border-radius:99px}
+.gym-end{text-align:center}
+.gym-end p{font-size:16px;font-weight:650;color:#5B21B6;margin:8px 0 14px;line-height:1.4}
+.badge-row{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:10px}
+.badge{display:inline-flex;align-items:center;gap:4px;padding:4px 8px;border-radius:999px;font-size:11px;font-weight:800;background:#F5F3FF;color:#5B21B6}
+.badge.b-math{background:#FEF3C7;color:#92400E}
+.badge.b-reading{background:#DBEAFE;color:#1E40AF}
+.badge.b-science{background:#D1FAE5;color:#065F46}
+.badge.big{font-size:18px;padding:10px 16px;margin:8px 0}
+.award-card{text-align:center;background:radial-gradient(circle at 50% 0%,#FEF3C7,#fff 55%);overflow:hidden}
+.award-kicker{font-size:13px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:#B45309}
+.award-title{font-size:26px;font-weight:800;color:#1A1A2E;margin:6px 0}
+.award-sub{font-size:15px;color:#6B7280;margin-bottom:8px}
+.award-prize{font-size:15px;font-weight:700;color:#1A1A2E;margin:6px 0}
+.award-pop{animation:pick-land 0.7s cubic-bezier(.2,.9,.3,1.2)}
+.candy-btn{display:inline-flex;margin-top:8px;background:#FEF3C7;color:#92400E;padding:8px 12px;font-size:13px}
+.great-note{font-size:13px;font-weight:700;color:#6D28D9;margin-top:6px}
+.pdx-badges{margin-bottom:16px}
+.pdx-badge-hd{font-size:13px;font-weight:800;color:#6B7280;margin-bottom:8px}
 </style>
 </head>
 <body>
@@ -1724,8 +1768,8 @@ const CATCH_STREAK_NEEDED=3;
 // read alike. But the cap is 10, NOT XP_STREAK_CAP's 7 and not the 20 this was
 // first written with, and that number was measured rather than reasoned:
 //
-// LEVEL_UP_STREAK is 3, so the difficulty system promotes him to a harder tier
-// every third correct answer. It is built to break exactly the runs this pays for.
+// LEVEL_UP_STREAK is 5, so five clean answers in a subject unlock a Gym and
+// break the run this pays for. The cap below was measured when that streak was 3.
 // Simulating a fixed ability against the real adaptive tiers, he settles at the
 // ceiling tier and lives at streaks 0-10 -- a streak of 20 is a rare spike, not a
 // place he ever sits. A cap of 20 meant the top half of the ladder was decoration:
@@ -1781,9 +1825,31 @@ function wildLevel(){
 // A wrong answer during an encounter costs a ball rather than ending it outright;
 // the Pokemon only flees once the balls run out.
 const CATCH_MISSES_ALLOWED=1;
-// Symmetric on purpose: falling a level should be no easier than climbing one.
-const LEVEL_UP_STREAK=3;
+// Five clean first-tries in a row unlock the Gym for the tier he is on.
+// Dropping a tier still takes three misses, so a short stumble does not undo
+// a long run.
+const LEVEL_UP_STREAK=5;
 const LEVEL_DOWN_STREAK=3;
+// A difficulty step is a Gym battle now. Five clean answers in a subject unlock
+// the leader for the tier he is ON; the next tier opens only when that battle is
+// won. Questions in the battle come from that same tier.
+const GYM_QUESTIONS=9;
+const GYM_LEAD_HP=5;
+const GYM_KID_HP=4;
+const GYM_COOLDOWN=4;
+const GYM_TIMER_MS=25000;
+const GYM_TIMER_MIN_TIER=3; // grade 2 up: math tier 3+, and the same tier elsewhere
+const GYM_BONUS_XP=80;
+const GYM_PARTNER_LEVEL=8; // under every gym partner's evoAt, so the prize still gets to grow
+const GYM_LEADER={math:'Pikachu',reading:'Eevee',science:'Psyduck'};
+const GYM_BADGE_NAMES={
+  math:['Bolt Badge','Charge Badge','Thunder Badge'],
+  reading:['Tale Badge','Chapter Badge','Legend Badge'],
+  science:['Spark Badge','Lab Badge'],
+};
+function piByName(name){const i=PKM.findIndex(p=>p.n===name);return i<0?0:i;}
+function badgeName(sub,tier){const list=GYM_BADGE_NAMES[sub]||[];return list[tier-1]||(SNAME[sub]+' Badge');}
+function hasBadge(sub,tier){return (st.badges[sub]||[]).indexOf(tier)>=0;}
 // Quadratic, not linear. At 20+level*2 a level cost 30 XP at level 5 and only 120
 // at level 50 -- a 4x rise across 45 levels -- while income is FLAT at 45 XP per
 // answer once the streak caps at 7. So every level cost roughly one to three
@@ -1833,6 +1899,22 @@ function mkState(saved){
     // but the record it set is the one streak fact worth keeping.
     bestStreak:0,newRecord:false,streakMsg:null,
     stats:{math:mkStat(),reading:mkStat(),science:mkStat()},
+    // Badges already earned, per subject. A tier below the current difficulty
+    // counts as earned even in old saves, so nobody replays a step they cleared
+    // before Gyms existed.
+    badges:{math:[],reading:[],science:[]},
+    // A pending Gym offer: {tier, cool}. cool is practice questions left before
+    // a rematch. Not now does not set this.
+    gymOffer:{math:null,reading:null,science:null},
+    gym:null,
+    award:null,
+    items:{candy:0,great:0},
+    // Tiers whose Gym prize was already paid. Survives a level drop, so winning
+    // the same badge again does not hand out another candy, ball, or partner.
+    prizes:{math:[],reading:[],science:[]},
+    // Not now, kept across a reload. Cleared when the next practice question is dealt.
+    gymSnooze:{math:false,reading:false,science:false},
+    holdSnooze:false,
     wild:null,
     pendingEvo:null,
     lvlUpMsg:null,
@@ -1847,19 +1929,27 @@ function mkState(saved){
     s.pdx=saved.pdx;
     s.sdx=saved.sdx;
     s.stats=saved.stats;
+    s.badges=saved.badges;
+    s.gymOffer=saved.gymOffer;
+    s.gym=saved.gym;
+    s.award=saved.award;
+    s.items=saved.items;
+    s.prizes=saved.prizes;
+    s.gymSnooze=saved.gymSnooze;
     s.subject=saved.subject;
     s.bestStreak=saved.bestStreak;
     s.review=saved.review;
-    // phase is derived, never restored: an interrupted wild encounter or
-    // evolution is forfeited rather than resumed into a half-built state.
-    s.phase=saved.team.length>0?'play':'starter';
+    // An award or a Gym in progress is resumed. Anything else interrupted
+    // (a wild encounter, an evolution) is still forfeited.
+    s.phase=saved.award?'award':saved.gym?'gym':saved.team.length>0?'play':'starter';
   }
   return s;
 }
 
 // ---- save / restore -------------------------------------------------------
-// Only durable progress is stored. In-flight question, wild encounter,
-// pending evolution, streak and toasts are all rebuilt fresh on load.
+// Only durable progress is stored. An in-flight practice question, a wild
+// encounter, a pending evolution, the streak and toasts are rebuilt fresh.
+// An open Gym question is kept: tries, help, ruled-out answers, thinking time.
 const SAVE_KEY='pkq-save';
 const SAVE_V=1;
 const NUM_TO_PI={};PKM.forEach((p,i)=>{NUM_TO_PI[p.num]=i;});
@@ -1885,6 +1975,18 @@ function save(){
       // Stored by QB address plus the question text, so an edit to the question
       // bank can't quietly turn a saved Rematch into a different question.
       review:st.review.map(r=>({sub:r.sub,lv:r.lv,idx:r.idx,q:QB[r.sub][r.lv][r.idx][0],wins:r.wins})),
+      // Optional fields. Older saves omit them; loadSaved fills the defaults.
+      // SAVE_V stays 1 — bumping it would wipe Pokedexes to add a feature.
+      badges:st.badges,
+      gymOffer:st.gymOffer,
+      items:{candy:Math.max(0,st.items.candy|0),great:Math.max(0,st.items.great|0)},
+      prizes:st.prizes,
+      gymSnooze:st.gymSnooze,
+      // A battle still being fought, including the open question: tries, help,
+      // ruled-out answers, and the thinking time left. A solved one advances
+      // on load so the same hit cannot score twice.
+      gym:gymPayload(),
+      award:st.award||undefined,
     }));
   }catch(e){/* storage full or unavailable — keep playing unsaved */}
 }
@@ -1946,6 +2048,75 @@ function loadSaved(){
       r&&SUBS.includes(r.sub)&&QB[r.sub][r.lv]&&QB[r.sub][r.lv][r.idx]&&QB[r.sub][r.lv][r.idx][0]===r.q
     ).slice(-REVIEW.max).map((r,i)=>({sub:r.sub,lv:r.lv,idx:r.idx,wins:Math.max(0,r.wins|0),due:2+i*3}));
 
+    // Tiers below the saved difficulty were already earned, Gym or not. Union
+    // them with any badges the save names, and if a badge sits at or above the
+    // saved tier, move the tier up to match so it is not fought again.
+    const badges={};
+    SUBS.forEach(sub=>{
+      const level=stats[sub].level;
+      const set=new Set();
+      for(let t=1;t<level;t++)set.add(t);
+      const raw=(data.badges||{})[sub];
+      if(Array.isArray(raw))raw.forEach(t=>{t=t|0;if(t>=1&&t<maxLevel(sub))set.add(t);});
+      let top=level;
+      set.forEach(t=>{if(t+1>top)top=t+1;});
+      stats[sub].level=Math.min(maxLevel(sub),top);
+      for(let t=1;t<stats[sub].level;t++)set.add(t);
+      badges[sub]=[...set].filter(t=>t<stats[sub].level).sort((a,b)=>a-b);
+    });
+    const gymOffer={};
+    SUBS.forEach(sub=>{
+      const raw=(data.gymOffer||{})[sub];
+      if(!raw){gymOffer[sub]=null;return;}
+      const tier=raw.tier|0;
+      const cool=Math.max(0,raw.cool|0);
+      if(tier!==stats[sub].level||tier<1||tier>=maxLevel(sub)||badges[sub].indexOf(tier)>=0){gymOffer[sub]=null;return;}
+      gymOffer[sub]={tier,cool};
+    });
+    let gym=null;
+    const g=data.gym;
+    if(g&&SUBS.includes(g.sub)&&QB[g.sub][g.tier]&&g.tier===stats[g.sub].level&&Array.isArray(g.queue)){
+      const n=QB[g.sub][g.tier].length;
+      const queue=g.queue.map(i=>i|0);
+      const qi=g.qi|0,kid=g.kid|0,lead=g.lead|0;
+      if(queue.length&&queue.every(i=>i>=0&&i<n)&&qi>=0&&qi<queue.length&&kid>=1&&kid<=GYM_KID_HP&&lead>=1&&lead<=GYM_LEAD_HP){
+        const wrong=Array.isArray(g.wrong)?g.wrong.map(i=>i|0).filter(i=>i>=0&&i<4):[];
+        gym={
+          sub:g.sub,tier:g.tier|0,queue,qi,kid,lead,solved:!!g.solved,over:null,
+          tries:Math.max(0,g.tries|0),helped:!!g.helped,wrong,
+          armLeft:Math.max(0,g.armLeft|0),
+          timerLeft:typeof g.timerLeft==='number'?Math.max(0,g.timerLeft):null,
+          timerKnown:typeof g.timerLeft==='number'||g.timerLeft===null,
+        };
+      }
+    }
+    const prizes={};
+    SUBS.forEach(sub=>{
+      const raw=(data.prizes||{})[sub];
+      const set=new Set();
+      if(Array.isArray(raw))raw.forEach(t=>{t=t|0;if(t>=1&&t<maxLevel(sub))set.add(t);});
+      prizes[sub]=[...set].sort((a,b)=>a-b);
+    });
+    const gymSnooze={};
+    SUBS.forEach(sub=>{gymSnooze[sub]=!!(data.gymSnooze&&data.gymSnooze[sub]);});
+    let award=null;
+    if(!gym&&data.award&&SUBS.includes(data.award.sub)){
+      const a=data.award;
+      const tier=a.tier|0;
+      if(tier>=1&&tier<maxLevel(a.sub)){
+        let partner=null;
+        if(a.partner&&NUM_TO_PI[a.partner.num]!==undefined){
+          partner={num:a.partner.num,shiny:!!a.partner.shiny,level:Math.max(1,a.partner.level|0)};
+        }
+        award={sub:a.sub,tier,again:!!a.again,partner,xp:Math.max(0,a.xp|0),candy:Math.max(0,a.candy|0),great:Math.max(0,a.great|0),grew:!!a.grew};
+      }
+    }
+    const itemN=n=>Math.max(0,(n|0));
+    const items={
+      candy:itemN(data.items&&data.items.candy),
+      great:itemN(data.items&&data.items.great),
+    };
+
     return{
       starter:typeof data.starter==='number'?data.starter:null,
       activeIdx,
@@ -1961,7 +2132,8 @@ function loadSaved(){
       // no shinyDex; both default to "nothing is shiny", which is exactly what
       // those saves meant. SAVE_V holds again -- bumping it would wipe every
       // existing Pokedex to add a feature almost no save has yet used.
-      team,pdx,sdx,stats,
+      team,pdx,sdx,stats,badges,gymOffer,gym,award,prizes,gymSnooze,
+      items,
     };
   }catch(e){
     // corrupt or half-written save: start fresh rather than fail to a blank screen
@@ -2043,8 +2215,292 @@ function genFromPi(pi){const li=LINES.findIndex(ln=>ln.includes(pi));if(li!==-1)
 // "Lv" in the UI means a Pokemon's level and nothing else.
 function updStats(sub,ok){
   const s=st.stats[sub];s.att++;
-  if(ok){s.cor++;s.cs++;s.ws=0;if(s.cs>=LEVEL_UP_STREAK&&s.level<maxLevel(sub)){s.level++;s.cs=0;}}
-  else{s.ws++;s.cs=0;if(s.ws>=LEVEL_DOWN_STREAK&&s.level>1){s.level--;s.ws=0;}}
+  if(ok){
+    s.cor++;s.cs++;s.ws=0;
+    if(s.cs>=LEVEL_UP_STREAK&&s.level<maxLevel(sub)){
+      s.cs=0;
+      const tier=s.level;
+      // Already cleared this tier (an old save, or a badge kept ahead of the
+      // counter). Step up quietly instead of asking for the same battle again.
+      if(hasBadge(sub,tier)){s.level++;return;}
+      const cur=st.gymOffer[sub];
+      if(cur&&cur.tier===tier)return; // a cooldown already running stays put
+      st.gymOffer[sub]={tier,cool:0};
+    }
+  } else {
+    s.ws++;s.cs=0;
+    if(s.ws>=LEVEL_DOWN_STREAK&&s.level>1){
+      s.level--;s.ws=0;
+      st.badges[sub]=(st.badges[sub]||[]).filter(t=>t<s.level);
+      const off=st.gymOffer[sub];
+      if(off&&off.tier!==s.level)st.gymOffer[sub]=null;
+    }
+  }
+}
+function gymQueue(sub,tier){
+  const n=QB[sub][tier].length;
+  const bag=[];
+  while(bag.length<GYM_QUESTIONS){
+    const order=[];for(let i=0;i<n;i++)order.push(i);
+    for(let i=order.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));const t=order[i];order[i]=order[j];order[j]=t;}
+    if(bag.length&&order[0]===bag[bag.length-1]&&order.length>1){const t=order[0];order[0]=order[1];order[1]=t;}
+    for(let i=0;i<order.length&&bag.length<GYM_QUESTIONS;i++)bag.push(order[i]);
+  }
+  return bag;
+}
+function gymWaiting(sub){
+  const o=st.gymOffer[sub];
+  return !!(o&&o.cool<=0&&o.tier===st.stats[sub].level&&!hasBadge(sub,o.tier));
+}
+function gymReady(sub){return gymWaiting(sub)&&!st.gymSnooze[sub];}
+function gymTimerApplies(){
+  return st.phase==='gym'&&st.gym&&!st.gym.over&&st.gym.tier>=GYM_TIMER_MIN_TIER&&st.tries===0&&!st.helped&&!st.cor;
+}
+function gymClockRunning(){
+  return view==='game'&&document.visibilityState!=='hidden';
+}
+function heartsHTML(n,max,cls){
+  let s=`<span class="hp ${cls}">`;
+  for(let i=0;i<max;i++)s+=`<span class="heart${i<n?' on':''}">&#9829;</span>`;
+  return s+'</span>';
+}
+function badgeHTML(sub,tier,big){
+  return `<span class="badge${big?' big':''} b-${sub}" data-badge="${sub}-${tier}">${SUBJ_ICON[sub]} ${badgeName(sub,tier)}</span>`;
+}
+function badgeRowHTML(){
+  const bits=[];
+  SUBS.forEach(sub=>(st.badges[sub]||[]).forEach(t=>bits.push(badgeHTML(sub,t,false))));
+  return bits.length?`<div class="badge-row">${bits.join('')}</div>`:'';
+}
+function grantGymPartner(sub){
+  const pi=piByName(GYM_LEADER[sub]);
+  const fam=familyOf(pi);
+  const owns=shiny=>fam.some(f=>st.team.some(t=>t.pi===f&&!!t.shiny===!!shiny));
+  if(owns(false)&&owns(true))return null;
+  const shiny=owns(false);
+  st.team.push({pi,level:GYM_PARTNER_LEVEL,xp:0,shiny});
+  markDex(pi,shiny);
+  return {pi,shiny,level:GYM_PARTNER_LEVEL};
+}
+function finishGymWin(){
+  const g=st.gym;
+  if(!g||g.sealed)return;
+  g.sealed=true;
+  const sub=g.sub,tier=g.tier;
+  if(!hasBadge(sub,tier))st.badges[sub].push(tier);
+  st.badges[sub].sort((a,b)=>a-b);
+  if(st.stats[sub].level===tier&&st.stats[sub].level<maxLevel(sub))st.stats[sub].level++;
+  st.gymOffer[sub]=null;
+  const again=st.prizes[sub].indexOf(tier)>=0;
+  let candy=0,partner=null,grew=false;
+  if(!again){
+    st.prizes[sub].push(tier);
+    st.prizes[sub].sort((a,b)=>a-b);
+    const tm=activeTM();
+    const before=tm?tm.level:0;
+    if(tm&&!st.pendingEvo){tm.xp+=GYM_BONUS_XP;applyLevelUps();}
+    else if(tm){tm.xp+=GYM_BONUS_XP;}
+    grew=!!(tm&&tm.level>before);
+    candy=1;
+    st.items.candy+=1;
+    st.items.great+=1;
+    partner=grantGymPartner(sub);
+    if(!partner){st.items.candy+=1;candy=2;}
+  }
+  st.award={
+    sub,tier,again,
+    partner:partner?{num:PKM[partner.pi].num,shiny:!!partner.shiny,level:partner.level}:null,
+    xp:again?0:GYM_BONUS_XP,candy,great:again?0:1,
+    grew,
+  };
+  st.gym=null;
+  st.phase='award';
+}
+function finishGymLose(){
+  const g=st.gym;
+  if(!g||g.over)return;
+  g.over='lose';
+  st.gymOffer[g.sub]={tier:g.tier,cool:GYM_COOLDOWN};
+}
+function leaveAfterGym(){
+  st.gym=null;
+  st.phase='play';
+  save();
+  if(st.pendingEvo)processEvolution();
+  else loadQuestion();
+}
+function startGym(sub){
+  if(st.phase!=='play'||!st.cor||!gymReady(sub))return;
+  const tier=st.stats[sub].level;
+  st.gym={sub,tier,queue:gymQueue(sub,tier),qi:0,kid:GYM_KID_HP,lead:GYM_LEAD_HP,solved:false,over:null};
+  st.gymOffer[sub]=null;
+  st.phase='gym';
+  save();
+  dealGymQuestion();
+}
+function dealGymQuestion(resume){
+  const g=st.gym;if(!g)return;
+  if(g.qi<0||g.qi>=g.queue.length){finishGymLose();render();return;}
+  st.q=serveQuestion(g.sub,g.tier,g.queue[g.qi],questionPname());
+  st.sel=null;st.cor=false;st.anim='';st.lastXp=0;st.draft='';
+  st.phase='gym';
+  g.deadline=null;
+  g.confirmEnd=false;
+  if(resume){
+    st.tries=Math.max(0,g.tries|0);
+    st.helped=!!g.helped;
+    st.wrong=Array.isArray(g.wrong)?g.wrong.slice():[];
+    st.armAt=Date.now()+Math.max(0,g.armLeft|0);
+    const timed=g.tier>=GYM_TIMER_MIN_TIER&&st.tries===0&&!st.helped;
+    if(!timed)g.timerLeft=null;
+    else if(typeof g.timerLeft!=='number')g.timerLeft=GYM_TIMER_MS;
+  } else {
+    st.tries=0;st.helped=false;st.wrong=[];
+    st.armAt=Date.now()+PAUSE.first;
+    g.timerLeft=g.tier>=GYM_TIMER_MIN_TIER?GYM_TIMER_MS:null;
+    g.timerKnown=true;
+  }
+  save();
+  render();
+}
+function gymPayload(){
+  const g=st.gym;
+  if(!g||g.over)return undefined;
+  let timerLeft=g.timerLeft;
+  if(g.deadline!=null)timerLeft=Math.max(0,g.deadline-Date.now());
+  const timed=g.tier>=GYM_TIMER_MIN_TIER&&st.tries===0&&!st.helped&&!st.cor;
+  if(!timed)timerLeft=null;
+  return{
+    sub:g.sub,tier:g.tier,queue:g.queue,qi:g.qi,kid:g.kid,lead:g.lead,solved:!!g.solved,
+    tries:st.tries|0,helped:!!st.helped,wrong:(st.wrong||[]).slice(),
+    armLeft:Math.max(0,(st.armAt||0)-Date.now()),
+    timerLeft,
+  };
+}
+function pauseGymTimer(){
+  if(gymTick){clearInterval(gymTick);gymTick=null;}
+  const g=st.gym;
+  if(!g||g.timerLeft==null)return;
+  // Snapshot once. A second pause (the tick, then the hide) must not
+  // treat the frozen remainder as already expired.
+  if(g.deadline!=null){
+    g.timerLeft=Math.max(0,g.deadline-Date.now());
+    g.deadline=null;
+  }
+}
+function noteGymHide(){
+  pauseGymTimer();
+  save();
+}
+function onGymNext(){
+  const g=st.gym;
+  if(!g){st.phase='play';loadQuestion();return;}
+  if(g.over){leaveAfterGym();return;}
+  if(!st.cor)return;
+  g.solved=false;
+  g.qi++;
+  if(g.qi>=g.queue.length){finishGymLose();save();render();return;}
+  dealGymQuestion();
+  save();
+}
+function askEndGym(){
+  if(st.phase!=='gym'||!st.gym||st.gym.over||!st.cor)return;
+  st.gym.confirmEnd=true;
+  render();
+}
+function cancelEndGym(){
+  if(!st.gym)return;
+  st.gym.confirmEnd=false;
+  render();
+}
+function forfeitGym(){
+  if(st.phase!=='gym'||!st.gym||st.gym.over||!st.cor)return;
+  finishGymLose();
+  save();
+  render();
+}
+function dismissAward(){
+  if(st.phase!=='award')return;
+  st.award=null;
+  st.phase='play';
+  save();
+  if(st.pendingEvo)processEvolution();
+  else loadQuestion();
+}
+function useCandy(){
+  if(!st.items.candy||st.pendingEvo)return;
+  if(st.phase!=='play'&&st.phase!=='award')return;
+  const tm=activeTM();if(!tm)return;
+  st.items.candy--;
+  tm.xp+=xpToNext(tm.level);
+  applyLevelUps();
+  save();
+  if(st.phase==='award')render();
+  else render();
+}
+function takeGreatBall(wild){
+  // Held, not spent. A reload drops the encounter, and the ball should still
+  // be in the bag until the fight actually ends.
+  if(st.items.great>0){
+    wild.correctStreak=1;
+    wild.great=true;
+    wild.greatHeld=true;
+  }
+  return wild;
+}
+function spendGreatBall(){
+  if(!st.wild||!st.wild.greatHeld)return;
+  if(st.items.great>0)st.items.great--;
+  st.wild.greatHeld=false;
+}
+function tickGymCool(){
+  SUBS.forEach(sub=>{
+    const o=st.gymOffer[sub];
+    if(o&&o.cool>0)o.cool--;
+  });
+}
+let gymTick=null;
+function armGymTimer(){
+  if(gymTick){clearInterval(gymTick);gymTick=null;}
+  if(!gymTimerApplies())return;
+  const tick=()=>{
+    const g=st.gym;
+    if(!gymTimerApplies()||!g){clearInterval(gymTick);gymTick=null;return;}
+    // Hidden tab or the Pokédex: freeze the bar. Time spent off the battle
+    // is not a miss.
+    if(!gymClockRunning()){pauseGymTimer();return;}
+    const fill=document.getElementById('gym-time-fill');
+    if(Date.now()<st.armAt){
+      if(fill)fill.style.transform=`scaleX(${Math.max(0,Math.min(1,(g.timerLeft||0)/GYM_TIMER_MS))})`;
+      return;
+    }
+    if(g.deadline==null)g.deadline=Date.now()+g.timerLeft;
+    const left=g.deadline-Date.now();
+    g.timerLeft=Math.max(0,left);
+    if(fill)fill.style.transform=`scaleX(${Math.max(0,Math.min(1,left/GYM_TIMER_MS))})`;
+    if(left<=0){clearInterval(gymTick);gymTick=null;g.deadline=null;g.timerLeft=0;commitAttempt(false,null);}
+  };
+  gymTick=setInterval(tick,200);
+  tick();
+}
+function gymInviteHTML(){
+  let h='';
+  SUBS.forEach(sub=>{
+    const o=st.gymOffer[sub];
+    if(!o)return;
+    const leader=GYM_LEADER[sub];
+    if(o.cool>0){
+      h+=`<div class="gym-wait">${leader} is cheering you on. Practice a little more, then the Gym is ready again.</div>`;
+      return;
+    }
+    if(!gymWaiting(sub)||st.gymSnooze[sub])return;
+    if(!st.cor){
+      h+=`<div class="gym-wait">${leader} the Gym Leader is waiting. Finish this question first.</div>`;
+      return;
+    }
+    h+=`<div class="gym-invite"><div class="gym-invite-txt">${leader} wants a Gym battle!</div><div class="gym-invite-row"><button class="gym-go" data-gym-start="${sub}">Battle</button><button class="gym-later" data-gym-later="${sub}">Not now</button></div></div>`;
+  });
+  return h;
 }
 const TYPE_COLOR={Fire:'#FF5722',Water:'#1976D2',Grass:'#16A34A',Electric:'#EAB308',Normal:'#6B7280',Flying:'#0EA5E9',Bug:'#84CC16',Fairy:'#EC4899',Poison:'#9C27B0',Fighting:'#D32F2F',Ground:'#795548',Steel:'#607D8B',Psychic:'#E91E63',Dark:'#424242',Ghost:'#512DA8',Rock:'#A16207',Dragon:'#6D28D9',Ice:'#0891B2'};
 const TYPE_CLASS={Fire:'fire-type',Water:'water-type',Grass:'grass-type',Electric:'electric-type',Normal:'normal-type',Flying:'flying-type',Bug:'bug-type',Fairy:'fairy-type',Poison:'normal-type',Fighting:'normal-type',Ground:'normal-type',Steel:'normal-type',Psychic:'normal-type',Dark:'normal-type',Ghost:'normal-type',Rock:'normal-type',Dragon:'normal-type',Ice:'water-type'};
@@ -2347,6 +2803,9 @@ function qCardHTML(resultMsg,btnLabel){
   // beating it is worth a bonus and it's the whole point of it coming back.
   const rematchPill=q.rematch?`<span class="rematch-pill">&#128257; Rematch!</span>`:'';
   let h=`<div class="card"><div class="q-head"><div class="subj-tag ${SCLS[q.subject]||'tagm'}">${SNAME[q.subject]}</div>${rematchPill}${streakPill}${bestPill}${shinyPill}</div><div class="qtext">${q.question}</div>`;
+  if(gymTimerApplies()){
+    h+=`<div class="gym-time" id="gym-time"><span class="gym-time-lbl">Thinking time</span><span class="gym-time-track"><span class="gym-time-fill" id="gym-time-fill"></span></span></div>`;
+  }
   if(isTypedQuestion(q)){
     h+=numpadHTML(q,resolved,arming,armLeft);
   }else{
@@ -2364,7 +2823,8 @@ function qCardHTML(resultMsg,btnLabel){
   // before answering, or shown after a miss. A solved question and a Pokemon
   // that already fled don't carry one.
   const hintUp=(!resolved&&st.tries===0&&st.helped)||(st.tries>0&&!st.cor&&!st.wildEscape);
-  const visual=hintUp?visualHintHTML(q):'';
+  // A Gym badge has to be earned without the picture. The text hint still shows.
+  const visual=hintUp&&st.phase!=='gym'?visualHintHTML(q):'';
   // Before the first answer only: after a miss the hint is already on screen. His
   // own Pokemon is the one asked, even mid-encounter -- the wild one isn't his to ask.
   if(!resolved&&st.tries===0){
@@ -2382,7 +2842,7 @@ function qCardHTML(resultMsg,btnLabel){
   if(st.tries>0){
     // Empty is the common case now -- no phase says anything here on a correct answer
     // -- and an empty .result-msg would still paint its padding as a bare stripe.
-    if(resultMsg)h+=`<div class="result-msg">${resultMsg}</div>`;
+    if(resultMsg)h+=`<div class="${st.phase==='gym'?'gym-hint':'result-msg'}">${resultMsg}</div>`;
     if(visual)h+=visual;
     if(resolved)h+=`<button class="nxt-btn" id="nxt">${btnLabel}</button>`;
   }
@@ -2459,7 +2919,9 @@ function render(){
     // pressed, so switching first would evolve the wrong Pokemon.
     const canSwitch=st.team.length>1&&!st.pendingEvo;
     const switchBtn=canSwitch?`<button class="switch-btn" id="switch-btn"><span>&#128260;</span><span>Switch</span><span class="switch-count">${st.team.length}</span></button>`:'';
-    h+=`<div class="card pcard${canSwitch?' has-switch':''}">${switchBtn}<div class="pnum">${p.num} &bull; ${typeBadgesInline(p.type)} Type</div><div class="pname">${p.n}${tm.shiny?` <span class="shiny-badge">${SHINY_STAR} Shiny</span>`:''} <span class="lvl-badge${st.lvlUpMsg?' lvl-up':''}">Lv ${tm.level}</span></div><div class="psvg ${st.anim}">${pkSprite(tm.pi,148,tm.shiny)}</div><div class="xp-row"><span>XP</span><span class="xp-right">${st.lastXp?`<span class="xp-gain">+${st.lastXp} XP</span>`:''}${tm.xp}/${xpMx}</span></div><div class="xp-track"><div class="xp-fill" style="width:${pct}%"></div></div></div>`;
+    const candyBtn=st.items.candy>0&&!st.pendingEvo?`<button class="candy-btn" id="candy-btn">&#127853; Rare Candy · ${st.items.candy}</button>`:'';
+    const greatNote=st.items.great>0?`<div class="great-note">Great Ball ready</div>`:'';
+    h+=`<div class="card pcard${canSwitch?' has-switch':''}">${switchBtn}<div class="pnum">${p.num} &bull; ${typeBadgesInline(p.type)} Type</div><div class="pname">${p.n}${tm.shiny?` <span class="shiny-badge">${SHINY_STAR} Shiny</span>`:''} <span class="lvl-badge${st.lvlUpMsg?' lvl-up':''}">Lv ${tm.level}</span></div><div class="psvg ${st.anim}">${pkSprite(tm.pi,148,tm.shiny)}</div><div class="xp-row"><span>XP</span><span class="xp-right">${st.lastXp?`<span class="xp-gain">+${st.lastXp} XP</span>`:''}${tm.xp}/${xpMx}</span></div><div class="xp-track"><div class="xp-fill" style="width:${pct}%"></div></div>${badgeRowHTML()}${candyBtn}${greatNote}</div>`;
     if(st.streakMsg){
       h+=`<div class="streak-toast">&#128293; ${st.streakMsg}</div>`;
     }
@@ -2479,6 +2941,7 @@ function render(){
     const willEvolve=!!st.pendingEvo;
     const btn=willEvolve?`What's happening to ${p.n}?! &#8594;`:'Next Question &#8594;';
     h+=qCardHTML(rm,btn);
+    h+=gymInviteHTML();
   }
 
   if(st.phase==='wild'&&st.wild){
@@ -2500,7 +2963,8 @@ function render(){
     const canFlee=!escaped&&!caught&&(st.tries===0||st.cor);
     const flee=canFlee?`<button class="flee-btn" id="flee">Run away</button>`:'';
     const wsh=!!st.wild.shiny;
-    h+=`<div class="wild-card${wsh?' shiny':''}"><div class="wild-badge">${wsh?`${SHINY_STAR} Shiny Encounter! ${SHINY_STAR}`:'&#9889; Wild Encounter'}</div><div class="wild-name">A wild ${wsh?`<strong class="shiny-name">shiny ${wild.n}</strong>`:`<strong>${wild.n}</strong>`} appeared! <span class="lvl-badge">Lv ${st.wild.level}</span></div><div class="psvg ${st.anim}">${pkSprite(st.wild.pi,140,wsh)}</div><div class="catch-counter">Answer ${CATCH_STREAK_NEEDED} to catch it! (${cs}/${CATCH_STREAK_NEEDED})</div>${pips}${balls}${flee}</div>`;
+    const greatLine=st.wild.great?'<div class="great-note">Your Great Ball is helping!</div>':'';
+    h+=`<div class="wild-card${wsh?' shiny':''}"><div class="wild-badge">${wsh?`${SHINY_STAR} Shiny Encounter! ${SHINY_STAR}`:'&#9889; Wild Encounter'}</div><div class="wild-name">A wild ${wsh?`<strong class="shiny-name">shiny ${wild.n}</strong>`:`<strong>${wild.n}</strong>`} appeared! <span class="lvl-badge">Lv ${st.wild.level}</span></div><div class="psvg ${st.anim}">${pkSprite(st.wild.pi,140,wsh)}</div><div class="catch-counter">Answer ${CATCH_STREAK_NEEDED} to catch it! (${cs}/${CATCH_STREAK_NEEDED})</div>${pips}${balls}${greatLine}${flee}</div>`;
     // Both toasts stay HERE, even though the play phase dropped its level-up bar for a
     // lit pill. There is no pill to light: the whole active Pokemon card is behind the
     // wild card, and the "Lv 8" on screen belongs to the WILD Pokemon -- lighting that
@@ -2527,6 +2991,43 @@ function render(){
     h+=qCardHTML(rm,btn);
   }
 
+  if(st.phase==='gym'&&st.gym){
+    const g=st.gym;
+    const leader=GYM_LEADER[g.sub];
+    const pi=piByName(leader);
+    h+=`<div class="card gym-card"><div class="gym-role">Gym Leader</div><div class="gym-name">${leader}</div><div class="psvg">${pkSprite(pi,120,false)}</div>${heartsHTML(g.lead,GYM_LEAD_HP,'lead')}</div>`;
+    h+=`<div class="you-row">You ${heartsHTML(g.kid,GYM_KID_HP,'you')}</div>`;
+    if(g.over==='lose'){
+      const hint=st.q&&st.q.hint?`<div class="gym-hint">${st.q.hint}</div>`:'';
+      h+=`<div class="card gym-end"><p>Brave try. Practice a little more, and ${leader} will be ready for a rematch.</p>${hint}<button class="gym-go" id="gym-back">Back to practice</button></div>`;
+    } else {
+      const rm=st.cor?'':(st.q&&st.q.hint)||'You can do it!';
+      h+=qCardHTML(rm, 'Next &#8594;');
+      if(st.cor&&g.confirmEnd){
+        h+=`<div class="gym-confirm"><p>End this Gym battle? You can try again after a little more practice.</p><div class="gym-confirm-row"><button class="gym-end-btn" id="gym-forfeit-yes" type="button">End the battle</button><button class="gym-later" id="gym-forfeit-no" type="button">Keep going</button></div></div>`;
+      } else if(st.cor){
+        h+=`<button class="gym-end-btn" id="gym-forfeit" type="button">End the battle</button>`;
+      }
+    }
+  }
+
+  if(st.phase==='award'&&st.award){
+    const a=st.award;
+    const leader=GYM_LEADER[a.sub];
+    let prizeBit='';
+    if(a.again){
+      prizeBit=`<div class="award-prize">You already got the prize for this badge.</div>`;
+    } else {
+      const partnerPi=a.partner?NUM_TO_PI[a.partner.num]:-1;
+      const partnerBit=partnerPi>=0
+        ?`<div class="psvg award-pop">${pkSprite(partnerPi,140,a.partner.shiny)}</div><div class="award-prize">${a.partner.shiny?'A shiny ':''}${PKM[partnerPi].n} joined your team!</div>`
+        :`<div class="award-prize">${leader} cheered — you already have a partner like that, so here is an extra Rare Candy.</div>`;
+      prizeBit=`${partnerBit}<div class="award-prize">+${a.xp} XP</div><div class="award-prize">Rare Candy ×${a.candy}</div><div class="award-prize">Great Ball ×${a.great} — it helps on your next wild Pokémon.</div>`;
+    }
+    const grew=a.grew?`<div class="award-prize">${PKM[activePi()].n} grew stronger!</div>`:'';
+    h+=`<div class="card award-card"><div class="award-kicker">Gym prize</div><div class="award-pop">${badgeHTML(a.sub,a.tier,true)}</div><div class="award-title">You earned the ${badgeName(a.sub,a.tier)}!</div><div class="award-sub">New ${SNAME[a.sub]} questions are waiting.</div>${prizeBit}${grew}<button class="award-go" id="award-go">Yay!</button></div>`;
+  }
+
   gameEl.innerHTML=h;
   gameEl.querySelectorAll('[data-i]').forEach(b=>b.addEventListener('click',()=>handleAnswer(+b.dataset.i)));
   gameEl.querySelectorAll('[data-digit]').forEach(b=>b.addEventListener('click',e=>typeDigit(b.dataset.digit,e.detail)));
@@ -2539,6 +3040,19 @@ function render(){
   const nb=gameEl.querySelector('#nxt');if(nb)nb.addEventListener('click',onNext);
   const fb=gameEl.querySelector('#flee');if(fb)fb.addEventListener('click',fleeWild);
   const hb=gameEl.querySelector('#help-btn');if(hb)hb.addEventListener('click',askForHelp);
+  gameEl.querySelectorAll('[data-gym-start]').forEach(b=>b.addEventListener('click',()=>startGym(b.dataset.gymStart)));
+  gameEl.querySelectorAll('[data-gym-later]').forEach(b=>b.addEventListener('click',()=>{
+    st.gymSnooze[b.dataset.gymLater]=true;
+    save();
+    render();
+  }));
+  const gback=gameEl.querySelector('#gym-back');if(gback)gback.addEventListener('click',leaveAfterGym);
+  const gfor=gameEl.querySelector('#gym-forfeit');if(gfor)gfor.addEventListener('click',askEndGym);
+  const gyes=gameEl.querySelector('#gym-forfeit-yes');if(gyes)gyes.addEventListener('click',forfeitGym);
+  const gno=gameEl.querySelector('#gym-forfeit-no');if(gno)gno.addEventListener('click',cancelEndGym);
+  const candy=gameEl.querySelector('#candy-btn');if(candy)candy.addEventListener('click',useCandy);
+  const awardGo=gameEl.querySelector('#award-go');if(awardGo)awardGo.addEventListener('click',dismissAward);
+  armGymTimer();
 }
 
 // A shiny slot is rendered only once it has actually been caught. Carrying 237
@@ -2554,6 +3068,9 @@ function pdxEntryHTML(pi,shiny){
 
 function renderPokedex(){
   let h=`<div class="hdr"><span class="app-name">Pokédex</span><button class="reset-btn" id="reset-btn"><span class="reset-fill" id="reset-fill"></span><span class="reset-lbl" id="reset-lbl">Hold to start over</span></button></div>`;
+  const bits=[];
+  SUBS.forEach(sub=>(st.badges[sub]||[]).forEach(t=>bits.push(badgeHTML(sub,t,false))));
+  h+=`<div class="card pdx-badges"><div class="pdx-badge-hd">Gym badges</div>${bits.length?`<div class="badge-row">${bits.join('')}</div>`:'<div class="gym-wait">Win a Gym battle to earn your first badge.</div>'}</div>`;
   GENS.forEach((genLines,gi)=>{
     h+=`<div class="pdx-gen-section"><div class="pdx-gen-label">Gen ${GEN_ROMAN[gi]} &mdash; ${GEN_NAMES[gi]}</div><div class="pdx-grid">`;
     genLines.forEach(li=>{
@@ -2607,12 +3124,14 @@ function wireReset(){
 }
 
 function switchView(v){
+  if(v!=='game')pauseGymTimer();
   view=v;
   document.getElementById('nav-game').classList.toggle('nav-active',v==='game');
   document.getElementById('nav-pdx').classList.toggle('nav-active',v==='pdx');
   if(v==='game'){
     gameEl.style.display='block';
     pdxEl.style.display='none';
+    armGymTimer();
   } else {
     gameEl.style.display='none';
     pdxEl.style.display='block';
@@ -2683,6 +3202,10 @@ function recordReview(tmpl,clean){
 
 async function loadQuestion(){
   st.served++;
+  // The question dealt on boot is the one they already snoozed past. Hold
+  // that snooze; the next question they actually ask for clears it.
+  if(st.holdSnooze)st.holdSnooze=false;
+  else SUBS.forEach(s=>{st.gymSnooze[s]=false;});
   const pname=questionPname();
   st.wildEscape=false;
   st.lvlUpMsg=null;
@@ -2718,6 +3241,7 @@ function refillQuestion(){
 function askForHelp(){
   if(!st.q||st.tries>0||st.helped||st.cor||st.wildEscape)return;
   st.helped=true;
+  if(st.gym){st.gym.timerLeft=null;st.gym.deadline=null;save();}
   render();
 }
 
@@ -3246,7 +3770,7 @@ function triggerWildEncounter(shiny){
   const available=allWild.filter(pi=>!familyOf(pi).some(f=>teamPis.has(f)));
   if(available.length===0){loadQuestion();return;}
   const wpi=available[Math.floor(Math.random()*available.length)];
-  st.wild={pi:wpi,level:wildLevel(),shiny,correctStreak:0,misses:0};
+  st.wild=takeGreatBall({pi:wpi,level:wildLevel(),shiny,correctStreak:0,misses:0});
   st.phase='wild';
   loadQuestion();
 }
@@ -3258,9 +3782,12 @@ function fleeWild(){
   if(st.phase!=='wild'||!st.wild)return;
   if(st.wildEscape||st.wild.correctStreak>=CATCH_STREAK_NEEDED)return;
   if(st.tries>0&&!st.cor)return;
+  // The ball is spent only once this fight is actually over.
+  spendGreatBall();
   st.wild=null;
   st.wildEscape=false;
   st.phase='play';
+  save();
   // An open question comes with him, redrawn with his own Pokemon's name --
   // otherwise running away is one more way to skip a question he doesn't like.
   if(st.q&&!st.cor){refillQuestion();render();}
@@ -3280,7 +3807,7 @@ function afterTurn(){
     const starterCands=getAvailableOtherStarters(shiny);
     if(starterCands.length>0&&Math.random()<STARTER_WILD_CHANCE){
       const wpi=starterCands[Math.floor(Math.random()*starterCands.length)];
-      st.wild={pi:wpi,level:wildLevel(),shiny,correctStreak:0,misses:0};
+      st.wild=takeGreatBall({pi:wpi,level:wildLevel(),shiny,correctStreak:0,misses:0});
       st.phase='wild';
       loadQuestion();return;
     }
@@ -3290,14 +3817,19 @@ function afterTurn(){
 }
 
 function onNext(){
+  if(st.phase==='gym'){onGymNext();return;}
+  if(st.phase==='award'){dismissAward();return;}
   if(st.phase==='wild'){
     if(st.wildEscape){
+      spendGreatBall();
       st.wild=null;st.wildEscape=false;st.phase='play';
+      save();
       loadQuestion();return;
     }
     if(st.wild&&st.wild.correctStreak>=CATCH_STREAK_NEEDED){
       const wp=st.wild.pi;const wlev=st.wild.level;const wsh=!!st.wild.shiny;
       playCatch(wp,wsh,()=>{
+        spendGreatBall();
         st.team.push({pi:wp,level:wlev,xp:0,shiny:wsh});
         markDex(wp,wsh);
         st.wild=null;
@@ -3412,11 +3944,18 @@ function commitAttempt(ok,choice,nextDraft){
       // that climbs with the streak moves -- not the streak, not the catch pips,
       // not the difficulty tier -- but the promotion run is broken, since needing
       // the hint is a sign this tier isn't comfortable yet.
-      const sub=st.stats[st.q.subject];sub.att++;sub.cor++;sub.cs=0;
-      if(st.phase==='play'){
+      // A Gym is the exception: hearts are already the penalty, so help must
+      // not wipe the practice run that unlocked the battle.
+      const sub=st.stats[st.q.subject];sub.att++;sub.cor++;
+      if(st.phase!=='gym')sub.cs=0;
+      if(st.phase==='play'||st.phase==='gym'){
         const tm=activeTM();
         if(tm){st.lastXp=XP_WITH_HELP;tm.xp+=st.lastXp;applyLevelUps();}
       }
+    } else if(st.phase==='gym'){
+      // Gym answers count toward the subject totals, and nothing else.
+      // Misses must not drop a tier, strip a badge, or arm another invite.
+      const sub=st.stats[st.q.subject];sub.att++;if(ok)sub.cor++;
     } else {
       updStats(st.q.subject,ok);
     }
@@ -3424,7 +3963,7 @@ function commitAttempt(ok,choice,nextDraft){
       st.streak++;
       if(st.streak>st.bestStreak){st.bestStreak=st.streak;if(st.streak>=BEST_STREAK_NOTE)st.newRecord=true;}
       const bonus=milestoneBonus(st.streak);
-      if(st.phase==='play'){
+      if(st.phase==='play'||st.phase==='gym'){
         const tm=activeTM();
         if(tm){st.lastXp=xpForStreak(st.streak)+bonus;tm.xp+=st.lastXp;applyLevelUps();}
       } else if(st.phase==='wild'&&st.wild){
@@ -3452,20 +3991,38 @@ function commitAttempt(ok,choice,nextDraft){
       const tm=activeTM();
       if(tm){
         tm.xp+=REVIEW.bonus;
-        if(st.phase==='play')st.lastXp+=REVIEW.bonus;
+        if(st.phase==='play'||st.phase==='gym')st.lastXp+=REVIEW.bonus;
         // An evolution already queued will run applyLevelUps itself once it lands.
         if(!st.pendingEvo)applyLevelUps();
       }
       st.rematchMsg=`Rematch won! +${REVIEW.bonus} XP`;
     }
-  } else if(ok&&st.phase==='play'){
+  } else if(ok&&(st.phase==='play'||st.phase==='gym')){
     const tm=activeTM();
     if(tm){st.lastXp=XP_AFTER_HINT;tm.xp+=st.lastXp;applyLevelUps();}
+  }
+
+  // Gym hearts move only on the first try, and only when he did it himself.
+  // Help, and a correct answer after a miss, leave both hearts alone.
+  if(st.phase==='gym'&&st.gym&&!st.gym.over){
+    if(firstTry){
+      if(ok&&!st.helped)st.gym.lead=Math.max(0,st.gym.lead-1);
+      else if(!ok){
+        st.gym.kid=Math.max(0,st.gym.kid-1);
+        st.gym.timerLeft=null;
+        st.gym.deadline=null;
+      }
+    }
+    if(st.gym.lead<=0)finishGymWin();
+    else if(st.gym.kid<=0)finishGymLose();
+    else if(ok)st.gym.solved=true;
   }
 
   // Re-arm before the retry: the hint needs reading anyway, and it's what stops
   // a wrong answer from becoming a free rapid-fire second guess.
   if(!ok)st.armAt=Date.now()+PAUSE.retry;
+  // Cooldown is practice questions he actually answers, not a reload dealing one.
+  if(firstTry&&st.phase==='play')tickGymCool();
   save();
   render();
 }
@@ -3474,13 +4031,29 @@ document.getElementById("nav-game").addEventListener("click",()=>switchView('gam
 document.getElementById("nav-pdx").addEventListener("click",()=>switchView('pdx'));
 
 // iPad swipe-away and tab close don't always fire a normal teardown
-window.addEventListener('pagehide',save);
-document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')save();});
+window.addEventListener('pagehide',noteGymHide);
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState==='hidden')noteGymHide();
+  else armGymTimer();
+});
 
 gameEl.style.display="block";
 document.getElementById("bottom-nav").style.display="flex";
-// a restored game resumes straight into a fresh question; a new one picks a starter first
-if(st.phase==='play')loadQuestion();else render();
+// a restored game resumes straight into a fresh question; a new one picks a starter first.
+// A Gym in progress re-deals the open question. If that one was already solved,
+// resume on the next one so a reload can't score the same hit twice.
+if(st.phase==='gym'&&st.gym){
+  if(st.gym.solved){
+    st.gym.solved=false;
+    st.gym.qi++;
+    if(st.gym.qi>=st.gym.queue.length){finishGymLose();render();}
+    else dealGymQuestion();
+  } else dealGymQuestion(true);
+} else if(st.phase==='play'){
+  st.holdSnooze=true;
+  loadQuestion();
+}
+else render();
 </script>
 </body>
 </html>
