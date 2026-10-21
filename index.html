@@ -12,10 +12,14 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;min-heigh
 .wrap.wide{max-width:980px}
 #game{display:none}
 #pokedex-page{display:none}
-.hdr{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:14px;padding-right:56px}
+/* The right padding is the sound button's lane. The button is 52px and sits 4px
+   in from the column edge, so 60px keeps Math / Reading / Science clear of it. */
+.hdr{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:14px;padding-right:60px}
 .hdr-tight{flex-wrap:nowrap;align-items:stretch}
 .hdr-tight .app-name{flex:1 1 auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;align-items:center}
-.hdr-tight .hdr-right{display:flex;align-items:center}
+.hdr-tight .hdr-right{display:flex;align-items:center;flex:0 0 auto}
+.hdr-tight .who-btn{min-width:0;overflow:hidden}
+.hdr-tight .who-btn span{min-width:0}
 .app-name{font-size:15px;font-weight:600;color:#1A1A2E;min-width:0}
 .card{background:#fff;border-radius:16px;padding:18px;margin-bottom:12px;box-shadow:0 2px 8px rgba(0,0,0,0.06)}
 /* The extra top padding is only applied when the corner button is actually there.
@@ -85,6 +89,7 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;min-heigh
 .pad-note[hidden]{display:none}
 @media (orientation:landscape) and (max-height:820px){
   body{padding:8px 12px 58px}
+  .mute-btn{right:max(16px,calc(50vw - 256px))}
   .hdr{margin-bottom:6px}
   .card{padding:10px 14px;margin-bottom:8px}
   .psvg{margin:2px 0}
@@ -105,6 +110,7 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;min-heigh
    picture whenever the number pad is on a phone-width screen. */
 @media (max-width:560px){
   body:has(.numpad){padding:8px 12px 64px}
+  body:has(.numpad) .mute-btn{right:max(16px,calc(50vw - 256px))}
   body:has(.numpad) .hdr{margin-bottom:6px}
   body:has(.numpad) .card{padding:10px 12px;margin-bottom:8px}
   body:has(.numpad) .psvg{margin:2px 0}
@@ -118,6 +124,7 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;min-heigh
    Keep the name, and keep every key above the bottom bar. */
 @media (max-height:640px){
   body:has(.numpad){padding:4px 8px 52px}
+  body:has(.numpad) .mute-btn{right:max(12px,calc(50vw - 256px))}
   body:has(.numpad) .hdr{margin-bottom:4px}
   body:has(.numpad) .pcard .pnum,
   body:has(.numpad) .pcard .psvg,
@@ -135,17 +142,40 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;min-heigh
   body:has(.numpad) .pad-key{min-height:40px;font-size:20px}
   body:has(.numpad) .pad-check{min-height:40px}
 }
-/* A phone on its side has almost no height. The picture is already gone;
-   the name card goes too, and the keys get a little shorter, so Check
-   stays above the bottom bar. */
-@media (max-height:420px){
+/* A sideways phone is shorter than the pad plus Ask for help. Hide the
+   Pokémon card and put Check on the last key row, so both sit above the
+   Game / Pokédex bar. This starts at 520px so a 430px-tall phone is
+   included, not only the very shortest ones. */
+@media (max-height:520px){
   body:has(.numpad) .pcard{display:none}
+  body:has(.numpad) .q-head{margin-bottom:2px}
+  body:has(.numpad) .pad-wrap{margin-bottom:4px}
+  body:has(.numpad) .help-btn{padding:4px 8px;font-size:13px;line-height:1.2}
+  body:has(.numpad) .pad-check{grid-column:auto}
+}
+@media (max-height:420px){
   body:has(.numpad) .hdr{margin-bottom:2px}
   body:has(.numpad) .card{padding:6px 8px;margin-bottom:4px}
   body:has(.numpad) .qtext{font-size:14px;line-height:1.3;margin-bottom:4px}
   body:has(.numpad) .pad-read{min-height:28px;font-size:20px;margin-bottom:2px}
   body:has(.numpad) .pad-key{min-height:34px;font-size:18px}
   body:has(.numpad) .pad-check{min-height:34px}
+}
+/* A very short sideways phone still cannot spare a fifth key row.
+   Drop the subject pill (it already sits in the header) and shorten
+   the keys so Check and Ask for help both clear the bar. */
+@media (max-height:340px){
+  body:has(.numpad){padding-top:2px}
+  body:has(.numpad) .hdr{margin-bottom:0}
+  body:has(.numpad) .q-head{display:none}
+  body:has(.numpad) .card{padding:4px 8px;margin-bottom:2px}
+  body:has(.numpad) .qtext{margin-bottom:2px;font-size:13px;line-height:1.2}
+  body:has(.numpad) .pad-read{min-height:22px;font-size:16px;margin-bottom:2px}
+  body:has(.numpad) .pad-wrap{margin-bottom:2px}
+  body:has(.numpad) .numpad{gap:2px}
+  body:has(.numpad) .pad-key,
+  body:has(.numpad) .pad-check{min-height:26px;font-size:16px}
+  body:has(.numpad) .help-btn{padding:2px 8px;font-size:12px}
 }
 .streak-pill.maxed{background:#FFEDD5;color:#C2410C}
 .streak-pill.bump{animation:streak-pop 0.45s ease}
@@ -505,13 +535,39 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;min-heigh
    while playing. It sits in the page, not over the buttons. */
 .parents-link{display:flex;align-items:center;justify-content:center;width:max-content;margin:0 auto 8px;background:transparent;border:none;color:#374151;font-size:16px;font-weight:800;text-decoration:underline;cursor:pointer;font-family:inherit;padding:8px 16px;min-height:44px}
 .parents-link[hidden]{display:none}
-.name-line{display:flex;flex-wrap:wrap;align-items:center;gap:8px;background:#fff;border-radius:16px;padding:8px 12px;margin-bottom:12px;box-shadow:0 2px 8px rgba(0,0,0,0.06)}
-.name-line-lbl{font-size:15px;font-weight:800;color:#1A1A2E;flex:1 1 100%}
-.name-line .who-field{flex:1 1 140px;min-height:44px}
-.name-line-go{min-height:44px;border:none;border-radius:12px;background:#1A1A2E;color:#fff;font-family:inherit;font-weight:800;font-size:15px;padding:8px 14px;cursor:pointer}
+.name-line{display:flex;flex-wrap:nowrap;align-items:center;gap:6px;background:#fff;border-radius:16px;padding:6px 8px;margin-bottom:8px;box-shadow:0 2px 8px rgba(0,0,0,0.06)}
+.name-line:has(.parent-err:not([hidden])){flex-wrap:wrap}
+.name-line-lbl{font-size:14px;font-weight:800;color:#1A1A2E;flex:0 1 auto;white-space:nowrap}
+.name-line .who-field{flex:1 1 60px;min-width:0;width:auto;min-height:44px;margin:0;padding:8px 10px}
+.name-line-go{flex:0 0 auto;min-height:44px;border:none;border-radius:12px;background:#1A1A2E;color:#fff;font-family:inherit;font-weight:800;font-size:14px;padding:8px 10px;cursor:pointer;white-space:nowrap}
 .name-line .parent-err{flex:1 1 100%;margin:0}
-.mute-btn{position:fixed;z-index:1001;top:8px;right:max(8px,calc(50vw - 252px));min-width:44px;min-height:44px;display:flex;align-items:center;justify-content:center;gap:4px;padding:6px 10px;border-radius:999px;border:2px solid #1A1A2E;background:#fff;color:#1A1A2E;font-family:inherit;font-weight:800;font-size:14px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.12)}
-.mute-btn .mute-ico{font-size:18px;line-height:1}
+/* An old save asks for a name under the Pokémon card. The full picture
+   pushes the question below a small phone, so keep the name and drop
+   the picture, the bar, and the badges until a name is saved. */
+body:has(#name-ask) .pcard .pnum,
+body:has(#name-ask) .pcard .psvg,
+body:has(#name-ask) .pcard .xp-row,
+body:has(#name-ask) .pcard .xp-track,
+body:has(#name-ask) .pcard .badge-row,
+body:has(#name-ask) .pcard .candy-btn,
+body:has(#name-ask) .pcard .great-note{display:none}
+body:has(#name-ask) .pcard{padding:6px 10px;margin-bottom:6px}
+body:has(#name-ask) .pcard .pname{font-size:16px}
+@media (max-height:420px){
+  body:has(#name-ask) .pcard{display:none}
+  body:has(#name-ask) .hdr{margin-bottom:4px}
+  body:has(#name-ask) .name-line{margin-bottom:4px;padding:4px 8px}
+  body:has(#name-ask) .q-head{margin-bottom:4px}
+  body:has(#name-ask) .card{padding:8px 10px;margin-bottom:6px}
+  body:has(#name-ask) .qtext{margin-bottom:6px;font-size:14px;line-height:1.3}
+}
+/* Fixed to the column's top-right, in the header's right padding, so it
+   never covers the subject button. 52px wide, 4px in from the column edge.
+   right matches the body padding: 20px normally, 12px on a sideways
+   screen, 8px on a short phone with the number pad. */
+.mute-btn{position:fixed;z-index:1001;top:8px;right:max(24px,calc(50vw - 256px));width:52px;min-width:44px;height:44px;display:flex;align-items:center;justify-content:center;gap:2px;padding:0 3px;border-radius:999px;border:2px solid #1A1A2E;background:#fff;color:#1A1A2E;font-family:inherit;font-weight:800;font-size:11px;line-height:1;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.12);white-space:nowrap}
+.mute-btn .mute-ico{font-size:15px;line-height:1}
+.mute-btn .mute-lbl{line-height:1}
 .parent-kicker{font-size:12px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#374151}
 .parent-title{font-size:24px;font-weight:800;color:#1A1A2E;margin:2px 0 6px}
 .parent-lead{font-size:14px;color:#6B7280;line-height:1.45;margin-bottom:12px}

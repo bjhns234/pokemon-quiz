@@ -321,3 +321,113 @@ test('an old save keeps the question on a phone while it asks for a name',async(
   await expect(page.locator('#name-ask')).toHaveCount(0);
   expect(await state(page,()=>activeKid().name)).toBe('Maya');
 });
+
+// The tap lands on this element, and its box sits fully above the bottom bar.
+async function aboveBar(page,selector){
+  await page.evaluate(()=>window.scrollTo(0,0));
+  const box=await page.locator(selector).boundingBox();
+  const nav=await page.locator('#bottom-nav').boundingBox();
+  expect(box,selector).not.toBeNull();
+  expect(box.y).toBeGreaterThanOrEqual(-1);
+  expect(box.y+box.height).toBeLessThanOrEqual(nav.y+0.5);
+  const hits=await page.evaluate(({x,y,sel})=>{
+    const el=document.elementFromPoint(x,y);
+    const target=document.querySelector(sel);
+    return !!(el&&target&&(el===target||target.contains(el)));
+  },{x:box.x+box.width/2,y:box.y+Math.min(box.height/2,box.height-2),sel:selector});
+  expect(hits,selector).toBe(true);
+}
+
+test('Check and Ask for help clear the bar on a sideways phone',async({page})=>{
+  await openGame(page);
+  await startGame(page,'math');
+  const sizes=[
+    {width:844,height:390},
+    {width:667,height:375},
+    {width:812,height:375},
+    {width:932,height:430},
+    {width:568,height:320},
+    {width:700,height:320},
+  ];
+  for(const size of sizes){
+    await page.setViewportSize(size);
+    await serveStem(page,'What is 25 + 10?');
+    await aboveBar(page,'[data-pad="check"]');
+    await aboveBar(page,'#help-btn');
+  }
+  await page.setViewportSize({width:568,height:320});
+  await serveStem(page,'What is 25 + 10?');
+  await page.click('#help-btn');
+  await expect(page.locator('.help-box')).toBeVisible();
+  await expect(page.locator('#nav-game')).toHaveClass(/nav-active/);
+  await expect(page.locator('#pokedex-page')).toBeHidden();
+});
+
+test('an old save shows the question without scrolling on a small or sideways phone',async({page})=>{
+  const sizes=[
+    {width:320,height:568},
+    {width:844,height:390},
+    {width:568,height:320},
+    {width:667,height:375},
+  ];
+  for(const size of sizes){
+    await page.setViewportSize(size);
+    await openGame(page,{save:legacy});
+    await serveStem(page,'5 steps forward');
+    await page.evaluate(()=>window.scrollTo(0,0));
+    await expect(page.locator('#name-ask')).toContainText("What's your name?");
+    const q=await page.locator('.qtext').boundingBox();
+    const nav=await page.locator('#bottom-nav').boundingBox();
+    expect(q).not.toBeNull();
+    expect(q.y).toBeGreaterThanOrEqual(0);
+    expect(q.y+q.height).toBeLessThanOrEqual(size.height);
+    expect(q.y+q.height).toBeLessThanOrEqual(nav.y+0.5);
+    expect(await page.evaluate(()=>window.scrollY)).toBe(0);
+    const input=await page.locator('#name-ask-input').boundingBox();
+    expect(input.height).toBeGreaterThanOrEqual(44);
+  }
+});
+
+test('the sound button never covers the subject button',async({page})=>{
+  await openGame(page);
+  await startGame(page,'math');
+  const sizes=[
+    {width:390,height:844},
+    {width:320,height:568},
+    {width:360,height:740},
+    {width:844,height:390},
+    {width:1024,height:768},
+    {width:1280,height:800},
+    {width:1440,height:900},
+  ];
+  for(const size of sizes){
+    await page.setViewportSize(size);
+    for(const subject of ['math','reading','science']){
+      await state(page,sub=>{chooseSubject(sub);st.phase='play';render();},subject);
+      await page.evaluate(()=>window.scrollTo(0,0));
+      const subj=await page.locator('#subj-btn').boundingBox();
+      const mute=await page.locator('#mute-btn').boundingBox();
+      const who=await page.locator('#who-btn').boundingBox();
+      expect(subj).not.toBeNull();
+      expect(mute).not.toBeNull();
+      const gap=mute.x-(subj.x+subj.width);
+      expect(gap,`${subject} at ${size.width}x${size.height}`).toBeGreaterThanOrEqual(2);
+      const yOverlap=Math.min(mute.y+mute.height,subj.y+subj.height)-Math.max(mute.y,subj.y);
+      if(yOverlap>0) expect(gap).toBeGreaterThanOrEqual(2);
+      const whoGap=mute.x-(who.x+who.width);
+      const whoY=Math.min(mute.y+mute.height,who.y+who.height)-Math.max(mute.y,who.y);
+      if(whoY>0) expect(whoGap).toBeGreaterThanOrEqual(2);
+      const hitsSubject=await page.evaluate(({x,y})=>{
+        const el=document.elementFromPoint(x,y);
+        const target=document.getElementById('subj-btn');
+        return !!(el&&target&&(el===target||target.contains(el)));
+      },{x:subj.x+subj.width-3,y:subj.y+subj.height/2});
+      expect(hitsSubject,`${subject} ${size.width}x${size.height}`).toBe(true);
+    }
+    const subj=await page.locator('#subj-btn').boundingBox();
+    await page.mouse.click(subj.x+subj.width-3,subj.y+subj.height/2);
+    await expect(page.getByText('What do you want to practice?')).toBeVisible();
+    await expect(page.locator('#mute-btn')).toHaveAttribute('aria-pressed','false');
+    await state(page,()=>{st.phase='play';render();});
+  }
+});
