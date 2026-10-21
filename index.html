@@ -177,6 +177,29 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;min-heigh
   body:has(.numpad) .pad-check{min-height:26px;font-size:16px}
   body:has(.numpad) .help-btn{padding:2px 8px;font-size:12px}
 }
+/* Keep Check and Ask for help inside the screen above the bar. If the
+   question is tall, it shrinks; the pad does not slide under the bar. */
+@media (max-height:420px){
+  body:has(#game:not([style*="display: none"]) .numpad) #game{
+    max-height:calc(100dvh - 64px);
+    display:flex;
+    flex-direction:column;
+    overflow:hidden;
+  }
+  body:has(#game:not([style*="display: none"]) .numpad) #game>.hdr{flex:0 0 auto}
+  body:has(#game:not([style*="display: none"]) .numpad) #game>.card:has(.numpad){
+    flex:1 1 auto;
+    min-height:0;
+    display:flex;
+    flex-direction:column;
+    overflow:hidden;
+  }
+  body:has(#game:not([style*="display: none"]) .numpad) .q-head,
+  body:has(#game:not([style*="display: none"]) .numpad) .qtext{flex:0 1 auto;min-height:0}
+  body:has(#game:not([style*="display: none"]) .numpad) .pad-wrap,
+  body:has(#game:not([style*="display: none"]) .numpad) .help-btn,
+  body:has(#game:not([style*="display: none"]) .numpad) .help-box{flex:0 0 auto}
+}
 .streak-pill.maxed{background:#FFEDD5;color:#C2410C}
 .streak-pill.bump{animation:streak-pop 0.45s ease}
 .streak-pill.record{background:linear-gradient(90deg,#FDE68A,#FCD34D);color:#92400E;box-shadow:0 0 0 1.5px #F59E0B}
@@ -2815,6 +2838,7 @@ function editProfile(id,name){
   whoDraft={name:'',avatar:null,editId:null};
   writeRoster();
   renderWho();
+  histDropIf('who-form');
 }
 function deleteProfile(id){
   const was=profiles.activeId===id;
@@ -4174,7 +4198,12 @@ function render(){
       const hint=st.q&&st.q.hint?`<div class="gym-hint">${st.q.hint}</div>`:'';
       h+=`<div class="card gym-end"><p>Brave try. Practice a little more, and ${leader} will be ready for a rematch.</p>${hint}<button class="gym-go" id="gym-back">Back to practice</button></div>`;
     } else if(g.over==='safe'){
-      h+=`<div class="card gym-end"><p>Everybody still has hearts, so this is not a loss. Help keeps your hearts safe, and it doesn't hit the leader. Try the next one on your own.</p><button class="gym-go" id="gym-back">Back to practice</button></div>`;
+      // Help on the later questions does not undo hits that already landed.
+      // Saying nobody was touched makes a one-heart leader feel like a glitch.
+      const safeMsg=g.lead<GYM_LEAD_HP
+        ?`You landed some hits. The leader still has ${g.lead===1?'a heart':'hearts'} left, so the badge waits. Try the battle again and finish it on your own.`
+        :`Everybody still has hearts, so this is not a loss. Help keeps your hearts safe, and it doesn't hit the leader. Try the next one on your own.`;
+      h+=`<div class="card gym-end"><p>${safeMsg}</p><button class="gym-go" id="gym-back">Back to practice</button></div>`;
     } else {
       const rm=st.cor
         ?(st.helped?"Help keeps your hearts safe, and it doesn't hit the leader. Try the next one on your own.":'')
@@ -4575,6 +4604,27 @@ function _getAudioCtx(){
   if(_audioCtx.state==='suspended'){_audioCtx.resume();}
   return _audioCtx;
 }
+let _sfxNodes=[];
+function _trackSfx(osc,gain){
+  _sfxNodes.push({osc,gain});
+  osc.addEventListener('ended',()=>{
+    const i=_sfxNodes.findIndex(n=>n.osc===osc);
+    if(i>=0)_sfxNodes.splice(i,1);
+  });
+}
+function stopSfx(){
+  const ctx=_audioCtx;
+  const when=ctx?ctx.currentTime:0;
+  const nodes=_sfxNodes.splice(0,_sfxNodes.length);
+  nodes.forEach(({osc,gain})=>{
+    try{
+      gain.gain.cancelScheduledValues(when);
+      gain.gain.setValueAtTime(0,when);
+    }catch(e){}
+    try{osc.stop(when);}catch(e){}
+    try{osc.disconnect();}catch(e){}
+  });
+}
 function _tone(f,dur,type='sine',vol=0.14,when=0){
   const ctx=_getAudioCtx();if(!ctx)return;
   const t0=ctx.currentTime+when;
@@ -4585,6 +4635,7 @@ function _tone(f,dur,type='sine',vol=0.14,when=0){
   g.gain.exponentialRampToValueAtTime(0.0001,t0+dur);
   osc.connect(g);g.connect(ctx.destination);
   osc.start(t0);osc.stop(t0+dur+0.05);
+  _trackSfx(osc,g);
 }
 function _sweep(f1,f2,dur,type='sine',vol=0.14){
   const ctx=_getAudioCtx();if(!ctx)return;
@@ -4598,6 +4649,7 @@ function _sweep(f1,f2,dur,type='sine',vol=0.14){
   g.gain.exponentialRampToValueAtTime(0.0001,t0+dur);
   osc.connect(g);g.connect(ctx.destination);
   osc.start(t0);osc.stop(t0+dur+0.05);
+  _trackSfx(osc,g);
 }
 function playSfx(name){
   if(soundMuted())return;
@@ -5286,6 +5338,7 @@ function paintMute(){
 }
 function setMuted(muted){
   try{localStorage.setItem(MUTE_KEY,muted?'1':'0');}catch(e){}
+  if(muted)stopSfx();
   paintMute();
 }
 function flashHangOn(el){
@@ -5316,6 +5369,13 @@ function hideMoments(){
 function histPush(screen){
   if(!navReady||navSilent)return;
   if(hist[hist.length-1]===screen)return;
+  // The new-trainer form is already "who's playing" once a name is saved.
+  // Leaving that entry in the stack shows the list twice on the way out.
+  if(screen==='game'&&hist[hist.length-1]==='who-form'){
+    hist[hist.length-1]='game';
+    try{history.replaceState({pkq:'game',n:hist.length},'');}catch(e){}
+    return;
+  }
   hist.push(screen);
   try{history.pushState({pkq:screen,n:hist.length},'');}catch(e){}
 }

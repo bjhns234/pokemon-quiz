@@ -322,20 +322,25 @@ test('an old save keeps the question on a phone while it asks for a name',async(
   expect(await state(page,()=>activeKid().name)).toBe('Maya');
 });
 
-// The tap lands on this element, and its box sits fully above the bottom bar.
+// The whole control, including its bottom edge, sits above the bar and takes the tap.
 async function aboveBar(page,selector){
   await page.evaluate(()=>window.scrollTo(0,0));
   const box=await page.locator(selector).boundingBox();
   const nav=await page.locator('#bottom-nav').boundingBox();
   expect(box,selector).not.toBeNull();
   expect(box.y).toBeGreaterThanOrEqual(-1);
-  expect(box.y+box.height).toBeLessThanOrEqual(nav.y+0.5);
-  const hits=await page.evaluate(({x,y,sel})=>{
-    const el=document.elementFromPoint(x,y);
-    const target=document.querySelector(sel);
-    return !!(el&&target&&(el===target||target.contains(el)));
-  },{x:box.x+box.width/2,y:box.y+Math.min(box.height/2,box.height-2),sel:selector});
-  expect(hits,selector).toBe(true);
+  expect(nav.y-(box.y+box.height)).toBeGreaterThanOrEqual(4);
+  const hits=async(x,y)=>{
+    return page.evaluate(({x,y,sel})=>{
+      const el=document.elementFromPoint(x,y);
+      const target=document.querySelector(sel);
+      return !!(el&&target&&(el===target||target.contains(el)));
+    },{x,y,sel:selector});
+  };
+  const inset=Math.min(12,box.width/2-1,box.height/2-1);
+  expect(await hits(box.x+box.width/2,box.y+box.height/2),selector).toBe(true);
+  expect(await hits(box.x+box.width/2,box.y+box.height-1),`${selector} bottom edge`).toBe(true);
+  expect(await hits(box.x+box.width-inset,box.y+box.height-inset),`${selector} bottom corner`).toBe(true);
 }
 
 test('Check and Ask for help clear the bar on a sideways phone',async({page})=>{
@@ -355,6 +360,10 @@ test('Check and Ask for help clear the bar on a sideways phone',async({page})=>{
     await aboveBar(page,'[data-pad="check"]');
     await aboveBar(page,'#help-btn');
   }
+  await page.setViewportSize({width:568,height:320});
+  await serveStem(page,'91 Pokemon cards');
+  await aboveBar(page,'[data-pad="check"]');
+  await aboveBar(page,'#help-btn');
   await page.setViewportSize({width:568,height:320});
   await serveStem(page,'What is 25 + 10?');
   await page.click('#help-btn');
@@ -430,4 +439,77 @@ test('the sound button never covers the subject button',async({page})=>{
     await expect(page.locator('#mute-btn')).toHaveAttribute('aria-pressed','false');
     await state(page,()=>{st.phase='play';render();});
   }
+});
+
+test('adding a trainer does not leave a second Who\'s playing in Back',async({page})=>{
+  await openGame(page);
+  await page.click('#profile-new');
+  await page.fill('#profile-name','Maya');
+  await page.click('[data-avatar="001"]');
+  await page.click('#profile-save');
+  await expect(page.getByText('What do you want to practice?')).toBeVisible();
+  await page.goBack();
+  await expect(page.getByText("Who's playing?")).toBeVisible();
+  await page.goBack();
+  expect(page.url()).not.toContain('index.html');
+});
+
+test('muting stops a catch or evolution jingle that already started',async({page})=>{
+  await openGame(page);
+  await startGame(page,'math');
+  const started=await page.evaluate(()=>{
+    try{localStorage.setItem('pkq-muted','0');}catch(e){}
+    _sfxNodes.splice(0,_sfxNodes.length);
+    playSfx('gotcha');
+    playSfx('evoStart');
+    playSfx('evoDone');
+    return _sfxNodes.length;
+  });
+  expect(started).toBeGreaterThan(0);
+  await page.click('#mute-btn');
+  await expect(page.locator('#mute-btn')).toHaveAttribute('aria-pressed','true');
+  expect(await page.evaluate(()=>_sfxNodes.length)).toBe(0);
+  expect(await page.evaluate(()=>{playSfx('shiny');return _sfxNodes.length;})).toBe(0);
+});
+
+test('help after real Gym hits does not say nobody was touched',async({page})=>{
+  await openGame(page);
+  await startGame(page,'math');
+  await state(page,()=>{
+    st.stats.math.level=1;
+    st.stats.math.cs=0;
+    st.badges.math=[];
+    st.gymOffer.math={tier:1,cool:0};
+    st.cor=true;
+    st.phase='play';
+    render();
+  });
+  await page.click('[data-gym-start="math"]');
+  const n=await state(page,()=>st.gym.queue.length);
+  let i=0;
+  while(i<n&&await state(page,()=>st.gym&&st.gym.lead>1)){
+    await state(page,()=>{st.armAt=0;});
+    await answer(page,true);
+    await page.click('#nxt');
+    i++;
+  }
+  expect(await state(page,()=>st.gym.lead)).toBe(1);
+  for(;i<n;i++){
+    await state(page,()=>{st.armAt=0;askForHelp();});
+    await answer(page,true);
+    await page.click('#nxt');
+  }
+  await expect(page.locator('.gym-end')).toContainText('You landed some hits');
+  await expect(page.locator('.gym-end')).toContainText('badge waits');
+  await expect(page.locator('.gym-end')).toContainText('Try the battle again');
+  await expect(page.locator('.gym-end')).not.toContainText('Everybody still has hearts');
+  await expect(page.locator('.gym-end')).not.toContainText("doesn't hit the leader");
+  await expect(page.locator('.gym-end')).not.toContainText('Brave try');
+  expect(await state(page,()=>({over:st.gym.over,cool:st.gymOffer.math.cool,lead:st.gym.lead,badges:st.badges.math.slice(),award:st.phase}))).toEqual({
+    over:'safe',cool:0,lead:1,badges:[],award:'gym',
+  });
+  await page.click('#gym-back');
+  await state(page,()=>{st.cor=true;st.phase='play';render();});
+  await page.click('[data-gym-start="math"]');
+  expect(await state(page,()=>st.gym.lead===GYM_LEAD_HP&&st.gym.kid===GYM_KID_HP&&st.badges.math.length===0)).toBe(true);
 });
