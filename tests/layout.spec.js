@@ -284,6 +284,135 @@ test('Forward after a new trainer returns to the subject chooser',async({page})=
   expect(page.url()).not.toContain('index.html');
 });
 
+// The center of a control, at rest (no scrolling), has to land on that control.
+// A center that falls on the Game / Pokédex bar is the bug these screens had.
+async function centerHits(page,selector){
+  await toTop(page);
+  const box=await page.locator(selector).boundingBox();
+  expect(box,selector).toBeTruthy();
+  const x=box.x+box.width/2;
+  const y=box.y+box.height/2;
+  const nav=page.locator('#bottom-nav');
+  const navOn=await nav.isVisible();
+  const limit=navOn?(await nav.boundingBox()).y:page.viewportSize().height;
+  expect(box.y,`${selector} top`).toBeGreaterThanOrEqual(-1);
+  expect(box.y+box.height,`${selector} bottom`).toBeLessThanOrEqual(limit+1);
+  const hit=await page.evaluate(({x,y,selector})=>{
+    const el=document.querySelector(selector);
+    const node=document.elementFromPoint(x,y);
+    const bar=document.getElementById('bottom-nav');
+    return {
+      onBar:!!(node&&bar&&(node===bar||bar.contains(node))),
+      owns:!!(node&&el&&(node===el||el.contains(node)||node.contains(el))),
+      id:node&&node.id,
+    };
+  },{x,y,selector});
+  expect(hit.onBar,`${selector} tap landed on ${hit.id||'the bar'}`).toBe(false);
+  expect(hit.owns,selector).toBe(true);
+}
+
+async function showGymEnding(page,kind){
+  await page.evaluate(kind=>{
+    st.phase='gym';
+    st.award=null;
+    st.gym={sub:'math',tier:1,queue:[0],qi:0,kid:4,lead:kind==='hits'?1:5,solved:false,over:null};
+    st.q=serveQuestion('math',1,0,questionPname());
+    if(kind==='lose'){st.gym.kid=0;finishGymLose();}
+    else if(kind==='win'){st.gym.lead=0;finishGymWin();}
+    else finishGymSafe();
+    render();
+  },kind);
+}
+
+test('short landscape keeps subjects, gym endings, and the trainer form tappable',async({page})=>{
+  test.setTimeout(90000);
+  await openGame(page);
+  await page.setViewportSize({width:568,height:320});
+  await page.evaluate(()=>pickStarter(0,false));
+  await expect(page.getByText('What do you want to practice?')).toBeVisible();
+  const subjects=['math','reading','science','mix'];
+  expect(await page.locator('.subj-opt').count()).toBe(4);
+  for(const sub of subjects)await centerHits(page,`.subj-opt[data-subj="${sub}"]`);
+  const mix=await page.locator('.subj-opt[data-subj="mix"]').boundingBox();
+  await page.mouse.click(mix.x+mix.width/2,mix.y+mix.height/2);
+  await expect(page.locator('.qtext')).toBeVisible();
+  await expect(page.locator('#pokedex-page')).toBeHidden();
+  await expect(page.locator('#nav-game')).toHaveClass(/nav-active/);
+
+  const endings=[
+    ['lose','Brave try'],
+    ['help','not a loss'],
+    ['hits','You landed some hits'],
+    ['win','You earned the'],
+  ];
+  for(const [kind,copy] of endings){
+    await showGymEnding(page,kind);
+    await expect(page.getByText(copy).first()).toBeVisible();
+    const btn=kind==='win'?'#award-go':'#gym-back';
+    await expect(page.locator(btn)).toHaveText(kind==='win'?'Yay!':'Back to practice');
+    await centerHits(page,btn);
+    if(kind!=='win'){
+      const room=await page.locator('.gym-end-scroll').evaluate(el=>el.clientHeight);
+      expect(room).toBeGreaterThan(24);
+    }
+  }
+
+  await page.evaluate(()=>{whoMode='create';whoDraft={name:'',avatar:null,editId:null};renderWho();});
+  await expect(page.locator('#profile-save')).toHaveText('This is me!');
+  await centerHits(page,'#profile-name');
+  await page.fill('#profile-name','Maya');
+  await page.click('[data-avatar="004"]');
+  await expect(page.locator('#profile-save')).toBeEnabled();
+  await centerHits(page,'#profile-save');
+
+  await page.evaluate(()=>{
+    const kid=profiles.kids[0];
+    whoMode='edit';
+    whoDraft={name:kid.name,avatar:kidPictureNum(kid),editId:kid.id};
+    renderWho();
+  });
+  await expect(page.locator('#profile-save')).toHaveText('Save');
+  await centerHits(page,'#profile-name');
+  await centerHits(page,'#profile-save');
+});
+
+test('a portrait phone with a math badge keeps Ask for help above the bar',async({page})=>{
+  await openGame(page);
+  await startGame(page,'math');
+  await page.setViewportSize({width:320,height:568});
+  await serveStem(page,'What is 25 + 10?');
+  await state(page,()=>{st.badges.math=[1];render();});
+  for(const sel of ['.psvg','.xp-row','.badge-row']){
+    const shown=await page.locator(sel).evaluate(el=>getComputedStyle(el).display!=='none'&&el.getBoundingClientRect().height>8);
+    expect(shown,sel).toBe(true);
+  }
+  await centerHits(page,'#help-btn');
+  await page.click('#help-btn');
+  await expect(page.locator('.help-box')).toBeVisible();
+  await expect(page.locator('#pokedex-page')).toBeHidden();
+  await expect(page.locator('#nav-game')).toHaveClass(/nav-active/);
+});
+
+test('a short tablet keeps the counting hint and the gym prize above the bar',async({page})=>{
+  await openGame(page);
+  await startGame(page,'math');
+  await page.setViewportSize({width:932,height:430});
+  await showGymEnding(page,'win');
+  await expect(page.locator('#award-go')).toHaveText('Yay!');
+  await centerHits(page,'#award-go');
+
+  await serveStem(page,'What is 6 + 7?');
+  await centerHits(page,'#help-btn');
+  await page.click('#help-btn');
+  await expect(page.locator('.hint-visual')).toBeVisible();
+  await centerHits(page,'.hint-visual');
+  const pic=await page.locator('.hint-visual').boundingBox();
+  await page.mouse.click(pic.x+pic.width/2,pic.y+pic.height/2);
+  await expect(page.locator('#pokedex-page')).toBeHidden();
+  await expect(page.locator('#nav-game')).toHaveClass(/nav-active/);
+  await expect(page.locator('.hint-visual')).toBeVisible();
+});
+
 test('Back from an edited name returns to who is playing',async({page})=>{
   await openGame(page);
   await startGame(page,'math');
