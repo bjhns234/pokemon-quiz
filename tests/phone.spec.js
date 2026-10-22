@@ -162,6 +162,33 @@ test('each wrong answer is its own announcement',async({page})=>{
   await expect(page.locator('.verdict')).not.toContainText('try');
 });
 
+test('Switch Pokémon stays on the Pokédex, and the picker stays easy to read',async({page})=>{
+  await openGame(page);
+  await startGame(page,'reading');
+  await state(page,()=>{
+    st.team.push({pi:LINES[1][0],level:5,xp:0,shiny:false});
+    render();
+  });
+  await expect(page.locator('#game #switch-btn')).toHaveCount(0);
+  await page.click('#nav-pdx');
+  const btn=page.locator('#pokedex-page #switch-btn');
+  await expect(btn).toBeVisible();
+  await expect(btn).toContainText('Switch Pokémon');
+  await expect(btn).not.toContainText(/Switch \d/);
+  await page.click('#switch-btn');
+  await expect(page.locator('#switch-cancel')).toContainText('Never mind');
+  for(const size of SIZES){
+    await page.setViewportSize(size);
+    await toTop(page);
+    await expectTall(page,'#switch-cancel',size);
+    const fonts=await page.locator('.switch-opt-name').evaluateAll(els=>els.map(el=>parseFloat(getComputedStyle(el).fontSize)));
+    expect(fonts.length,`picker names at ${size.width}x${size.height}`).toBeGreaterThan(0);
+    for(const font of fonts){
+      expect(font,`picker name at ${size.width}x${size.height}`).toBeGreaterThanOrEqual(14);
+    }
+  }
+});
+
 test('counting captions stay 14px on a short phone',async({page})=>{
   await openGame(page);
   await startGame(page,'math');

@@ -236,12 +236,11 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;height:10
    .switch-back so the two ends of the same trip look like each other. */
 .switch-btn{position:absolute;top:10px;left:10px;background:#F3F4F6;border:none;border-radius:10px;padding:6px 10px;cursor:pointer;font-family:inherit;font-size:14px;font-weight:700;color:#1F2937;display:inline-flex;align-items:center;gap:5px;line-height:1;transition:all 0.15s;z-index:2}
 .switch-btn:hover{background:#E5E7EB;color:#374151}
-.switch-count{font-size:14px;font-weight:700;color:#374151}
 .switch-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
 .switch-opt{position:relative;background:#F9FAFB;border:2px solid #E5E7EB;border-radius:14px;padding:12px 6px 8px;cursor:pointer;transition:all 0.18s;text-align:center;display:flex;flex-direction:column;align-items:center;gap:3px;font-family:inherit}
 .switch-opt:hover{border-color:#FF5722;background:#FFF7ED}
 .switch-opt img{width:56px;height:56px;object-fit:contain;display:block;pointer-events:none}
-.switch-opt-name{font-size:12px;font-weight:700;color:#1A1A2E;line-height:1.15}
+.switch-opt-name{font-size:14px;font-weight:700;color:#1A1A2E;line-height:1.15}
 .switch-opt-lvl{font-size:14px;font-weight:700;color:#374151}
 .switch-opt.current{border-color:#FF5722;background:#FFF3E0;cursor:default}
 .switch-opt.current:hover{background:#FFF3E0}
@@ -252,7 +251,7 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;height:10
 /* Above the grid, not below it: at 13 Pokemon the bottom of this screen is
    already off the fold and at 45 it is a long scroll, and the way out of a screen
    should never be something you have to go looking for. */
-.switch-back{background:#F3F4F6;border:none;border-radius:10px;padding:7px 12px;font-size:14px;font-weight:700;color:#1F2937;cursor:pointer;font-family:inherit;margin-bottom:10px}
+.switch-back{background:#F3F4F6;border:none;border-radius:10px;padding:7px 12px;min-height:44px;font-size:14px;font-weight:700;color:#1F2937;cursor:pointer;font-family:inherit;margin-bottom:10px}
 .switch-back:hover{background:#E5E7EB;color:#374151}
 /* Shiny markers. A rare catch has to be unmistakable at a glance, so it
    reads three ways at once: a different sprite, a gold star, and a gold frame. */
@@ -4550,7 +4549,7 @@ function renderPokedex(){
   SUBS.forEach(sub=>(st.badges[sub]||[]).forEach(t=>bits.push(badgeHTML(sub,t,false))));
   h+=`<div class="card pdx-badges"><div class="pdx-badge-hd">Gym badges</div>${bits.length?`<div class="badge-row">${bits.join('')}</div>`:'<div class="gym-wait">Win a Gym battle to earn your first badge.</div>'}</div>`;
   const canSwitch=st.team.length>1&&!st.pendingEvo&&st.phase==='play';
-  const switchBtn=canSwitch?`<button class="switch-btn" id="switch-btn" type="button"><span>&#128260;</span><span>Switch</span><span class="switch-count">${st.team.length}</span></button>`:'';
+  const switchBtn=canSwitch?`<button class="switch-btn" id="switch-btn" type="button"><span>&#128260;</span><span>Switch Pokémon</span></button>`:'';
   const candyBtn=st.items.candy>0&&!st.pendingEvo&&(st.phase==='play'||st.phase==='award')?`<button class="candy-btn" id="candy-btn" type="button">&#127853; Rare Candy · ${st.items.candy}</button>`:'';
   const greatNote=st.items.great>0?`<div class="great-note">Great Ball ready</div>`:'';
   if(switchBtn||candyBtn||greatNote)h+=`<div class="card dex-tools">${switchBtn}${candyBtn}${greatNote}</div>`;
