@@ -130,10 +130,11 @@ test('questions, Next, Gym, and the name line stay above the bar',async({page})=
     await toTop(page);
     if(size.width===320&&size.height===568){
       await state(page,()=>{st.badges.math=[1];render();});
-      for(const sel of ['.psvg','.xp-row','.badge-row']){
-        const shown=await page.locator(sel).evaluate(el=>getComputedStyle(el).display!=='none'&&el.getBoundingClientRect().height>8);
+      for(const sel of ['#game .psvg','#game .xp-track']){
+        const shown=await page.locator(sel).evaluate(el=>getComputedStyle(el).display!=='none'&&el.getBoundingClientRect().height>=6);
         expect(shown,sel).toBe(true);
       }
+      await expect(page.locator('#game .badge-row,#game .candy-btn,#game .great-note,#game #switch-btn')).toHaveCount(0);
       const check=await page.locator('[data-pad="check"]').boundingBox();
       const nav=await page.locator('#bottom-nav').boundingBox();
       expect(check.y+check.height).toBeLessThanOrEqual(nav.y+1);
@@ -185,9 +186,9 @@ test('an old save name line and Ask for help stay tappable',async({page})=>{
     await serveStem(page,'5 steps forward');
     await toTop(page);
     if(size.width===320&&size.height===568){
-      const input=await page.locator('#name-ask-input').boundingBox();
-      expect(input.width).toBeGreaterThanOrEqual(120);
-      expect(input.height).toBeGreaterThanOrEqual(44);
+      await expect(page.locator('#name-ask')).toHaveCount(0);
+      const q=await page.locator('.qtext').boundingBox();
+      expect(q.height).toBeGreaterThanOrEqual(20);
     }
     if((size.width===568&&size.height===320)||(size.width===932&&size.height===430)){
       const nav=await page.locator('#bottom-nav').boundingBox();
@@ -196,8 +197,8 @@ test('an old save name line and Ask for help stay tappable',async({page})=>{
       expect(help.y+help.height).toBeLessThanOrEqual(nav.y-3);
     }
     if(size.width>=1024&&size.height>=768){
-      const pic=await page.locator('.psvg').evaluate(el=>getComputedStyle(el).display!=='none'&&el.getBoundingClientRect().height>40);
-      const xp=await page.locator('.xp-row').evaluate(el=>getComputedStyle(el).display!=='none'&&el.getBoundingClientRect().height>8);
+      const pic=await page.locator('#game .psvg').evaluate(el=>getComputedStyle(el).display!=='none'&&el.getBoundingClientRect().height>40);
+      const xp=await page.locator('#game .xp-track').evaluate(el=>getComputedStyle(el).display!=='none'&&el.getBoundingClientRect().height>=6);
       expect(pic).toBe(true);
       expect(xp).toBe(true);
     }
@@ -263,7 +264,8 @@ test('keyboard digits, Backspace, and Enter drive the number pad',async({page})=
   await expect(page.locator('#pad-read')).toHaveText('35');
   await page.keyboard.press('Enter');
   expect(await state(page,()=>st.cor)).toBe(true);
-  await expect(page.locator('#pad-read')).toHaveText('35');
+  await expect(page.locator('#pad-read')).toContainText('35');
+  await expect(page.locator('#pad-read')).toContainText('✓');
 });
 
 test('Forward after a new trainer returns to the subject chooser',async({page})=>{
@@ -382,10 +384,11 @@ test('a portrait phone with a math badge keeps Ask for help above the bar',async
   await page.setViewportSize({width:320,height:568});
   await serveStem(page,'What is 25 + 10?');
   await state(page,()=>{st.badges.math=[1];render();});
-  for(const sel of ['.psvg','.xp-row','.badge-row']){
-    const shown=await page.locator(sel).evaluate(el=>getComputedStyle(el).display!=='none'&&el.getBoundingClientRect().height>8);
+  for(const sel of ['#game .psvg','#game .xp-track']){
+    const shown=await page.locator(sel).evaluate(el=>getComputedStyle(el).display!=='none'&&el.getBoundingClientRect().height>=6);
     expect(shown,sel).toBe(true);
   }
+  await expect(page.locator('#game .badge-row')).toHaveCount(0);
   await centerHits(page,'#help-btn');
   await page.click('#help-btn');
   await expect(page.locator('.help-box')).toBeVisible();

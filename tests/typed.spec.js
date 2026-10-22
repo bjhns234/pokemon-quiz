@@ -126,7 +126,8 @@ test('a first-try Check grows the streak and pays the streak ladder',async({page
   expect(await state(page,()=>st.tries)).toBe(1);
   expect(await state(page,()=>st.lastXp)).toBe(await state(page,()=>xpForStreak(1)));
   await expect(page.locator('#pad-read')).toHaveClass(/ok/);
-  await expect(page.locator('#pad-read')).toHaveText(q.answer);
+  await expect(page.locator('#pad-read')).toContainText('✓');
+  await expect(page.locator('#pad-read')).toContainText(q.answer);
   await expect(page.locator('.pad-key')).toHaveCount(0);
   await expect(page.locator('.result-msg')).toHaveCount(0);
 });
@@ -142,13 +143,15 @@ test('a typed miss keeps the question and its hint, then a correct Check pays th
   expect(await state(page,()=>st.q.question)).toBe(q.text);
   await expect(page.locator('.result-msg')).toContainText(q.hint);
   await expect(page.locator('.hint-visual')).toBeVisible();
-  await expect(page.locator('#pad-read')).toHaveClass(/empty/);
+  await expect(page.locator('#pad-read')).toHaveClass(/bad/);
+  await expect(page.locator('#pad-read')).toContainText('✗');
   await expect(page.locator('.pad-key')).toHaveCount(12);
   await pressPad(page,q.answer);
   expect(await state(page,()=>st.lastXp)).toBe(await state(page,()=>XP_AFTER_HINT));
   expect(await state(page,()=>st.streak)).toBe(0);
   await expect(page.locator('.hint-visual')).toHaveCount(0);
-  await expect(page.locator('#pad-read.ok')).toHaveText(q.answer);
+  await expect(page.locator('#pad-read.ok')).toContainText('✓');
+  await expect(page.locator('#pad-read.ok')).toContainText(q.answer);
 });
 
 test('leading zeros and whitespace count as the same number, and a blank Check is not a try',async({page})=>{
@@ -244,7 +247,7 @@ test('a typed miss comes back as a Rematch after the gap',async({page})=>{
   }
   await answer(page,true);await nextQuestion(page);
   expect(await state(page,()=>[!!st.q.rematch,reviewKey(st.q.tmpl)])).toEqual([true,key]);
-  await expect(page.locator('.rematch-pill')).toBeVisible();
+  await expect(page.locator('.rematch-pill')).toHaveCount(0);
   await expect(page.locator('[data-typed="1"]')).toBeVisible();
 });
 
@@ -268,10 +271,12 @@ test('a typed catch fills a pip, a miss spends a ball, and help fills nothing',a
   const fled=await serveStem(page,'What is 3 x 3?');
   await pressPad(page,'1');
   expect(await state(page,()=>st.wildEscape)).toBe(true);
-  await expect(page.locator('#pad-read.ok')).toHaveText(fled.answer);
+  await expect(page.locator('#pad-read.ok')).toContainText('✓');
+  await expect(page.locator('#pad-read.ok')).toContainText(fled.answer);
   await expect(page.locator('.pad-key')).toHaveCount(0);
   await expect(page.locator('.hint-visual')).toHaveCount(0);
-  await expect(page.locator('.result-msg')).toContainText('ran away');
+  await expect(page.locator('.result-msg')).toContainText('It got away!');
+  await expect(page.locator('.result-msg')).toContainText(fled.answer);
 
   await state(page,()=>{st.cor=true;triggerWildEncounter(false);});
   const helped=await serveStem(page,'What is 4 x 4?');

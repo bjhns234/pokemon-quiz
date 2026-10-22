@@ -93,6 +93,7 @@ test.describe('no free skips',()=>{
     const before=await q(page);
     const [oldName,newName]=await state(page,()=>[PKM[LINES[0][0]].n,PKM[LINES[1][0]].n]);
     expect(before.text).toContain(oldName);
+    await page.click('#nav-pdx');
     await page.click('#switch-btn');
     await page.click('[data-switch-idx="1"]');
     const after=await q(page);
@@ -103,6 +104,7 @@ test.describe('no free skips',()=>{
 
   test('Switch is hidden while an evolution is waiting',async({page})=>{
     await state(page,()=>{st.team.push({pi:LINES[1][0],level:5,xp:0,shiny:false});st.pendingEvo={fromPi:0,toPi:1};render();});
+    await page.click('#nav-pdx');
     await expect(page.locator('#switch-btn')).toHaveCount(0);
   });
 
@@ -181,13 +183,13 @@ test.describe('Rematches',()=>{
     }
     await answer(page,true);await nextQuestion(page);
     expect(await state(page,()=>[!!st.q.rematch,reviewKey(st.q.tmpl)])).toEqual([true,key]);
-    await expect(page.locator('.rematch-pill')).toBeVisible();
+    await expect(page.locator('.rematch-pill')).toHaveCount(0);
 
     await state(page,()=>{st.streak=0;});
     await answer(page,true);
     const bonus=await state(page,()=>REVIEW.bonus);
     expect(await state(page,()=>st.lastXp)).toBe(await state(page,()=>xpForStreak(1))+bonus);
-    await expect(page.locator('.rematch-toast')).toBeVisible();
+    await expect(page.locator('.prize-line')).toContainText('Rematch won');
     const r=await state(page,k=>{const e=st.review.find(x=>reviewKey(x)===k);return {wins:e.wins,due:e.due-st.served};},key);
     expect(r).toEqual({wins:1,due:await state(page,()=>REVIEW.long)});
 

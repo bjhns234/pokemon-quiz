@@ -306,20 +306,22 @@ test.describe('phone and gym',()=>{
   });
 });
 
-test('an old save keeps the question on a phone while it asks for a name',async({page})=>{
+test('an old save keeps the question on a phone, and the name is asked in trainer setup',async({page})=>{
   await page.setViewportSize({width:390,height:700});
   await openGame(page,{save:legacy});
-  await expect(page.locator('#name-ask')).toContainText("What's your name?");
+  await expect(page.locator('#name-ask')).toHaveCount(0);
   const box=await page.locator('.qtext').boundingBox();
   expect(box).not.toBeNull();
   expect(box.y).toBeGreaterThanOrEqual(0);
   expect(box.y+box.height).toBeLessThanOrEqual(700);
-  await page.click('#name-ask-save');
-  expect(await state(page,()=>activeKid().name)).toBe('Trainer');
-  await page.fill('#name-ask-input','Maya');
-  await page.click('#name-ask-save');
-  await expect(page.locator('#name-ask')).toHaveCount(0);
+  await page.click('#who-btn');
+  await page.getByRole('button',{name:/^Edit/}).click();
+  await expect(page.getByText("What's your name?")).toBeVisible();
+  await page.fill('#profile-name','Maya');
+  await page.click('#profile-save');
   expect(await state(page,()=>activeKid().name)).toBe('Maya');
+  const boxSave=await page.evaluate(()=>JSON.parse(localStorage.getItem('pkq-save')));
+  expect(boxSave.kids[0].askName).toBeUndefined();
 });
 
 // The whole control, including its bottom edge, sits above the bar and takes the tap.
@@ -384,7 +386,7 @@ test('an old save shows the question without scrolling on a small or sideways ph
     await openGame(page,{save:legacy});
     await serveStem(page,'5 steps forward');
     await page.evaluate(()=>window.scrollTo(0,0));
-    await expect(page.locator('#name-ask')).toContainText("What's your name?");
+    await expect(page.locator('#name-ask')).toHaveCount(0);
     const q=await page.locator('.qtext').boundingBox();
     const nav=await page.locator('#bottom-nav').boundingBox();
     expect(q).not.toBeNull();
@@ -392,8 +394,6 @@ test('an old save shows the question without scrolling on a small or sideways ph
     expect(q.y+q.height).toBeLessThanOrEqual(size.height);
     expect(q.y+q.height).toBeLessThanOrEqual(nav.y+0.5);
     expect(await page.evaluate(()=>window.scrollY)).toBe(0);
-    const input=await page.locator('#name-ask-input').boundingBox();
-    expect(input.height).toBeGreaterThanOrEqual(44);
   }
 });
 

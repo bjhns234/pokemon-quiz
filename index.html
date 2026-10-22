@@ -35,15 +35,22 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;height:10
    guessed; a card with no button keeps its original spacing. */
 .pcard{text-align:center;position:relative}
 .pcard.has-switch{padding-top:42px}
-.pnum{font-size:11px;color:#9CA3AF;margin-bottom:2px;font-weight:500}
+.pnum{font-size:14px;color:#4B5563;margin-bottom:2px;font-weight:500}
 .pname{font-size:22px;font-weight:700;color:#1A1A2E}
+/* A short row: picture, name, level, and one thin bar. No dex line and no XP numbers. */
+.mon-strip{display:flex;align-items:center;gap:12px;text-align:left;padding:10px 14px}
+.mon-strip .psvg{margin:0;flex:0 0 auto}
+.mon-strip .psvg img{width:96px;height:96px}
+.mon-meta{flex:1 1 auto;min-width:0}
+.mon-strip .pname{font-size:22px;line-height:1.2}
+.mon-strip .xp-track{height:8px;margin-top:8px}
 .psvg{display:flex;justify-content:center;align-items:center;margin:8px 0;animation:float 3s ease-in-out infinite}
 .psvg img{display:block}
 .psvg.bk{animation:bounce 0.5s ease forwards}
 .psvg.sk{animation:shake 0.45s ease forwards}
 /* min-height reserves the badge's height so the bar doesn't hop down 2px every time
    one lands and back up on the next question. */
-.xp-row{display:flex;justify-content:space-between;align-items:center;min-height:17px;font-size:11px;color:#9CA3AF;margin-bottom:5px;font-weight:500}
+.xp-row{display:flex;justify-content:space-between;align-items:center;min-height:17px;font-size:14px;color:#4B5563;margin-bottom:5px;font-weight:500}
 .xp-right{display:inline-flex;align-items:center;gap:6px}
 .xp-track{height:10px;background:#F3F4F6;border-radius:999px;overflow:hidden}
 .xp-fill{height:100%;border-radius:999px;background:linear-gradient(90deg,#FF5722,#FF8A65);transition:width 0.7s cubic-bezier(0.4,0,0.2,1)}
@@ -54,15 +61,15 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;height:10
 .subj-tag{display:inline-block;font-size:11px;font-weight:800;padding:3px 10px;border-radius:20px;letter-spacing:0.03em}
 /* Sits beside the subject pill rather than up in the header: the streak is what
    the XP ladder pays for, so it has to be in his eyeline while he reads. */
-.streak-pill{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:#FEF3C7;color:#B45309;letter-spacing:0.03em;white-space:nowrap}
+.streak-pill{display:inline-flex;align-items:center;gap:4px;font-size:14px;font-weight:700;padding:3px 10px;border-radius:20px;background:#FEF3C7;color:#92400E;letter-spacing:0.03em;white-space:nowrap}
 .rematch-pill{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:#EDE9FE;color:#6D28D9;letter-spacing:0.03em;white-space:nowrap}
 .rematch-toast{background:linear-gradient(90deg,#8B5CF6,#6D28D9);color:#fff;border-radius:12px;padding:11px 16px;font-size:15px;font-weight:700;margin-bottom:12px;text-align:center;box-shadow:0 4px 16px rgba(109,40,217,0.35);animation:lvl-up-flash 0.55s cubic-bezier(0.34,1.56,0.64,1)}
 /* Quiet on purpose: it sits under the answers on every question, so it has to be
    findable when he's stuck without shouting at him when he isn't. */
-.help-btn{display:block;width:100%;background:#F0F9FF;border:1.5px dashed #7DD3FC;color:#0369A1;border-radius:12px;padding:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit}
-.help-btn:hover{background:#E0F2FE;border-color:#0EA5E9}
-.help-box{background:#F0F9FF;border:1.5px solid #7DD3FC;border-radius:12px;padding:11px 14px;color:#0C4A6E;font-size:14px;line-height:1.5}
-.help-keep{font-size:12px;font-weight:700;color:#0369A1;margin-top:5px}
+.help-btn{display:flex;align-items:center;justify-content:center;width:100%;background:transparent;border:none;color:#0369A1;border-radius:12px;padding:8px;min-height:44px;font-size:16px;font-weight:700;cursor:pointer;font-family:inherit;text-decoration:underline;text-underline-offset:3px}
+.help-btn:hover{background:#F0F9FF}
+.help-box{background:#F0F9FF;border:1.5px solid #7DD3FC;border-radius:12px;padding:11px 14px;color:#0C4A6E;font-size:16px;line-height:1.5}
+.help-keep{font-size:14px;font-weight:700;color:#0369A1;margin-top:5px}
 /* Picture aid that sits with the text hint. Sized for a phone-width tablet: loose
    icons wrap, and a ten-frame stays under ~180px so two of them stack instead of
    forcing a sideways scroll. */
@@ -74,7 +81,7 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;height:10
 .hv-group{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:3px;max-width:100%;background:rgba(255,255,255,.88);border-radius:14px;padding:6px}
 .hv-group.hv-empty{width:40px;height:40px;padding:0;border:1.5px dashed #7DD3FC;background:transparent;box-sizing:border-box}
 .hv-op{font-size:22px;font-weight:800;color:#0369A1;line-height:1;padding:0 2px}
-.hv-cap{margin-top:8px;font-size:13px;font-weight:700;color:#0369A1;text-align:center}
+.hv-cap{margin-top:8px;font-size:14px;font-weight:700;color:#0369A1;text-align:center}
 .hv-mark{position:relative;display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;flex:0 0 auto}
 .hv-mark svg{width:30px;height:30px;display:block}
 .hv-mark.gone svg{opacity:.32}
@@ -91,12 +98,12 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;height:10
 .tf-cell.slot{box-sizing:border-box;border-radius:8px;border:2px solid #FB923C;background:repeating-linear-gradient(135deg,#FFEDD5,#FFEDD5 3px,#FFF7ED 3px,#FFF7ED 6px)}
 .hv-group.hv-bridge{box-shadow:0 0 0 2px #FB923C;background:#FFF7ED}
 .hv-group.hv-count{box-shadow:0 0 0 3px #F59E0B;background:#FFFBEB}
-.pad-note{text-align:center;font-size:13px;font-weight:700;color:#9A3412;margin:-2px 0 8px}
+.pad-note{text-align:center;font-size:14px;font-weight:700;color:#9A3412;margin:-2px 0 8px}
 .pad-note[hidden]{display:none}
 .streak-pill.maxed{background:#FFEDD5;color:#C2410C}
 .streak-pill.bump{animation:streak-pop 0.45s ease}
 .streak-pill.record{background:linear-gradient(90deg,#FDE68A,#FCD34D);color:#92400E;box-shadow:0 0 0 1.5px #F59E0B}
-.best-pill{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:#F3F4F6;color:#6B7280;letter-spacing:0.03em;white-space:nowrap}
+.best-pill{display:inline-flex;align-items:center;gap:4px;font-size:14px;font-weight:700;padding:3px 10px;border-radius:20px;background:#F3F4F6;color:#1F2937;letter-spacing:0.03em;white-space:nowrap}
 /* Violet, not the gold the rest of the shiny vocabulary uses, for two reasons. The
    sparkle is itself gold, so on a gold pill it simply vanished -- and gold already
    MEANS a shiny here (the badge, the wild frame, the Pokedex entry). This pill is
@@ -115,9 +122,9 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;height:10
 .tagm{background:#DBEAFE;color:#1D4ED8}
 .tagr{background:#D1FAE5;color:#065F46}
 .tags{background:#FEF3C7;color:#92400E}
-.qtext{font-size:16px;color:#1A1A2E;line-height:1.6;margin-bottom:16px;font-weight:500}
+.qtext{font-size:22px;color:#1A1A2E;line-height:1.45;margin-bottom:16px;font-weight:700}
 .ans-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
-.ans-btn{position:relative;background:#F9FAFB;border:2px solid #E5E7EB;border-radius:12px;padding:14px 10px;font-size:15px;font-weight:600;color:#374151;cursor:pointer;text-align:center;transition:all 0.15s;line-height:1.3;font-family:inherit;width:100%}
+.ans-btn{position:relative;display:flex;align-items:center;justify-content:center;gap:6px;background:#F9FAFB;border:2px solid #E5E7EB;border-radius:12px;padding:14px 10px;font-size:20px;font-weight:700;color:#1F2937;cursor:pointer;text-align:center;transition:background 0.15s,border-color 0.15s,color 0.15s;line-height:1.3;font-family:inherit;width:100%}
 .ans-btn:hover:not(:disabled){border-color:#FF5722;color:#FF5722;background:#FFF3E0}
 .ans-btn.cor{background:#ECFDF5;border-color:#10B981;color:#065F46}
 .ans-btn.wrg{background:#FEF2F2;border-color:#EF4444;color:#991B1B}
@@ -132,7 +139,9 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;height:10
    pops the system keyboard. Three columns stay inside a phone-width card. */
 .pad-wrap{margin-bottom:10px}
 .pad-read{min-height:64px;border:2px solid #E5E7EB;border-radius:14px;background:#fff;display:flex;align-items:center;justify-content:center;font-size:40px;font-weight:800;letter-spacing:0.04em;color:#1A1A2E;margin-bottom:10px;font-variant-numeric:tabular-nums}
-.pad-read.empty{color:#D1D5DB}
+.pad-read.empty{color:#4B5563}
+.pad-read.bad{background:#FEF2F2;border-color:#991B1B;color:#991B1B}
+.ans-mark{font-weight:900;line-height:1}
 .pad-read.ok{background:#ECFDF5;border-color:#10B981;color:#065F46}
 .numpad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .pad-key{position:relative;min-height:58px;border:2px solid #E5E7EB;border-radius:14px;background:#F9FAFB;font-size:26px;font-weight:800;color:#1A1A2E;cursor:pointer;font-family:inherit;touch-action:manipulation;user-select:none;-webkit-user-select:none}
@@ -140,7 +149,7 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;height:10
 .pad-key:active{transform:scale(0.97)}
 .pad-key:focus{outline:none}
 .pad-key:focus-visible{outline:2px solid #FF5722;outline-offset:2px}
-.pad-erase{font-size:22px;color:#6B7280}
+.pad-erase{font-size:22px;color:#374151}
 .pad-check{grid-column:1/-1;min-height:54px;background:#FF5722;border-color:#FF5722;color:#1A1A2E;font-size:20px;letter-spacing:0.02em}
 .pad-check:hover{background:#F4511E;border-color:#F4511E;color:#1A1A2E}
 @keyframes ans-arm{0%{opacity:0.25}70%{opacity:0.55}100%{opacity:1}}
@@ -152,23 +161,30 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;height:10
 @keyframes xp-gain-pop{0%{transform:translateY(5px) scale(0.7);opacity:0}60%{transform:translateY(0) scale(1.12);opacity:1}100%{transform:translateY(0) scale(1);opacity:1}}
 /* Only ever a wrong answer or an escape now -- no phase renders one on a correct
    answer -- so there is no longer a .ok variant to pair with this. */
-.result-msg{text-align:center;padding:11px 14px;border-radius:10px;font-size:14px;margin-bottom:8px;font-weight:500;background:#FEF2F2;color:#991B1B}
-.nxt-btn{width:100%;background:#1A1A2E;color:white;border:none;border-radius:12px;padding:13px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit}
+.result-msg{text-align:center;padding:11px 14px;border-radius:10px;font-size:16px;margin-bottom:8px;font-weight:700;background:#FEF2F2;color:#991B1B}
+.verdict{display:flex;align-items:center;justify-content:center;gap:8px;text-align:center;font-size:28px;font-weight:800;border-radius:12px;padding:12px 14px;margin:8px 0}
+.verdict.ok{background:#ECFDF5;color:#065F46}
+.verdict.no{background:#FEF2F2;color:#991B1B}
+.verdict-mark{font-size:1.15em;line-height:1}
+.xp-earn{font-size:14px;font-weight:800;color:#065F46;margin-left:8px;line-height:1.2}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;pointer-events:none}
+.prize-line{text-align:center;font-size:16px;font-weight:800;color:#92400E;background:#FEF3C7;border-radius:12px;padding:10px 12px;margin:8px 0}
+.nxt-btn{width:100%;background:#1A1A2E;color:white;border:none;border-radius:12px;padding:14px;font-size:20px;font-weight:800;cursor:pointer;font-family:inherit}
 .nxt-btn:hover{opacity:0.85}
 .pdx-gen-section{margin-bottom:16px}
-.pdx-gen-label{font-size:11px;font-weight:700;color:#9CA3AF;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:8px}
+.pdx-gen-label{font-size:14px;font-weight:700;color:#4B5563;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:8px}
 .pdx-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .pdx-entry{background:#fff;border-radius:12px;padding:10px 8px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,0.06)}
 .pdx-entry.locked{opacity:0.25;filter:grayscale(1)}
-.pdx-num{font-size:10px;color:#9CA3AF;font-weight:500}
-.pdx-name{font-size:12px;font-weight:700;color:#1A1A2E;margin-top:2px}
-.pdx-fact{font-size:10px;color:#6B7280;margin-top:3px;line-height:1.4}
+.pdx-num{font-size:14px;color:#4B5563;font-weight:500}
+.pdx-name{font-size:14px;font-weight:700;color:#1A1A2E;margin-top:2px}
+.pdx-fact{font-size:14px;color:#374151;margin-top:3px;line-height:1.4}
 .reset-btn{position:relative;overflow:hidden;border:1px solid #D1D5DB;background:#fff;color:#374151;font-size:11px;font-weight:700;padding:5px 10px;border-radius:8px;cursor:pointer;touch-action:none;user-select:none;-webkit-user-select:none}
 .reset-fill{position:absolute;left:0;top:0;bottom:0;width:0;background:#FECACA}
 .reset-lbl{position:relative}
 .starter-card{background:#fff;border-radius:16px;padding:16px 14px 20px;margin-bottom:12px;box-shadow:0 2px 8px rgba(0,0,0,0.06)}
 .gen-section{margin-bottom:14px}
-.gen-label{font-size:11px;font-weight:700;color:#9CA3AF;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:6px;text-align:left}
+.gen-label{font-size:14px;font-weight:700;color:#4B5563;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:6px;text-align:left}
 .starter-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .starter-opt{background:#F9FAFB;border:2px solid #E5E7EB;border-radius:12px;padding:8px 4px 10px;cursor:pointer;transition:all 0.18s;text-align:center;display:flex;flex-direction:column;align-items:center;font-family:inherit}
 .starter-opt:hover{transform:translateY(-3px);box-shadow:0 6px 16px rgba(0,0,0,0.1)}
@@ -178,7 +194,7 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;height:10
 .starter-opt-name{font-size:12px;font-weight:700;color:#1A1A2E;margin-top:5px;margin-bottom:3px}
 .starter-opt-type{font-size:10px;font-weight:600;padding:2px 7px;border-radius:20px;display:inline-block}
 .subj-ask{font-size:20px;font-weight:700;color:#1A1A2E;margin-bottom:3px;text-align:center}
-.subj-ask-sub{font-size:13px;color:#6B7280;margin-bottom:16px;text-align:center}
+.subj-ask-sub{font-size:14px;color:#374151;margin-bottom:16px;text-align:center}
 .subj-choice-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .subj-opt{background:#F9FAFB;border:2px solid #E5E7EB;border-radius:14px;padding:16px 8px 14px;cursor:pointer;transition:all 0.18s;text-align:center;display:flex;flex-direction:column;align-items:center;gap:5px;font-family:inherit}
 .subj-opt:hover{transform:translateY(-3px);box-shadow:0 6px 16px rgba(0,0,0,0.1)}
@@ -193,7 +209,7 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;height:10
 .hdr-right{display:flex;align-items:center;gap:8px}
 .subj-btn{border:1px solid #E5E7EB;background:#fff;color:#374151;font-size:14px;font-weight:700;padding:8px 12px;min-height:44px;border-radius:8px;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
 .subj-btn:hover{border-color:#1A1A2E;color:#1A1A2E}
-.subj-btn-car{color:#9CA3AF;font-size:10px}
+.subj-btn-car{color:#374151;font-size:14px}
 .fire-type{background:#FEE2E2;color:#DC2626}
 .water-type{background:#DBEAFE;color:#1D4ED8}
 .grass-type{background:#DCFCE7;color:#16A34A}
@@ -202,7 +218,7 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;height:10
 .flying-type{background:#E0F2FE;color:#0369A1}
 .bug-type{background:#ECFCCB;color:#3F6212}
 .fairy-type{background:#FCE7F3;color:#9D174D}
-.lvl-badge{display:inline-block;background:#1A1A2E;color:white;font-size:11px;font-weight:700;padding:3px 9px;border-radius:10px;margin-left:6px;letter-spacing:0.04em;vertical-align:middle}
+.lvl-badge{display:inline-block;background:#1A1A2E;color:white;font-size:14px;font-weight:700;padding:3px 9px;border-radius:10px;margin-left:6px;letter-spacing:0.04em;vertical-align:middle}
 /* A level-up lands on the pill that actually changed instead of a bar above the card.
    Green because the +XP badge just below it is green too, so the badge, the bar filling
    and the number lighting up read as one movement rather than three separate signals.
@@ -217,15 +233,15 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;height:10
    under it. Switching is occasional -- the question is the thing on this screen --
    and a button as loud as the card it sits on kept pulling the eye off it. Matches
    .switch-back so the two ends of the same trip look like each other. */
-.switch-btn{position:absolute;top:10px;left:10px;background:#F3F4F6;border:none;border-radius:10px;padding:6px 10px;cursor:pointer;font-family:inherit;font-size:12px;font-weight:700;color:#6B7280;display:inline-flex;align-items:center;gap:5px;line-height:1;transition:all 0.15s;z-index:2}
+.switch-btn{position:absolute;top:10px;left:10px;background:#F3F4F6;border:none;border-radius:10px;padding:6px 10px;cursor:pointer;font-family:inherit;font-size:14px;font-weight:700;color:#1F2937;display:inline-flex;align-items:center;gap:5px;line-height:1;transition:all 0.15s;z-index:2}
 .switch-btn:hover{background:#E5E7EB;color:#374151}
-.switch-count{font-size:10px;font-weight:700;color:#9CA3AF}
+.switch-count{font-size:14px;font-weight:700;color:#374151}
 .switch-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
 .switch-opt{position:relative;background:#F9FAFB;border:2px solid #E5E7EB;border-radius:14px;padding:12px 6px 8px;cursor:pointer;transition:all 0.18s;text-align:center;display:flex;flex-direction:column;align-items:center;gap:3px;font-family:inherit}
 .switch-opt:hover{border-color:#FF5722;background:#FFF7ED}
 .switch-opt img{width:56px;height:56px;object-fit:contain;display:block;pointer-events:none}
 .switch-opt-name{font-size:12px;font-weight:700;color:#1A1A2E;line-height:1.15}
-.switch-opt-lvl{font-size:10px;font-weight:700;color:#6B7280}
+.switch-opt-lvl{font-size:14px;font-weight:700;color:#374151}
 .switch-opt.current{border-color:#FF5722;background:#FFF3E0;cursor:default}
 .switch-opt.current:hover{background:#FFF3E0}
 .switch-opt-out{position:absolute;top:-7px;left:50%;transform:translateX(-50%);background:#FF5722;color:#fff;font-size:9px;font-weight:800;letter-spacing:0.05em;padding:2px 8px;border-radius:8px;white-space:nowrap}
@@ -235,7 +251,7 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;height:10
 /* Above the grid, not below it: at 13 Pokemon the bottom of this screen is
    already off the fold and at 45 it is a long scroll, and the way out of a screen
    should never be something you have to go looking for. */
-.switch-back{background:#F3F4F6;border:none;border-radius:10px;padding:7px 12px;font-size:13px;font-weight:700;color:#6B7280;cursor:pointer;font-family:inherit;margin-bottom:10px}
+.switch-back{background:#F3F4F6;border:none;border-radius:10px;padding:7px 12px;font-size:14px;font-weight:700;color:#1F2937;cursor:pointer;font-family:inherit;margin-bottom:10px}
 .switch-back:hover{background:#E5E7EB;color:#374151}
 /* Shiny markers. A rare catch has to be unmistakable at a glance, so it
    reads three ways at once: a different sprite, a gold star, and a gold frame. */
@@ -369,17 +385,17 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;height:10
 .gym-confirm{text-align:center;margin-top:8px}
 .gym-confirm p{font-size:14px;font-weight:650;color:#92400E;margin:0 0 10px}
 .gym-confirm-row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
-.you-row{display:flex;justify-content:center;align-items:center;gap:8px;margin:0 0 10px;font-size:13px;font-weight:700;color:#6B7280}
+.you-row{display:flex;justify-content:center;align-items:center;gap:8px;margin:0 0 10px;font-size:14px;font-weight:700;color:#374151}
 .gym-invite{background:#fff;border:2px solid #DDD6FE;border-radius:16px;padding:14px;margin-bottom:12px;text-align:center;box-shadow:0 2px 8px rgba(124,58,237,0.08)}
 .gym-invite-txt{font-size:16px;font-weight:800;color:#5B21B6;margin-bottom:10px}
 .gym-invite-row{display:flex;gap:8px;justify-content:center}
 .gym-go,.gym-later,.candy-btn,.award-go,.gate-go{font-family:inherit;font-weight:800;border:none;border-radius:12px;cursor:pointer}
 .gym-go,.award-go{background:#7C3AED;color:#fff;padding:12px 18px;font-size:16px}
-.gym-later{background:#F3F4F6;color:#6B7280;padding:12px 14px;font-size:14px}
+.gym-later{background:#F3F4F6;color:#1F2937;padding:12px 14px;font-size:16px}
 .gym-wait{background:#F5F3FF;color:#6D28D9;border-radius:12px;padding:10px 12px;margin-bottom:12px;font-size:14px;font-weight:600;text-align:center}
 .gym-hint{text-align:center;padding:11px 14px;border-radius:10px;font-size:14px;margin-bottom:8px;font-weight:600;background:#F5F3FF;color:#5B21B6}
 .gym-time{margin:8px 0 12px}
-.gym-time-lbl{display:block;font-size:11px;font-weight:700;color:#9CA3AF;letter-spacing:0.04em;margin-bottom:4px;text-align:center}
+.gym-time-lbl{display:block;font-size:14px;font-weight:700;color:#374151;letter-spacing:0.04em;margin-bottom:4px;text-align:center}
 .gym-time-track{display:block;height:8px;border-radius:99px;background:#EDE9FE;overflow:hidden}
 .gym-time-fill{display:block;height:100%;width:100%;background:linear-gradient(90deg,#C4B5FD,#A78BFA);transform-origin:left center;border-radius:99px}
 .gym-end{text-align:center}
@@ -393,17 +409,21 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;height:10
 .award-card{text-align:center;background:radial-gradient(circle at 50% 0%,#FEF3C7,#fff 55%);overflow:hidden}
 .award-kicker{font-size:13px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:#B45309}
 .award-title{font-size:26px;font-weight:800;color:#1A1A2E;margin:6px 0}
-.award-sub{font-size:15px;color:#6B7280;margin-bottom:8px}
+.award-sub{font-size:15px;color:#374151;margin-bottom:8px}
 .award-prize{font-size:15px;font-weight:700;color:#1A1A2E;margin:6px 0}
 .award-pop{animation:pick-land 0.7s cubic-bezier(.2,.9,.3,1.2)}
 .candy-btn{display:inline-flex;margin-top:8px;background:#FEF3C7;color:#92400E;padding:8px 12px;font-size:13px}
 .great-note{font-size:13px;font-weight:700;color:#6D28D9;margin-top:6px}
 .pdx-badges{margin-bottom:16px}
-.pdx-badge-hd{font-size:13px;font-weight:800;color:#6B7280;margin-bottom:8px}
+.pdx-badge-hd{font-size:14px;font-weight:800;color:#374151;margin-bottom:8px}
+.dex-tools{display:flex;flex-direction:column;align-items:stretch;gap:8px}
+.dex-tools .switch-btn{position:static;width:100%;justify-content:center;font-size:16px;padding:12px;min-height:44px}
+.dex-tools .candy-btn{margin-top:0;width:100%;justify-content:center;font-size:16px;padding:12px;min-height:44px}
+.dex-tools .great-note{font-size:16px;margin-top:0}
 /* Trainer switcher. Big cards, one tap to play, the dangerous action kept small
    and off the card so a miss doesn't wipe a sibling's Pokémon. */
 #profiles-page,#parent-page{display:none}
-.who-lead{font-size:13px;color:#6B7280;text-align:center;margin:-6px 0 14px;line-height:1.4}
+.who-lead{font-size:14px;color:#374151;text-align:center;margin:-6px 0 14px;line-height:1.4}
 .who-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .who-card{display:flex;flex-direction:column;align-items:center;gap:2px}
 .who-play{width:100%;background:#fff;border:2px solid #E5E7EB;border-radius:16px;padding:12px 8px 10px;cursor:pointer;font-family:inherit;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,0.06)}
@@ -470,12 +490,15 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;height:10
 }
 /* Sits in the column's top-right, in the header's right padding, so it
    never covers the subject button. 52px wide, 4px in from the column edge. */
-.mute-btn{position:absolute;z-index:1001;top:max(8px,env(safe-area-inset-top,0px));right:4px;width:52px;min-width:44px;height:44px;display:flex;align-items:center;justify-content:center;gap:2px;padding:0 3px;border-radius:999px;border:2px solid #1A1A2E;background:#fff;color:#1A1A2E;font-family:inherit;font-weight:800;font-size:11px;line-height:1;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.12);white-space:nowrap}
+.mute-btn{position:absolute;z-index:1001;top:max(8px,env(safe-area-inset-top,0px));right:4px;width:52px;min-width:44px;height:44px;display:flex;align-items:center;justify-content:center;gap:2px;padding:0 3px;border-radius:999px;border:2px solid #1A1A2E;background:#fff;color:#1A1A2E;font-family:inherit;font-weight:800;font-size:14px;line-height:1;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.12);white-space:nowrap}
 .mute-btn .mute-ico{font-size:15px;line-height:1}
 .mute-btn .mute-lbl{line-height:1}
 .parent-kicker{font-size:12px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#374151}
 .parent-title{font-size:24px;font-weight:800;color:#1A1A2E;margin:2px 0 6px}
-.parent-lead{font-size:14px;color:#6B7280;line-height:1.45;margin-bottom:12px}
+.parent-lead{font-size:16px;color:#374151;line-height:1.45;margin-bottom:12px}
+.timer-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:4px;font-size:16px;font-weight:800;color:#1A1A2E}
+.timer-toggle{min-height:44px;min-width:88px;border-radius:999px;border:2px solid #1A1A2E;background:#fff;color:#1A1A2E;font-family:inherit;font-weight:800;font-size:16px;padding:8px 16px;cursor:pointer}
+.timer-toggle.on{background:#1A1A2E;color:#fff}
 .parent-q{font-size:22px;font-weight:800;color:#1A1A2E;text-align:center;margin:8px 0}
 .parent-ans{width:100%;border:2px solid #E5E7EB;border-radius:14px;padding:12px;font-size:22px;font-weight:800;text-align:center;font-family:inherit;color:#1A1A2E}
 .parent-ans:focus{outline:none;border-color:#1A1A2E}
@@ -499,7 +522,7 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;height:10
 .parent-focus h3{font-size:14px;font-weight:800;color:#9A3412;margin-bottom:6px}
 .parent-miss{font-size:14px;font-weight:700;color:#9A3412;margin-top:6px}
 .parent-ex{font-size:13px;color:#7C2D12;margin:1px 0 0 0}
-.parent-note{font-size:13px;color:#6B7280;line-height:1.4;margin-top:10px}
+.parent-note{font-size:14px;color:#374151;line-height:1.4;margin-top:10px}
 .parent-again{margin-top:10px}
 .parent-again h3{font-size:14px;font-weight:800;color:#5B21B6;margin-bottom:4px}
 .parent-again p{font-size:14px;color:#1A1A2E;margin:3px 0}
@@ -518,7 +541,7 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;height:10
   .card{padding:10px 14px;margin-bottom:8px}
   .psvg{margin:2px 0}
   .psvg img{width:80px;height:80px}
-  .qtext{margin-bottom:8px;font-size:16px;line-height:1.35}
+  .qtext{margin-bottom:8px;font-size:20px;line-height:1.35}
   .pad-wrap{margin-bottom:6px}
   .pad-read{min-height:40px;font-size:28px;margin-bottom:6px}
   .numpad{gap:6px}
@@ -549,57 +572,70 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;height:10
   .pcard .pnum{display:none}
   .pname{font-size:16px}
   .psvg{margin:0}
-  .psvg img{width:44px;height:44px}
+  .psvg img,.mon-strip .psvg img{width:44px;height:44px}
   .xp-row{margin-bottom:1px}
   .xp-track{height:6px}
   .badge-row{margin-top:2px}
   .q-head{margin-bottom:2px}
-  .qtext{margin-bottom:4px;font-size:15px;line-height:1.25}
+  .qtext{margin-bottom:4px;font-size:20px;line-height:1.25}
   .pad-read{min-height:32px;font-size:24px;margin-bottom:2px}
   .numpad{gap:4px}
   .pad-key,.pad-check{min-height:40px;font-size:20px}
-  .help-btn{padding:6px 8px;font-size:13px}
+  .help-btn{padding:6px 8px;min-height:44px;font-size:15px}
 }
 /* A sideways phone. Reading keeps a small picture and its choices.
    Math hides the picture only while the keys are up. After the answer
    the picture comes back small, and Next stays on screen. */
 @media (max-height:520px){
-  #app-main{padding:4px 8px 4px}
-  .hdr{margin-bottom:2px}
-  .card{padding:6px 8px;margin-bottom:4px}
-  .pcard{padding:4px 8px}
+  #app-main{padding:2px 8px 1px}
+  .hdr{margin-bottom:0}
+  .card{padding:4px 8px;margin-bottom:2px}
+  .pcard{padding:2px 8px}
   .pcard .pnum,.pcard .xp-row,.pcard .xp-track,.pcard .badge-row,.pcard .candy-btn,.pcard .great-note{display:none}
   .pname{font-size:16px}
   .psvg{margin:0}
-  .psvg img{width:48px;height:48px}
+  .psvg img,.mon-strip .psvg img{width:48px;height:48px}
   .q-head{margin-bottom:2px}
-  .qtext{margin-bottom:4px;font-size:14px;line-height:1.25}
-  .ans-grid{gap:6px;margin-bottom:4px}
-  .ans-btn{padding:8px 6px;min-height:40px}
-  .help-btn{padding:6px 8px;font-size:13px;line-height:1.2}
-  .nxt-btn{padding:10px}
-  .pad-wrap{margin-bottom:4px}
-  .pad-read{min-height:28px;font-size:20px;margin-bottom:4px}
+  .qtext{margin-bottom:2px;font-size:20px;line-height:1.25}
+  .ans-grid{gap:4px;margin-bottom:2px}
+  .ans-btn{padding:6px 4px;min-height:36px;font-size:20px}
+  .help-btn{padding:4px 8px;min-height:44px;font-size:15px;line-height:1.2}
+  .nxt-btn{padding:8px;font-size:16px}
+  .verdict{font-size:16px;padding:4px 8px;margin:2px 0}
+  .prize-line{font-size:14px;padding:4px 8px;margin:2px 0}
+  .mon-strip{gap:8px;padding:2px 8px}
+  .mon-strip .pname{font-size:16px}
+  .pad-wrap{margin-bottom:2px}
+  .pad-read{min-height:22px;font-size:18px;margin-bottom:2px}
   .numpad{gap:4px}
   .pad-key,.pad-check{min-height:40px;font-size:18px}
   .pad-check{grid-column:auto}
   body:has(.numpad) .pcard{display:none}
   body:has(.numpad) .q-head{display:none}
 }
+@media (max-height:400px){
+  #game .numpad{grid-template-columns:repeat(4,1fr)}
+}
 @media (max-height:360px){
-  #app-main{padding:2px 8px 2px}
+  #app-main{padding:1px 8px 0}
   .hdr{margin-bottom:0}
+  .who-btn{min-height:28px;padding:1px 8px 1px 1px;font-size:14px}
+  .who-btn img{width:22px;height:22px}
+  .subj-btn{min-height:28px;padding:2px 8px;font-size:14px}
   .q-head{display:none}
-  .card{padding:4px 8px;margin-bottom:2px}
-  .qtext{margin-bottom:2px;font-size:13px;line-height:1.2}
-  .psvg img{width:40px;height:40px}
-  .pad-read{min-height:22px;font-size:16px;margin-bottom:2px}
-  .pad-wrap{margin-bottom:2px}
+  .card{padding:2px 8px;margin-bottom:0}
+  .qtext{margin-bottom:0;font-size:18px;line-height:1.2}
+  .mon-strip{gap:6px;padding:1px 8px}
+  .psvg img,.mon-strip .psvg img{width:28px;height:28px}
+  .pad-read{min-height:18px;font-size:14px;line-height:1;margin-bottom:0}
+  .pad-wrap{margin-bottom:0}
   .numpad{gap:4px;grid-template-columns:repeat(4,1fr)}
   #parent-check .numpad{grid-template-columns:repeat(3,1fr)}
   .pad-key,.pad-check{min-height:40px;font-size:16px}
-  .help-btn{padding:4px 8px;font-size:13px}
-  .ans-btn{padding:6px 4px;min-height:36px;font-size:14px}
+  .help-btn{padding:4px 8px;min-height:44px;font-size:15px}
+  .ans-grid{gap:4px;margin-bottom:0}
+  .ans-btn{padding:4px 4px;min-height:36px;font-size:18px}
+  .verdict{font-size:16px;padding:2px 6px;margin:2px 0}
 }
 /* An old save asks for a name. Phones and short screens drop the picture
    so the question stays up. A tablet or a laptop keeps the picture, the
@@ -621,7 +657,7 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;height:10
   body:has(#name-ask) .name-line{margin-bottom:4px;padding:4px 8px}
   body:has(#name-ask) .q-head{display:none}
   body:has(#name-ask) .card{padding:6px 8px;margin-bottom:4px}
-  body:has(#name-ask) .qtext{margin-bottom:4px;font-size:14px;line-height:1.25}
+  body:has(#name-ask) .qtext{margin-bottom:4px;font-size:18px;line-height:1.25}
   body:has(#name-ask) .ans-btn{min-height:36px;padding:6px 4px}
 }
 /* Parents PIN on a short sideways phone. The button stays under the
@@ -730,11 +766,24 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;height:10
   .who-form .who-go{padding:6px;min-height:36px}
   .who-form .who-danger{margin:2px auto 0;padding:2px}
 }
+/* A tablet-wide screen keeps the question and the answers easy to read,
+   even when a short-screen rule above has shrunk them. */
+@media (min-width:768px) and (min-height:700px){
+  .qtext{font-size:22px;line-height:1.45}
+  .ans-btn{font-size:20px}
+  .verdict{font-size:28px;padding:12px 14px;margin:8px 0}
+  .help-btn,.help-box,.help-keep,.result-msg,.gym-hint,.prize-line,.nxt-btn{font-size:16px}
+  .nxt-btn{font-size:20px}
+  .lvl-badge,.streak-pill,.shiny-badge,.subj-btn,.who-btn,.subj-btn-car,.gym-time-lbl,.hv-cap,.pad-note,.badge,.reset-btn,.gym-role,.wild-badge,.catch-counter,.flee-btn,.catch-balls-lbl,.starter-opt-name,.subj-opt-sub,.who-sub,.parent-kicker,.hang-on,.award-kicker,.switch-opt-out,.pdx-num,.pdx-name,.pdx-fact,.gen-label,.pdx-gen-label{font-size:14px}
+  .pname,.mon-strip .pname{font-size:22px}
+  .mon-strip .psvg img{width:96px;height:96px}
+}
 </style>
 </head>
 <body>
 <div class="wrap">
 <button type="button" id="mute-btn" class="mute-btn" aria-pressed="false" aria-label="Sound on"><span class="mute-ico" aria-hidden="true">&#128266;</span><span class="mute-lbl">On</span></button>
+<div id="answer-live" class="sr-only" role="status" aria-live="polite"></div>
 <main id="app-main">
 <button type="button" id="parents-link" class="parents-link">Parents</button>
 
@@ -2810,7 +2859,10 @@ function whoButtonHTML(id){
   const kid=activeKid();
   if(!kid)return '';
   const face=faceForKid(kid);
-  return `<button type="button" class="who-btn" id="${id}">${pkSprite(face.pi,28,face.shiny)}<span>${escapeHtml(kid.name)}</span></button>`;
+  const name=String(kid.name||'').trim();
+  const unset=!!kid.askName||!name||(kid.askName!==false&&name==='Trainer');
+  const label=unset?'Add your name':kid.name;
+  return `<button type="button" class="who-btn" id="${id}">${pkSprite(face.pi,28,face.shiny)}<span>${escapeHtml(label)}</span></button>`;
 }
 function bigBackHTML(id,label){
   return `<button type="button" class="big-back" id="${id}">&#8592; ${label}</button>`;
@@ -3050,7 +3102,7 @@ function renderWho(){
     const face=editKid?faceForKid(editKid):null;
     h+=`<div class="card who-form">`;
     h+=bigBackHTML('who-form-back','Back');
-    h+=`<div class="parent-title">${editing?'Change the name':'New trainer'}</div>`;
+    h+=`<div class="parent-title">${editing?(editKid&&editKid.askName?"What's your name?":'Change the name'):'New trainer'}</div>`;
     if(editing){
       h+=`<div class="who-ava confirm-ava">${face?pkSprite(face.pi,96,face.shiny):''}</div>`;
       h+=`<p class="parent-lead">This only changes the name. ${escapeHtml(face?PKM[face.pi].n:'This Pokémon')} stays.</p>`;
@@ -3372,7 +3424,9 @@ function renderParent(){
     document.getElementById('parent-back').addEventListener('click',closeParent);
     return;
   }
+  const timerOn=gymTimerEnabled();
   h+=`<div id="parent-report"><div class="parent-kicker">For parents</div><div class="parent-title">How they're doing</div><p class="parent-lead">Each child has their own game. One line says what to practice together.</p>`;
+  h+=`<div class="card" id="timer-setting"><div class="parent-title" style="font-size:20px">Thinking time</div><p class="parent-lead">On harder Gym battles, a bar counts down while they think. It stays off unless you turn it on.</p><div class="timer-row"><span>Thinking time</span><button type="button" id="gym-timer-toggle" class="timer-toggle${timerOn?' on':''}" aria-pressed="${timerOn?'true':'false'}">${timerOn?'On':'Off'}</button></div></div>`;
   if(!profiles.kids.length){
     h+=`<div class="card"><p class="parent-lead">No trainers yet. A child can make one from the game.</p></div>`;
   } else {
@@ -3383,6 +3437,8 @@ function renderParent(){
   h+=`</div>`;
   parentEl.innerHTML=h;
   document.getElementById('parent-back').addEventListener('click',closeParent);
+  const timerBtn=document.getElementById('gym-timer-toggle');
+  if(timerBtn)timerBtn.addEventListener('click',()=>{setGymTimerEnabled(!gymTimerEnabled());renderParent();});
 }
 
 let profiles={activeId:null,kids:[]};
@@ -3509,8 +3565,18 @@ function gymWaiting(sub){
   return !!(o&&o.cool<=0&&o.tier===st.stats[sub].level&&!hasBadge(sub,o.tier));
 }
 function gymReady(sub){return gymWaiting(sub)&&!st.gymSnooze[sub];}
+const GYM_TIMER_KEY='pkq-gym-timer';
+function gymTimerEnabled(){
+  try{return localStorage.getItem(GYM_TIMER_KEY)==='1';}catch(e){return false;}
+}
+function setGymTimerEnabled(on){
+  try{localStorage.setItem(GYM_TIMER_KEY,on?'1':'0');}catch(e){}
+}
+function gymTimerWanted(g){
+  return !!(gymTimerEnabled()&&g&&g.tier>=GYM_TIMER_MIN_TIER);
+}
 function gymTimerApplies(){
-  return st.phase==='gym'&&st.gym&&!st.gym.over&&st.gym.tier>=GYM_TIMER_MIN_TIER&&st.tries===0&&!st.helped&&!st.cor;
+  return gymTimerWanted(st.gym)&&st.phase==='gym'&&st.gym&&!st.gym.over&&st.tries===0&&!st.helped&&!st.cor;
 }
 function gymClockRunning(){
   return view==='game'&&document.visibilityState!=='hidden';
@@ -3622,13 +3688,13 @@ function dealGymQuestion(resume){
     st.helped=!!g.helped;
     st.wrong=Array.isArray(g.wrong)?g.wrong.slice():[];
     st.armAt=Date.now()+Math.max(0,g.armLeft|0);
-    const timed=g.tier>=GYM_TIMER_MIN_TIER&&st.tries===0&&!st.helped;
+    const timed=gymTimerWanted(g)&&st.tries===0&&!st.helped;
     if(!timed)g.timerLeft=null;
     else if(typeof g.timerLeft!=='number')g.timerLeft=GYM_TIMER_MS;
   } else {
     st.tries=0;st.helped=false;st.wrong=[];
     st.armAt=Date.now()+PAUSE.first;
-    g.timerLeft=g.tier>=GYM_TIMER_MIN_TIER?GYM_TIMER_MS:null;
+    g.timerLeft=gymTimerWanted(g)?GYM_TIMER_MS:null;
     g.timerKnown=true;
   }
   save();
@@ -3639,7 +3705,7 @@ function gymPayload(){
   if(!g||g.over)return undefined;
   let timerLeft=g.timerLeft;
   if(g.deadline!=null)timerLeft=Math.max(0,g.deadline-Date.now());
-  const timed=g.tier>=GYM_TIMER_MIN_TIER&&st.tries===0&&!st.helped&&!st.cor;
+  const timed=gymTimerWanted(g)&&st.tries===0&&!st.helped&&!st.cor;
   if(!timed)timerLeft=null;
   return{
     sub:g.sub,tier:g.tier,queue:g.queue,qi:g.qi,kid:g.kid,lead:g.lead,solved:!!g.solved,
@@ -3755,20 +3821,12 @@ function armGymTimer(){
   tick();
 }
 function gymInviteHTML(){
+  // Only after the question is finished. No "waiting" line while they are still answering.
+  if(!st.cor)return '';
   let h='';
   SUBS.forEach(sub=>{
-    const o=st.gymOffer[sub];
-    if(!o)return;
+    if(!gymReady(sub))return;
     const leader=GYM_LEADER[sub];
-    if(o.cool>0){
-      h+=`<div class="gym-wait">${leader} is cheering you on. Practice a little more, then the Gym is ready again.</div>`;
-      return;
-    }
-    if(!gymWaiting(sub)||st.gymSnooze[sub])return;
-    if(!st.cor){
-      h+=`<div class="gym-wait">${leader} the Gym Leader is waiting. Finish this question first.</div>`;
-      return;
-    }
     h+=`<div class="gym-invite"><div class="gym-invite-txt">${leader} wants a Gym battle!</div><div class="gym-invite-row"><button class="gym-go" data-gym-start="${sub}">Battle</button><button class="gym-later" data-gym-later="${sub}">Not now</button></div></div>`;
   });
   return h;
@@ -4021,16 +4079,51 @@ function isTypedQuestion(q){
 }
 function numpadHTML(q,resolved,arming,armLeft){
   if(resolved){
-    return `<div class="pad-wrap" data-typed="1"><div class="pad-read ok" id="pad-read">${q.answers[q.correctIndex]}</div></div>`;
+    const mark='<span class="ans-mark" aria-hidden="true">✓</span> ';
+    return `<div class="pad-wrap" data-typed="1"><div class="pad-read ok" id="pad-read">${mark}${q.answers[q.correctIndex]}</div></div>`;
   }
   const draft=/^\d+$/.test(st.draft||'')?st.draft:'';
+  const showX=!resolved&&st.tries>0&&!st.cor;
   const attrs=arming?` class="numpad arming" style="--arm:${armLeft}ms"`:' class="numpad"';
   let keys='';
   for(const d of ['1','2','3','4','5','6','7','8','9'])keys+=`<button type="button" class="pad-key" data-digit="${d}">${d}</button>`;
   keys+=`<button type="button" class="pad-key pad-erase" data-pad="erase" aria-label="Erase">&#9003;</button>`;
   keys+=`<button type="button" class="pad-key" data-digit="0">0</button>`;
   keys+=`<button type="button" class="pad-key pad-check" data-pad="check">Check</button>`;
-  return `<div class="pad-wrap" data-typed="1"><div class="pad-read${draft?'':' empty'}" id="pad-read" aria-live="polite">${draft||'&#8212;'}</div><div class="pad-note" id="pad-note" hidden></div><div${attrs}>${keys}</div></div>`;
+  const body=showX?`<span class="ans-mark" aria-hidden="true">✗</span>${draft?` ${draft}`:''}`:(draft||'&#8212;');
+  const cls=`pad-read${showX?' bad':(draft?'':' empty')}`;
+  return `<div class="pad-wrap" data-typed="1"><div class="${cls}" id="pad-read">${body}</div><div class="pad-note" id="pad-note" hidden></div><div${attrs}>${keys}</div></div>`;
+}
+function answerLiveText(){
+  if(!st.q||!st.tries)return '';
+  if(st.wildEscape){
+    const ans=st.q.answers[st.q.correctIndex];
+    return `✗ Not quite. It got away! The answer was ${ans}`;
+  }
+  const ok=!!st.cor;
+  let text=ok?'✓ Correct!':'✗ Not quite';
+  if(ok&&st.lastXp>0)text+=` +${st.lastXp} XP`;
+  return text;
+}
+function syncAnswerLive(){
+  const live=document.getElementById('answer-live');
+  if(!live)return;
+  const next=answerLiveText();
+  if(live.textContent!==next)live.textContent=next;
+}
+function verdictHTML(){
+  if(!st.tries)return '';
+  const ok=!!st.cor;
+  const xp=ok&&st.lastXp>0?` <span class="xp-earn">+${st.lastXp} XP</span>`:'';
+  return `<div class="verdict ${ok?'ok':'no'}" aria-hidden="true"><span class="verdict-mark" aria-hidden="true">${ok?'✓':'✗'}</span> ${ok?'Correct!':'Not quite'}${xp}</div>`;
+}
+function prizeHTML(){
+  if(!st.tries)return '';
+  const parts=[];
+  if(st.streakMsg)parts.push(st.streakMsg);
+  if(st.rematchMsg)parts.push(st.rematchMsg);
+  if(!parts.length)return '';
+  return `<div class="prize-line">${parts.join(' · ')}</div>`;
 }
 
 function qCardHTML(resultMsg,btnLabel){
@@ -4049,32 +4142,12 @@ function qCardHTML(resultMsg,btnLabel){
   // rather than to a number that's merely sitting there.
   const grew=st.cor&&st.tries===1;
   const maxed=st.streak>=XP_STREAK_CAP;
-  // Shows from two upward: a run is only worth flagging once it's actually a run,
-  // and a pill reading zero on every fresh question is just noise.
-  const streakPill=st.streak>1
-    ?`<span class="streak-pill${maxed?' maxed':''}${st.newRecord?' record':''}${grew?' bump':''}">&#128293; ${st.streak} in a row${st.newRecord?' &#127942; BEST!':''}</span>`
+  // One tag at most, and only once a run is long enough to notice. Best, shiny
+  // odds, rematch, and the subject name stay off this card. A rematch still pays.
+  const streakPill=st.streak>=3
+    ?`<span class="streak-pill${maxed?' maxed':''}${grew?' bump':''}">&#128293; ${st.streak} in a row</span>`
     :'';
-  // The record only earns space once it's worth chasing, and it steps aside while
-  // he's actively beating it -- the streak pill is already saying so.
-  const bestPill=(st.bestStreak>=BEST_STREAK_NOTE&&!st.newRecord)
-    ?`<span class="best-pill">&#127942; Best ${st.bestStreak}</span>`
-    :'';
-  // Says the odds are better without saying by how much. He is five: "2.4x" asks him
-  // to read a multiplier, and the exact figure buys him nothing he can act on -- the
-  // only thing he can do about it is keep the streak alive, which the streak pill
-  // beside it is already telling him.
-  //
-  // Play phase only. The odds apply to the NEXT encounter roll, and a shiny promise
-  // printed underneath a wild Pokemon whose colour was already decided reads like a
-  // broken one -- so it steps aside while one is on screen.
-  const shinyMaxed=st.streak>=SHINY_STREAK_CAP;
-  const shinyPill=(st.phase==='play'&&st.streak>=SHINY_PILL_MIN)
-    ?`<span class="shiny-pill${shinyMaxed?' maxed':''}${grew?' bump':''}">&#10024; ${shinyMaxed?'SHINY CHANCE MAX!':'Shiny chance UP!'}</span>`
-    :'';
-  // Tells him this one is a question he stumbled on before -- worth knowing, since
-  // beating it is worth a bonus and it's the whole point of it coming back.
-  const rematchPill=q.rematch?`<span class="rematch-pill">&#128257; Rematch!</span>`:'';
-  let h=`<div class="card"><div class="q-head"><div class="subj-tag ${SCLS[q.subject]||'tagm'}">${SNAME[q.subject]}</div>${rematchPill}${streakPill}${bestPill}${shinyPill}</div><div class="qtext">${q.question}</div>`;
+  let h=`<div class="card qcard">${streakPill?`<div class="q-head">${streakPill}</div>`:''}<div class="qtext">${q.question}</div>`;
   if(gymTimerApplies()){
     h+=`<div class="gym-time" id="gym-time"><span class="gym-time-lbl">Thinking time</span><span class="gym-time-track"><span class="gym-time-fill" id="gym-time-fill"></span></span></div>`;
   }
@@ -4105,17 +4178,18 @@ function qCardHTML(resultMsg,btnLabel){
     h+=`<div${gridAttrs}>`;
     q.answers.forEach((a,i)=>{
       let c='ans-btn';
+      let mark='';
       const ruled=st.wrong.includes(i);
-      if(ruled)c+=' wrg';
-      else if(resolved&&i===q.correctIndex)c+=' cor';
-      h+=`<button class="${c}"${resolved||ruled?' disabled':''} data-i="${i}">${a}</button>`;
+      if(ruled){c+=' wrg';mark='<span class="ans-mark" aria-hidden="true">✗</span>';}
+      else if(resolved&&i===q.correctIndex){c+=' cor';mark='<span class="ans-mark" aria-hidden="true">✓</span>';}
+      h+=`<button class="${c}"${resolved||ruled?' disabled':''} data-i="${i}">${mark}${a}</button>`;
     });
     h+=`</div>`;
   }
   if(helpHTML)h+=helpHTML;
   if(st.tries>0){
-    // Empty is the common case now -- no phase says anything here on a correct answer
-    // -- and an empty .result-msg would still paint its padding as a bare stripe.
+    h+=verdictHTML();
+    h+=prizeHTML();
     if(resultMsg)h+=`<div class="${st.phase==='gym'?'gym-hint':'result-msg'}">${resultMsg}</div>`;
     if(visual)h+=visual;
     if(resolved)h+=`<button class="nxt-btn" id="nxt">${btnLabel}</button>`;
@@ -4150,6 +4224,7 @@ function wireNameAsk(root){
 }
 
 function render(){
+  syncAnswerLive();
   if(view==='who'){renderWho();return;}
   if(view==='parent'){renderParent();return;}
   // A Pokédex visit must not be kicked back to the game just because a timer
@@ -4160,11 +4235,11 @@ function render(){
   const hdrRight=showSubj
     ?`<button class="subj-btn" id="subj-btn">${SUBJ_ICON[st.subject]} ${subjShort(st.subject)}<span class="subj-btn-car">&#9662;</span></button>`
     :'';
-  const hdr=`<div class="hdr hdr-tight">${whoButtonHTML('who-btn')}<span class="app-name">Pokémon</span><span class="hdr-right">${hdrRight}</span></div>`;
+  const hdr=`<div class="hdr hdr-tight">${whoButtonHTML('who-btn')}<span class="hdr-right">${hdrRight}</span></div>`;
   let h=hdr;
 
   if(st.phase==='starter'){
-    h+=`<div class="starter-card"><div style="font-size:20px;font-weight:700;color:#1A1A2E;margin-bottom:3px;text-align:center">Choose your starter!</div><div style="font-size:13px;color:#6B7280;margin-bottom:14px;text-align:center">Pick your partner for this learning adventure</div>`;
+    h+=`<div class="starter-card"><div style="font-size:22px;font-weight:700;color:#1A1A2E;margin-bottom:3px;text-align:center">Choose your starter!</div><div style="font-size:16px;color:#374151;margin-bottom:14px;text-align:center">Pick your partner for this learning adventure</div>`;
     // Sits above the list so it's reachable without scrolling past every generation.
     h+=`<button class="starter-random" id="pick-random">&#127922; Surprise me!</button>`;
     GENS.forEach((genLines,gi)=>{
@@ -4195,8 +4270,8 @@ function render(){
   if(st.phase==='switch'){
     h+=`<div class="starter-card">`+
        `<button class="switch-back" id="switch-cancel">&#8592; Never mind</button>`+
-       `<div style="font-size:20px;font-weight:700;color:#1A1A2E;margin-bottom:3px;text-align:center">Choose your Pok&eacute;mon!</div>`+
-       `<div style="font-size:13px;color:#6B7280;margin-bottom:16px;text-align:center">Tap one to bring it out</div>`+
+       `<div style="font-size:22px;font-weight:700;color:#1A1A2E;margin-bottom:3px;text-align:center">Choose your Pok&eacute;mon!</div>`+
+       `<div style="font-size:16px;color:#374151;margin-bottom:16px;text-align:center">Tap one to bring it out</div>`+
        `<div class="switch-grid">`;
     // Team order, which is the order he caught them, and deliberately not sorted
     // by level: a grid that reorders itself every time a Pokemon levels up means
@@ -4224,16 +4299,7 @@ function render(){
     // changes the question, so it's safe mid-question. Hidden while an evolution is
     // queued, though: processEvolution evolves whoever is active when Next is
     // pressed, so switching first would evolve the wrong Pokemon.
-    const canSwitch=st.team.length>1&&!st.pendingEvo;
-    const switchBtn=canSwitch?`<button class="switch-btn" id="switch-btn"><span>&#128260;</span><span>Switch</span><span class="switch-count">${st.team.length}</span></button>`:'';
-    const candyBtn=st.items.candy>0&&!st.pendingEvo?`<button class="candy-btn" id="candy-btn">&#127853; Rare Candy · ${st.items.candy}</button>`:'';
-    const greatNote=st.items.great>0?`<div class="great-note">Great Ball ready</div>`:'';
-    h+=`<div class="card pcard${canSwitch?' has-switch':''}">${switchBtn}<div class="pnum">${p.num} &bull; ${typeBadgesInline(p.type)} Type</div><div class="pname">${p.n}${tm.shiny?` <span class="shiny-badge">${SHINY_STAR} Shiny</span>`:''} <span class="lvl-badge${st.lvlUpMsg?' lvl-up':''}">Lv ${tm.level}</span></div><div class="psvg ${st.anim}">${pkSprite(tm.pi,148,tm.shiny)}</div><div class="xp-row"><span>XP</span><span class="xp-right">${st.lastXp?`<span class="xp-gain">+${st.lastXp} XP</span>`:''}${tm.xp}/${xpMx}</span></div><div class="xp-track"><div class="xp-fill" style="width:${pct}%"></div></div>${badgeRowHTML()}${candyBtn}${greatNote}</div>`;
-    h+=nameAskHTML();
-    if(st.streakMsg){
-      h+=`<div class="streak-toast">&#128293; ${st.streakMsg}</div>`;
-    }
-    if(st.rematchMsg)h+=`<div class="rematch-toast">&#128257; ${st.rematchMsg}</div>`;
+    h+=`<div class="card pcard mon-strip"><div class="psvg ${st.anim}">${pkSprite(tm.pi,96,tm.shiny)}</div><div class="mon-meta"><div class="pname">${p.n}${tm.shiny?` <span class="shiny-badge">${SHINY_STAR} Shiny</span>`:''} <span class="lvl-badge${st.lvlUpMsg?' lvl-up':''}">Lv ${tm.level}</span></div><div class="xp-track" aria-hidden="true"><div class="xp-fill" style="width:${pct}%"></div></div></div></div>`;
     // No level-up bar here: the Lv pill on the card above is lit instead, and the
     // Pokemon's name is already sitting beside it, so the bar's sentence said nothing
     // the card wasn't. st.lvlUpMsg survives as the flag for that -- the wild phase
@@ -4279,8 +4345,6 @@ function render(){
     // would say the thing he is trying to catch just levelled up. A milestone bonus is
     // paid during an encounter and can level him up, so without this toast the level
     // would happen and loadQuestion() would clear the message before he ever saw it.
-    if(st.streakMsg)h+=`<div class="streak-toast">&#128293; ${st.streakMsg}</div>`;
-    if(st.rematchMsg)h+=`<div class="rematch-toast">&#128257; ${st.rematchMsg}</div>`;
     if(st.lvlUpMsg)h+=`<div class="lvl-up-toast">&#11088; ${st.lvlUpMsg}</div>`;
     // Same rule as the play phase: nothing under the answers when he gets it right.
     // A filled pip, a green button and the Pokemon flinching already say it, and the
@@ -4292,7 +4356,8 @@ function render(){
     //
     // Escaping keeps its message. It reads red, because it only happens off a wrong
     // answer, and it is the only thing that tells him the Pokemon is gone.
-    const rm=escaped?`${wild.n} broke free and ran away!`
+    const gotAway=st.q?st.q.answers[st.q.correctIndex]:'';
+    const rm=escaped?`It got away! The answer was ${gotAway}`
       :st.cor?'':`${wild.n} broke free! ${st.q?.hint||'Try again!'}`;
     // Only rendered once resolved, so there's no unsolved branch to label.
     const btn=escaped?'Continue &#8594;':caught?'Catch it! &#8594;':'Next Question &#8594;';
@@ -4381,6 +4446,8 @@ function render(){
   const whoB=gameEl.querySelector('#who-btn');if(whoB)whoB.addEventListener('click',openProfiles);
   wireNameAsk(gameEl);
   armGymTimer();
+  syncAnswerLive();
+  if(view==='pdx')renderPokedex();
 }
 
 // A shiny slot is rendered only once it has actually been caught. Carrying 237
@@ -4399,6 +4466,11 @@ function renderPokedex(){
   const bits=[];
   SUBS.forEach(sub=>(st.badges[sub]||[]).forEach(t=>bits.push(badgeHTML(sub,t,false))));
   h+=`<div class="card pdx-badges"><div class="pdx-badge-hd">Gym badges</div>${bits.length?`<div class="badge-row">${bits.join('')}</div>`:'<div class="gym-wait">Win a Gym battle to earn your first badge.</div>'}</div>`;
+  const canSwitch=st.team.length>1&&!st.pendingEvo&&st.phase==='play';
+  const switchBtn=canSwitch?`<button class="switch-btn" id="switch-btn" type="button"><span>&#128260;</span><span>Switch</span><span class="switch-count">${st.team.length}</span></button>`:'';
+  const candyBtn=st.items.candy>0&&!st.pendingEvo&&(st.phase==='play'||st.phase==='award')?`<button class="candy-btn" id="candy-btn" type="button">&#127853; Rare Candy · ${st.items.candy}</button>`:'';
+  const greatNote=st.items.great>0?`<div class="great-note">Great Ball ready</div>`:'';
+  if(switchBtn||candyBtn||greatNote)h+=`<div class="card dex-tools">${switchBtn}${candyBtn}${greatNote}</div>`;
   GENS.forEach((genLines,gi)=>{
     h+=`<div class="pdx-gen-section"><div class="pdx-gen-label">Gen ${GEN_ROMAN[gi]} &mdash; ${GEN_NAMES[gi]}</div><div class="pdx-grid">`;
     genLines.forEach(li=>{
@@ -4414,6 +4486,10 @@ function renderPokedex(){
   pdxEl.innerHTML=h;
   wireReset();
   const whoP=pdxEl.querySelector('#who-btn-pdx');if(whoP)whoP.addEventListener('click',openProfiles);
+  const swb=pdxEl.querySelector('#switch-btn');
+  if(swb)swb.addEventListener('click',()=>{view='game';showGameChrome();openSwitchPicker();});
+  const candy=pdxEl.querySelector('#candy-btn');
+  if(candy)candy.addEventListener('click',useCandy);
 }
 
 // Held rather than tapped so a stray finger can't wipe the Pokedex.
@@ -5305,6 +5381,7 @@ function paintDraft(){
   const d=/^\d+$/.test(st.draft||'')?st.draft:'';
   read.textContent=d||'\u2014';
   read.classList.toggle('empty',!d);
+  read.classList.remove('bad');
 }
 function handleAnswer(i){
   if(!st.q||st.cor||st.wildEscape)return;

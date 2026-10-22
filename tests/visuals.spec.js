@@ -323,7 +323,7 @@ test('a wild miss shows the picture and a flee does not',async({page})=>{
   await expect(page.locator('.hint-visual .hv-mark')).toHaveCount(2);
   await state(page,()=>{st.wildEscape=true;st.cor=false;render();});
   await expect(page.locator('.hint-visual')).toHaveCount(0);
-  await expect(page.locator('.result-msg')).toContainText('ran away');
+  await expect(page.locator('.result-msg')).toContainText('It got away!');
 });
 
 test('the picture fits a phone-width screen',async({page})=>{
