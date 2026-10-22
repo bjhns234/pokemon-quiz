@@ -66,7 +66,7 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;height:10
 .rematch-toast{background:linear-gradient(90deg,#8B5CF6,#6D28D9);color:#fff;border-radius:12px;padding:11px 16px;font-size:15px;font-weight:700;margin-bottom:12px;text-align:center;box-shadow:0 4px 16px rgba(109,40,217,0.35);animation:lvl-up-flash 0.55s cubic-bezier(0.34,1.56,0.64,1)}
 /* Quiet on purpose: it sits under the answers on every question, so it has to be
    findable when he's stuck without shouting at him when he isn't. */
-.help-btn{display:block;width:100%;background:transparent;border:none;color:#0369A1;border-radius:12px;padding:8px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;text-decoration:underline;text-underline-offset:3px}
+.help-btn{display:flex;align-items:center;justify-content:center;width:100%;background:transparent;border:none;color:#0369A1;border-radius:12px;padding:8px;min-height:44px;font-size:16px;font-weight:700;cursor:pointer;font-family:inherit;text-decoration:underline;text-underline-offset:3px}
 .help-btn:hover{background:#F0F9FF}
 .help-box{background:#F0F9FF;border:1.5px solid #7DD3FC;border-radius:12px;padding:11px 14px;color:#0C4A6E;font-size:16px;line-height:1.5}
 .help-keep{font-size:14px;font-weight:700;color:#0369A1;margin-top:5px}
@@ -124,7 +124,7 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;height:10
 .tags{background:#FEF3C7;color:#92400E}
 .qtext{font-size:22px;color:#1A1A2E;line-height:1.45;margin-bottom:16px;font-weight:700}
 .ans-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
-.ans-btn{position:relative;display:flex;align-items:center;justify-content:center;gap:6px;background:#F9FAFB;border:2px solid #E5E7EB;border-radius:12px;padding:14px 10px;font-size:20px;font-weight:700;color:#1F2937;cursor:pointer;text-align:center;transition:all 0.15s;line-height:1.3;font-family:inherit;width:100%}
+.ans-btn{position:relative;display:flex;align-items:center;justify-content:center;gap:6px;background:#F9FAFB;border:2px solid #E5E7EB;border-radius:12px;padding:14px 10px;font-size:20px;font-weight:700;color:#1F2937;cursor:pointer;text-align:center;transition:background 0.15s,border-color 0.15s,color 0.15s;line-height:1.3;font-family:inherit;width:100%}
 .ans-btn:hover:not(:disabled){border-color:#FF5722;color:#FF5722;background:#FFF3E0}
 .ans-btn.cor{background:#ECFDF5;border-color:#10B981;color:#065F46}
 .ans-btn.wrg{background:#FEF2F2;border-color:#EF4444;color:#991B1B}
@@ -166,6 +166,8 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;height:10
 .verdict.ok{background:#ECFDF5;color:#065F46}
 .verdict.no{background:#FEF2F2;color:#991B1B}
 .verdict-mark{font-size:1.15em;line-height:1}
+.xp-earn{font-size:14px;font-weight:800;color:#065F46;margin-left:8px;line-height:1.2}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;pointer-events:none}
 .prize-line{text-align:center;font-size:16px;font-weight:800;color:#92400E;background:#FEF3C7;border-radius:12px;padding:10px 12px;margin:8px 0}
 .nxt-btn{width:100%;background:#1A1A2E;color:white;border:none;border-radius:12px;padding:14px;font-size:20px;font-weight:800;cursor:pointer;font-family:inherit}
 .nxt-btn:hover{opacity:0.85}
@@ -539,7 +541,7 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;height:10
   .card{padding:10px 14px;margin-bottom:8px}
   .psvg{margin:2px 0}
   .psvg img{width:80px;height:80px}
-  .qtext{margin-bottom:8px;font-size:16px;line-height:1.35}
+  .qtext{margin-bottom:8px;font-size:20px;line-height:1.35}
   .pad-wrap{margin-bottom:6px}
   .pad-read{min-height:40px;font-size:28px;margin-bottom:6px}
   .numpad{gap:6px}
@@ -575,56 +577,64 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;height:10
   .xp-track{height:6px}
   .badge-row{margin-top:2px}
   .q-head{margin-bottom:2px}
-  .qtext{margin-bottom:4px;font-size:15px;line-height:1.25}
+  .qtext{margin-bottom:4px;font-size:20px;line-height:1.25}
   .pad-read{min-height:32px;font-size:24px;margin-bottom:2px}
   .numpad{gap:4px}
   .pad-key,.pad-check{min-height:40px;font-size:20px}
-  .help-btn{padding:6px 8px;font-size:13px}
+  .help-btn{padding:6px 8px;min-height:44px;font-size:15px}
 }
 /* A sideways phone. Reading keeps a small picture and its choices.
    Math hides the picture only while the keys are up. After the answer
    the picture comes back small, and Next stays on screen. */
 @media (max-height:520px){
-  #app-main{padding:4px 8px 4px}
-  .hdr{margin-bottom:2px}
-  .card{padding:6px 8px;margin-bottom:4px}
-  .pcard{padding:4px 8px}
+  #app-main{padding:2px 8px 1px}
+  .hdr{margin-bottom:0}
+  .card{padding:4px 8px;margin-bottom:2px}
+  .pcard{padding:2px 8px}
   .pcard .pnum,.pcard .xp-row,.pcard .xp-track,.pcard .badge-row,.pcard .candy-btn,.pcard .great-note{display:none}
   .pname{font-size:16px}
   .psvg{margin:0}
   .psvg img,.mon-strip .psvg img{width:48px;height:48px}
   .q-head{margin-bottom:2px}
-  .qtext{margin-bottom:4px;font-size:14px;line-height:1.25}
-  .ans-grid{gap:6px;margin-bottom:4px}
-  .ans-btn{padding:8px 6px;min-height:40px}
-  .help-btn{padding:6px 8px;font-size:14px;line-height:1.2}
-  .nxt-btn{padding:10px;font-size:16px}
+  .qtext{margin-bottom:2px;font-size:20px;line-height:1.25}
+  .ans-grid{gap:4px;margin-bottom:2px}
+  .ans-btn{padding:6px 4px;min-height:36px;font-size:20px}
+  .help-btn{padding:4px 8px;min-height:44px;font-size:15px;line-height:1.2}
+  .nxt-btn{padding:8px;font-size:16px}
   .verdict{font-size:16px;padding:4px 8px;margin:2px 0}
   .prize-line{font-size:14px;padding:4px 8px;margin:2px 0}
-  .mon-strip{gap:8px;padding:4px 8px}
+  .mon-strip{gap:8px;padding:2px 8px}
   .mon-strip .pname{font-size:16px}
-  .pad-wrap{margin-bottom:4px}
-  .pad-read{min-height:28px;font-size:20px;margin-bottom:4px}
+  .pad-wrap{margin-bottom:2px}
+  .pad-read{min-height:22px;font-size:18px;margin-bottom:2px}
   .numpad{gap:4px}
   .pad-key,.pad-check{min-height:40px;font-size:18px}
   .pad-check{grid-column:auto}
   body:has(.numpad) .pcard{display:none}
   body:has(.numpad) .q-head{display:none}
 }
+@media (max-height:400px){
+  #game .numpad{grid-template-columns:repeat(4,1fr)}
+}
 @media (max-height:360px){
-  #app-main{padding:2px 8px 2px}
+  #app-main{padding:1px 8px 0}
   .hdr{margin-bottom:0}
+  .who-btn{min-height:28px;padding:1px 8px 1px 1px;font-size:14px}
+  .who-btn img{width:22px;height:22px}
+  .subj-btn{min-height:28px;padding:2px 8px;font-size:14px}
   .q-head{display:none}
-  .card{padding:4px 8px;margin-bottom:2px}
-  .qtext{margin-bottom:2px;font-size:14px;line-height:1.2}
-  .psvg img,.mon-strip .psvg img{width:40px;height:40px}
-  .pad-read{min-height:22px;font-size:16px;margin-bottom:2px}
-  .pad-wrap{margin-bottom:2px}
+  .card{padding:2px 8px;margin-bottom:0}
+  .qtext{margin-bottom:0;font-size:18px;line-height:1.2}
+  .mon-strip{gap:6px;padding:1px 8px}
+  .psvg img,.mon-strip .psvg img{width:28px;height:28px}
+  .pad-read{min-height:18px;font-size:14px;line-height:1;margin-bottom:0}
+  .pad-wrap{margin-bottom:0}
   .numpad{gap:4px;grid-template-columns:repeat(4,1fr)}
   #parent-check .numpad{grid-template-columns:repeat(3,1fr)}
   .pad-key,.pad-check{min-height:40px;font-size:16px}
-  .help-btn{padding:4px 8px;font-size:14px}
-  .ans-btn{padding:6px 4px;min-height:36px;font-size:14px}
+  .help-btn{padding:4px 8px;min-height:44px;font-size:15px}
+  .ans-grid{gap:4px;margin-bottom:0}
+  .ans-btn{padding:4px 4px;min-height:36px;font-size:18px}
   .verdict{font-size:16px;padding:2px 6px;margin:2px 0}
 }
 /* An old save asks for a name. Phones and short screens drop the picture
@@ -647,7 +657,7 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;height:10
   body:has(#name-ask) .name-line{margin-bottom:4px;padding:4px 8px}
   body:has(#name-ask) .q-head{display:none}
   body:has(#name-ask) .card{padding:6px 8px;margin-bottom:4px}
-  body:has(#name-ask) .qtext{margin-bottom:4px;font-size:14px;line-height:1.25}
+  body:has(#name-ask) .qtext{margin-bottom:4px;font-size:18px;line-height:1.25}
   body:has(#name-ask) .ans-btn{min-height:36px;padding:6px 4px}
 }
 /* Parents PIN on a short sideways phone. The button stays under the
@@ -773,6 +783,7 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;height:10
 <body>
 <div class="wrap">
 <button type="button" id="mute-btn" class="mute-btn" aria-pressed="false" aria-label="Sound on"><span class="mute-ico" aria-hidden="true">&#128266;</span><span class="mute-lbl">On</span></button>
+<div id="answer-live" class="sr-only" role="status" aria-live="polite"></div>
 <main id="app-main">
 <button type="button" id="parents-link" class="parents-link">Parents</button>
 
@@ -2848,7 +2859,10 @@ function whoButtonHTML(id){
   const kid=activeKid();
   if(!kid)return '';
   const face=faceForKid(kid);
-  return `<button type="button" class="who-btn" id="${id}">${pkSprite(face.pi,28,face.shiny)}<span>${escapeHtml(kid.name)}</span></button>`;
+  const name=String(kid.name||'').trim();
+  const unset=!!kid.askName||!name||(kid.askName!==false&&name==='Trainer');
+  const label=unset?'Add your name':kid.name;
+  return `<button type="button" class="who-btn" id="${id}">${pkSprite(face.pi,28,face.shiny)}<span>${escapeHtml(label)}</span></button>`;
 }
 function bigBackHTML(id,label){
   return `<button type="button" class="big-back" id="${id}">&#8592; ${label}</button>`;
@@ -4065,7 +4079,7 @@ function isTypedQuestion(q){
 }
 function numpadHTML(q,resolved,arming,armLeft){
   if(resolved){
-    const mark=st.cor?'<span class="ans-mark" aria-hidden="true">✓</span> ':'';
+    const mark='<span class="ans-mark" aria-hidden="true">✓</span> ';
     return `<div class="pad-wrap" data-typed="1"><div class="pad-read ok" id="pad-read">${mark}${q.answers[q.correctIndex]}</div></div>`;
   }
   const draft=/^\d+$/.test(st.draft||'')?st.draft:'';
@@ -4078,12 +4092,30 @@ function numpadHTML(q,resolved,arming,armLeft){
   keys+=`<button type="button" class="pad-key pad-check" data-pad="check">Check</button>`;
   const body=showX?`<span class="ans-mark" aria-hidden="true">✗</span>${draft?` ${draft}`:''}`:(draft||'&#8212;');
   const cls=`pad-read${showX?' bad':(draft?'':' empty')}`;
-  return `<div class="pad-wrap" data-typed="1"><div class="${cls}" id="pad-read" aria-live="polite">${body}</div><div class="pad-note" id="pad-note" hidden></div><div${attrs}>${keys}</div></div>`;
+  return `<div class="pad-wrap" data-typed="1"><div class="${cls}" id="pad-read">${body}</div><div class="pad-note" id="pad-note" hidden></div><div${attrs}>${keys}</div></div>`;
+}
+function answerLiveText(){
+  if(!st.q||!st.tries)return '';
+  if(st.wildEscape){
+    const ans=st.q.answers[st.q.correctIndex];
+    return `✗ Not quite. It got away! The answer was ${ans}`;
+  }
+  const ok=!!st.cor;
+  let text=ok?'✓ Correct!':'✗ Not quite';
+  if(ok&&st.lastXp>0)text+=` +${st.lastXp} XP`;
+  return text;
+}
+function syncAnswerLive(){
+  const live=document.getElementById('answer-live');
+  if(!live)return;
+  const next=answerLiveText();
+  if(live.textContent!==next)live.textContent=next;
 }
 function verdictHTML(){
   if(!st.tries)return '';
   const ok=!!st.cor;
-  return `<div class="verdict ${ok?'ok':'no'}" role="status" aria-live="polite"><span class="verdict-mark" aria-hidden="true">${ok?'✓':'✗'}</span> ${ok?'Correct!':'Not quite'}</div>`;
+  const xp=ok&&st.lastXp>0?` <span class="xp-earn">+${st.lastXp} XP</span>`:'';
+  return `<div class="verdict ${ok?'ok':'no'}" aria-hidden="true"><span class="verdict-mark" aria-hidden="true">${ok?'✓':'✗'}</span> ${ok?'Correct!':'Not quite'}${xp}</div>`;
 }
 function prizeHTML(){
   if(!st.tries)return '';
@@ -4149,8 +4181,7 @@ function qCardHTML(resultMsg,btnLabel){
       let mark='';
       const ruled=st.wrong.includes(i);
       if(ruled){c+=' wrg';mark='<span class="ans-mark" aria-hidden="true">✗</span>';}
-      else if(st.cor&&i===q.correctIndex){c+=' cor';mark='<span class="ans-mark" aria-hidden="true">✓</span>';}
-      else if(resolved&&i===q.correctIndex)c+=' cor';
+      else if(resolved&&i===q.correctIndex){c+=' cor';mark='<span class="ans-mark" aria-hidden="true">✓</span>';}
       h+=`<button class="${c}"${resolved||ruled?' disabled':''} data-i="${i}">${mark}${a}</button>`;
     });
     h+=`</div>`;
@@ -4193,6 +4224,7 @@ function wireNameAsk(root){
 }
 
 function render(){
+  syncAnswerLive();
   if(view==='who'){renderWho();return;}
   if(view==='parent'){renderParent();return;}
   // A Pokédex visit must not be kicked back to the game just because a timer
@@ -4324,7 +4356,8 @@ function render(){
     //
     // Escaping keeps its message. It reads red, because it only happens off a wrong
     // answer, and it is the only thing that tells him the Pokemon is gone.
-    const rm=escaped?`${wild.n} broke free and ran away!`
+    const gotAway=st.q?st.q.answers[st.q.correctIndex]:'';
+    const rm=escaped?`It got away! The answer was ${gotAway}`
       :st.cor?'':`${wild.n} broke free! ${st.q?.hint||'Try again!'}`;
     // Only rendered once resolved, so there's no unsolved branch to label.
     const btn=escaped?'Continue &#8594;':caught?'Catch it! &#8594;':'Next Question &#8594;';
@@ -4413,6 +4446,7 @@ function render(){
   const whoB=gameEl.querySelector('#who-btn');if(whoB)whoB.addEventListener('click',openProfiles);
   wireNameAsk(gameEl);
   armGymTimer();
+  syncAnswerLive();
   if(view==='pdx')renderPokedex();
 }
 

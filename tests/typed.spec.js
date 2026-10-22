@@ -271,10 +271,12 @@ test('a typed catch fills a pip, a miss spends a ball, and help fills nothing',a
   const fled=await serveStem(page,'What is 3 x 3?');
   await pressPad(page,'1');
   expect(await state(page,()=>st.wildEscape)).toBe(true);
-  await expect(page.locator('#pad-read.ok')).toHaveText(fled.answer);
+  await expect(page.locator('#pad-read.ok')).toContainText('✓');
+  await expect(page.locator('#pad-read.ok')).toContainText(fled.answer);
   await expect(page.locator('.pad-key')).toHaveCount(0);
   await expect(page.locator('.hint-visual')).toHaveCount(0);
-  await expect(page.locator('.result-msg')).toContainText('ran away');
+  await expect(page.locator('.result-msg')).toContainText('It got away!');
+  await expect(page.locator('.result-msg')).toContainText(fled.answer);
 
   await state(page,()=>{st.cor=true;triggerWildEncounter(false);});
   const helped=await serveStem(page,'What is 4 x 4?');

@@ -140,7 +140,8 @@ test('a right answer and a wrong answer each say so with an icon',async({page})=
   await expect(wrong).toContainText('✗');
   await expect(page.locator('.verdict')).toHaveText(/Not quite/);
   await expect(page.locator('.verdict')).toContainText('✗');
-  await expect(page.locator('.verdict')).toHaveAttribute('aria-live','polite');
+  await expect(page.locator('#answer-live')).toHaveAttribute('aria-live','polite');
+  await expect(page.locator('#answer-live')).toContainText('Not quite');
   await expect(page.locator('.nxt-btn')).toHaveCount(0);
   await expect(page.locator('.gym-invite')).toHaveCount(0);
 
@@ -161,7 +162,8 @@ test('a right answer and a wrong answer each say so with an icon',async({page})=
   await expect(right).toContainText('✓');
   await expect(page.locator('.verdict')).toHaveText(/Correct!/);
   await expect(page.locator('.verdict')).toContainText('✓');
-  await expect(page.locator('.verdict')).toHaveAttribute('aria-live','polite');
+  await expect(page.locator('#answer-live')).toContainText('Correct!');
+  await expect(page.locator('.xp-earn')).toContainText('XP');
   await expect(page.locator('.nxt-btn')).toHaveCount(1);
   const wide=await page.evaluate(()=>{
     const buttons=[...document.querySelectorAll('#game button')].filter(el=>{
@@ -207,7 +209,7 @@ test('a number-pad miss and a number-pad hit say so with an icon',async({page})=
   });
   await expect(page.locator('#pad-read')).toContainText('✗');
   await expect(page.locator('.verdict')).toContainText('Not quite');
-  await expect(page.locator('.verdict')).toHaveAttribute('aria-live','polite');
+  await expect(page.locator('#answer-live')).toContainText('Not quite');
   await expect(page.locator('.nxt-btn')).toHaveCount(0);
   await state(page,()=>{st.armAt=0;submitTyped(st.q.answers[st.q.correctIndex]);});
   await expect(page.locator('#pad-read')).toContainText('✓');
@@ -235,6 +237,7 @@ test('on a tablet the question, the answers, and the other words stay readable',
   expect(solved.small).toEqual([]);
   expect(solved.faint).toEqual([]);
 
+  await state(page,()=>{st.anim='';render();});
   const pic=await page.locator('#game .mon-strip img').boundingBox();
   expect(pic.height).toBeGreaterThanOrEqual(90);
   expect(pic.height).toBeLessThanOrEqual(100);
@@ -289,4 +292,98 @@ test('thinking time stays off until a parent turns it on, and that choice sticks
   await page.reload();
   await expect(page.locator('#gym-time')).toHaveCount(0);
   expect(await page.evaluate(()=>localStorage.getItem('pkq-gym-timer'))).toBe('0');
+});
+
+async function showChoices(page){
+  await state(page,()=>{
+    st.phase='play';
+    st.subject='reading';
+    st.q=serveQuestion('reading',1,0,questionPname());
+    st.tries=0;st.cor=false;st.wrong=[];st.helped=false;st.armAt=0;st.wildEscape=false;st.draft='';
+    render();
+  });
+  await expect(page.locator('.ans-btn').first()).toBeVisible();
+}
+
+test('on a small phone the question stays at least 18px and at least as big as an answer',async({page})=>{
+  await showChoices(page);
+  const sizes=[
+    {width:375,height:667},
+    {width:320,height:568},
+    {width:320,height:700},
+    {width:568,height:320},
+  ];
+  for(const size of sizes){
+    await page.setViewportSize(size);
+    const fonts=await page.evaluate(()=>{
+      const q=parseFloat(getComputedStyle(document.querySelector('.qtext')).fontSize);
+      const a=Math.max(...[...document.querySelectorAll('.ans-btn')].map(el=>parseFloat(getComputedStyle(el).fontSize)));
+      return {q,a};
+    });
+    expect(fonts.q,`${size.width}x${size.height} question`).toBeGreaterThanOrEqual(18);
+    expect(fonts.q,`${size.width}x${size.height} question vs answer`).toBeGreaterThanOrEqual(fonts.a);
+  }
+});
+
+test('Ask for help is a full-size tap with readable words',async({page})=>{
+  await showChoices(page);
+  const sizes=[
+    {width:768,height:1024},
+    {width:375,height:667},
+    {width:320,height:568},
+    {width:568,height:320},
+  ];
+  for(const size of sizes){
+    await page.setViewportSize(size);
+    const help=page.locator('#help-btn');
+    const box=await help.boundingBox();
+    const font=await help.evaluate(el=>parseFloat(getComputedStyle(el).fontSize));
+    expect(box.height,`${size.width}x${size.height} height`).toBeGreaterThanOrEqual(44);
+    expect(font,`${size.width}x${size.height} text`).toBeGreaterThanOrEqual(14);
+  }
+});
+
+test('the announcement is one place that stays put when the answer changes',async({page})=>{
+  await expect(page.locator('[aria-live]')).toHaveCount(1);
+  const handle=await page.locator('#answer-live').elementHandle();
+  expect((await page.locator('#answer-live').innerText()).trim()).toBe('');
+  await answer(page,false);
+  const after=await page.evaluate(el=>({
+    same:el===document.getElementById('answer-live')&&el.isConnected,
+    text:el.textContent,
+    lives:document.querySelectorAll('[aria-live]').length,
+  }),handle);
+  expect(after.same).toBe(true);
+  expect(after.text).toContain('Not quite');
+  expect(after.lives).toBe(1);
+  await expect(page.locator('#who-btn')).toContainText('Add your name');
+});
+
+test('the XP just earned is written on the answer line',async({page})=>{
+  await answer(page,false);
+  await expect(page.locator('.xp-earn')).toHaveCount(0);
+  await state(page,()=>{st.tries=0;st.wrong=[];st.cor=false;st.helped=false;st.armAt=0;});
+  await answer(page,true);
+  const xp=await state(page,()=>st.lastXp);
+  expect(xp).toBeGreaterThan(0);
+  await expect(page.locator('.xp-earn')).toHaveText(`+${xp} XP`);
+  await expect(page.locator('#answer-live')).toContainText(`+${xp} XP`);
+});
+
+test('a wild Pokémon that gets away shows a check on the right answer',async({page})=>{
+  await state(page,()=>{
+    st.cor=true;
+    triggerWildEncounter(false);
+    st.q=serveQuestion('reading',1,0,questionPname());
+    st.tries=0;st.cor=false;st.wrong=[];st.helped=false;st.armAt=0;st.wildEscape=false;st.draft='';
+    st.phase='wild';
+    st.wild.misses=CATCH_MISSES_ALLOWED;
+    render();
+  });
+  const ans=await state(page,()=>st.q.answers[st.q.correctIndex]);
+  await answer(page,false);
+  expect(await state(page,()=>st.wildEscape)).toBe(true);
+  await expect(page.locator('.ans-btn.cor')).toContainText('✓');
+  await expect(page.locator('.result-msg')).toContainText(`It got away! The answer was ${ans}`);
+  await expect(page.locator('#answer-live')).toContainText(`The answer was ${ans}`);
 });
