@@ -21,6 +21,11 @@ async function offerGym(page,sub,tier){
   },{sub,tier});
 }
 
+// Thinking time is a Parents switch, off unless a grown-up turns it on.
+async function enableGymTimer(page){
+  await page.evaluate(()=>localStorage.setItem('pkq-gym-timer','1'));
+}
+
 test('the battle stays locked until the open question is finished',async({page})=>{
   await state(page,()=>{
     st.stats.math.level=1;
@@ -29,7 +34,8 @@ test('the battle stays locked until the open question is finished',async({page})
     render();
   });
   await expect(page.locator('[data-gym-start="math"]')).toHaveCount(0);
-  await expect(page.locator('.gym-wait')).toContainText('Finish this question first');
+  await expect(page.locator('#game .gym-wait')).toHaveCount(0);
+  await expect(page.locator('.gym-invite')).toHaveCount(0);
   await state(page,()=>{st.cor=true;render();});
   await expect(page.locator('[data-gym-start="math"]')).toBeVisible();
 });
@@ -206,6 +212,7 @@ test('a typed answer in a Gym damages the leader and still pays a streak',async(
 });
 
 test('the timer is only on harder tiers, and running it out is a miss',async({page})=>{
+  await enableGymTimer(page);
   await offerGym(page,'math',1);
   await page.click('[data-gym-start="math"]');
   await expect(page.locator('#gym-time')).toHaveCount(0);
@@ -228,7 +235,7 @@ test('the timer is only on harder tiers, and running it out is a miss',async({pa
   expect(await state(page,()=>st.gym.kid)).toBe(await state(page,()=>GYM_KID_HP-1));
 });
 
-test('a save that turned the timer off still loads, and tier 3 stays timed',async({page})=>{
+test('a save that turned the timer off still loads, and tier 3 stays quiet',async({page})=>{
   const save={v:1,starter:0,activeIdx:0,team:[{num:'#001',level:7,xp:3}],dex:['#001'],
     timerOff:true,gateMisses:2,gateLock:Date.now()+120000,
     stats:{math:{cor:5,att:6,level:3,cs:0,ws:0},reading:{cor:0,att:0,level:1,cs:0,ws:0},science:{cor:0,att:0,level:1,cs:0,ws:0}}};
@@ -244,7 +251,7 @@ test('a save that turned the timer off still loads, and tier 3 stays timed',asyn
   await state(p2,()=>{st.cor=true;st.gymOffer.math={tier:3,cool:0};render();});
   await p2.click('#nav-game');
   await p2.click('[data-gym-start="math"]');
-  await expect(p2.locator('#gym-time')).toBeVisible();
+  await expect(p2.locator('#gym-time')).toHaveCount(0);
 });
 
 test('a Gym miss still comes back as a Rematch',async({page})=>{
@@ -312,12 +319,13 @@ test('a Rare Candy levels the active Pokémon, and a Great Ball starts the next 
   await answer(page,true);
   await page.click('#award-go');
   const lvl=await state(page,()=>activeTM().level);
+  await page.click('#nav-pdx');
   await page.click('#candy-btn');
   expect(await state(page,()=>({candy:st.items.candy,level:activeTM().level}))).toEqual({candy:0,level:lvl+1});
 
   await state(page,()=>{st.items.great=1;triggerWildEncounter(false);});
   expect(await state(page,()=>({cs:st.wild.correctStreak,great:st.items.great,phase:st.phase,held:!!st.wild.greatHeld}))).toEqual({cs:1,great:1,phase:'wild',held:true});
-  await expect(page.locator('.great-note')).toContainText('Great Ball');
+  await expect(page.locator('#game .great-note')).toContainText('Great Ball');
   await expect(page.locator('.catch-pip.filled')).toHaveCount(1);
 });
 
@@ -424,6 +432,7 @@ test('reloading after a miss keeps the lost heart and does not also hit the lead
 });
 
 test('reloading mid-question keeps the thinking time that is left',async({page})=>{
+  await enableGymTimer(page);
   await offerGym(page,'math',3);
   await page.click('[data-gym-start="math"]');
   await state(page,()=>{
@@ -442,6 +451,7 @@ test('reloading mid-question keeps the thinking time that is left',async({page})
 });
 
 test('hiding the page pauses thinking time',async({page})=>{
+  await enableGymTimer(page);
   await offerGym(page,'math',3);
   await page.click('[data-gym-start="math"]');
   await state(page,()=>{
@@ -467,6 +477,7 @@ test('hiding the page pauses thinking time',async({page})=>{
 });
 
 test('opening the Pokédex pauses thinking time',async({page})=>{
+  await enableGymTimer(page);
   await offerGym(page,'math',3);
   await page.click('[data-gym-start="math"]');
   await state(page,()=>{
@@ -490,6 +501,7 @@ test('opening the Pokédex pauses thinking time',async({page})=>{
 });
 
 test('a timeout is a miss, and Check afterwards does not hit the leader',async({page})=>{
+  await enableGymTimer(page);
   await offerGym(page,'math',3);
   await page.click('[data-gym-start="math"]');
   await state(page,()=>{
@@ -560,6 +572,7 @@ test('Not now stays dismissed across a reload',async({page})=>{
 
 test('a reading Gym on the harder tier is timed and awards the Legend Badge',async({page})=>{
   expect(await state(page,()=>maxLevel('reading'))).toBe(4);
+  await enableGymTimer(page);
   await offerGym(page,'reading',3);
   await page.click('[data-gym-start="reading"]');
   await expect(page.locator('#gym-time')).toBeVisible();
@@ -651,6 +664,7 @@ test('a Rare Candy on a nearly full bar levels exactly once',async({page})=>{
     st.phase='play';
     render();
   });
+  await page.click('#nav-pdx');
   await page.click('#candy-btn');
   const after=await state(page,()=>({level:activeTM().level,xp:activeTM().xp,candy:st.items.candy,next:xpToNext(activeTM().level)}));
   expect(after.level).toBe(61);
@@ -668,6 +682,7 @@ test('a Rare Candy on a nearly full bar levels exactly once',async({page})=>{
     st.phase='play';
     render();
   });
+  await page.click('#nav-pdx');
   await page.click('#candy-btn');
   expect(await state(page,()=>({level:activeTM().level,candy:st.items.candy,evo:!!st.pendingEvo,pi:activeTM().pi}))).toEqual({
     level:16,candy:0,evo:true,pi:0,

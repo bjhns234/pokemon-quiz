@@ -580,7 +580,7 @@ test('the question header fits a phone, and Parents is on the Pokédex',async({p
   await startGame(page,'math');
   await page.setViewportSize({width:360,height:740});
   await expect(page.locator('#parents-link')).toBeHidden();
-  await expect(page.locator('.app-name')).toHaveText('Pokémon');
+  await expect(page.locator('#game .app-name')).toHaveCount(0);
   const row=await page.evaluate(()=>{
     const hdr=document.querySelector('#game .hdr');
     const bits=[...hdr.children].map(el=>el.getBoundingClientRect());
@@ -602,17 +602,17 @@ test('the question header fits a phone, and Parents is on the Pokédex',async({p
   expect(errors).toEqual([]);
 });
 
-test('an old save asks for a name without leaving the game',async({page})=>{
+test('an old save asks for a name in trainer setup, not on the question',async({page})=>{
   const errors=await openGame(page,{save:legacy});
-  await expect(page.locator('#name-ask')).toContainText("What's your name?");
+  await expect(page.locator('#name-ask')).toHaveCount(0);
   expect(await state(page,()=>st.phase)).toBe('play');
   await expect(page.locator('#bottom-nav')).toBeVisible();
   await expect(page.locator('.qtext')).toBeVisible();
-  await page.click('#name-ask-save');
-  expect(await state(page,()=>activeKid().name)).toBe('Trainer');
-  await page.fill('#name-ask-input','Maya');
-  await page.click('#name-ask-save');
-  await expect(page.locator('#name-ask')).toHaveCount(0);
+  await page.click('#who-btn');
+  await page.getByRole('button',{name:/^Edit/}).click();
+  await expect(page.getByText("What's your name?")).toBeVisible();
+  await page.fill('#profile-name','Maya');
+  await page.click('#profile-save');
   expect(await state(page,()=>activeKid().name)).toBe('Maya');
   const box=await page.evaluate(()=>JSON.parse(localStorage.getItem('pkq-save')));
   expect(box.kids[0].name).toBe('Maya');
