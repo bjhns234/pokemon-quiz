@@ -505,6 +505,140 @@ test('reduced motion brings Next into view without a smooth scroll',async({page}
   expect(jumped.live).toContain('Correct');
 });
 
+test('long questions keep the answers and Ask for help above the bar',async({page})=>{
+  test.setTimeout(120000);
+  await openGame(page);
+  await startGame(page,'reading');
+  await page.setViewportSize({width:568,height:320});
+  const picked=await state(page,()=>{
+    const name=PKM.reduce((a,p)=>p.n.length>a.length?p.n:a,'');
+    const all=[];
+    for(const sub of Object.keys(QB)){
+      for(const lv of Object.keys(QB[sub])){
+        QB[sub][lv].forEach((raw,idx)=>{
+          if(!raw[1]||!Array.isArray(raw[1]))return;
+          const probe={subject:sub,tmpl:{lv:+lv,raw},answers:raw[1]};
+          if(isTypedQuestion(probe))return;
+          all.push({
+            sub,lv:+lv,idx,
+            stem:String(raw[0]).length,
+            ans:Math.max(...raw[1].map(a=>String(a).length)),
+          });
+        });
+      }
+    }
+    const byStem=[...all].sort((a,b)=>b.stem-a.stem||b.ans-a.ans).slice(0,4);
+    const byAns=[...all].sort((a,b)=>b.ans-a.ans||b.stem-a.stem).slice(0,4);
+    const named=[{sub:'science',lv:3,idx:26},{sub:'science',lv:3,idx:33}];
+    const seen=new Set();
+    const cases=[];
+    for(const c of [...byStem,...byAns,...named]){
+      const k=c.sub+':'+c.lv+':'+c.idx;
+      if(seen.has(k))continue;
+      seen.add(k);
+      cases.push({sub:c.sub,lv:c.lv,idx:c.idx});
+    }
+    return {name,cases};
+  });
+  for(const two of [false,true]){
+    for(const spec of picked.cases){
+      const fit=await state(page,({two,spec,name})=>{
+        if(two){
+          if(st.team.length<2)st.team.push({pi:LINES[1][0],level:5,xp:0,shiny:false});
+        }else{
+          st.team=st.team.slice(0,1);
+          st.activeIdx=0;
+        }
+        st.pendingEvo=null;
+        st.phase='play';st.subject=spec.sub;
+        const raw=QB[spec.sub][spec.lv][spec.idx];
+        st.q=fillQuestion({sub:spec.sub,lv:spec.lv,idx:spec.idx,raw,order:[0,1,2,3],cheer:raw[3]},name);
+        st.tries=0;st.cor=false;st.wrong=[];st.helped=false;st.armAt=0;st.wildEscape=false;st.draft='';
+        const main=document.getElementById('app-main');
+        main.scrollTop=0;
+        render();
+        const nav=document.getElementById('bottom-nav').getBoundingClientRect();
+        const buttons=[...document.querySelectorAll('.ans-btn')];
+        const help=document.getElementById('help-btn').getBoundingClientRect();
+        const strip=document.querySelector('#mon-switch, #game .mon-strip');
+        return {
+          scroll:main.scrollTop,
+          font:parseFloat(getComputedStyle(buttons[0]).fontSize),
+          ans:buttons.map(el=>{
+            const r=el.getBoundingClientRect();
+            return {bottom:r.bottom,h:r.height};
+          }),
+          helpBottom:help.bottom,
+          navTop:nav.top,
+          stripH:strip?strip.getBoundingClientRect().height:0,
+        };
+      },{two,spec,name:picked.name});
+      const who=`${two?'2 Pokémon':'1 Pokémon'} ${spec.sub} ${spec.lv} #${spec.idx}`;
+      expect(fit.scroll,`${who} scrolled before an answer`).toBe(0);
+      expect(fit.font,who).toBeGreaterThanOrEqual(18);
+      expect(fit.ans,who).toHaveLength(4);
+      for(const a of fit.ans){
+        expect(a.h,who).toBeGreaterThanOrEqual(44);
+        expect(a.bottom,`${who} answer is under the bar`).toBeLessThanOrEqual(fit.navTop+0.5);
+      }
+      expect(fit.helpBottom,`${who} Ask for help is under the bar`).toBeLessThanOrEqual(fit.navTop+0.5);
+      if(two)expect(fit.stripH,who).toBeGreaterThanOrEqual(44);
+    }
+  }
+});
+
+test('Next fits above the bar without scrolling on the other small screens',async({page})=>{
+  test.setTimeout(120000);
+  await openGame(page);
+  await startGame(page,'reading');
+  async function deal(two){
+    await state(page,two=>{
+      if(two){
+        if(st.team.length<2)st.team.push({pi:LINES[1][0],level:5,xp:0,shiny:false});
+      }else{
+        st.team=st.team.slice(0,1);
+        st.activeIdx=0;
+      }
+      st.pendingEvo=null;
+      st.phase='play';st.subject='reading';
+      st.q=serveQuestion('reading',1,0,questionPname());
+      st.tries=0;st.cor=false;st.wrong=[];st.helped=false;st.armAt=0;st.wildEscape=false;st.draft='';
+      render();
+    },two);
+  }
+  async function expectNextClear(size,label){
+    await toTop(page);
+    const gap=await page.evaluate(()=>{
+      const nxt=document.getElementById('nxt').getBoundingClientRect();
+      const nav=document.getElementById('bottom-nav').getBoundingClientRect();
+      return {below:nxt.bottom-nav.top,scroll:document.getElementById('app-main').scrollTop};
+    });
+    expect(gap.scroll,`${label} scrolled at ${size.width}x${size.height}`).toBe(0);
+    expect(gap.below,`${label} Next is under the bar at ${size.width}x${size.height}`).toBeLessThanOrEqual(0.5);
+  }
+  const sizes=SIZES.filter(size=>!(size.width===568&&size.height===320));
+  for(const size of sizes){
+    await page.setViewportSize(size);
+    for(const two of [false,true]){
+      const who=two?'2 Pokémon':'1 Pokémon';
+      await deal(two);
+      await state(page,()=>{st.armAt=0;handleAnswer(st.q.correctIndex);});
+      await expect(page.locator('#nxt')).toBeVisible();
+      await expectNextClear(size,`${who}, correct`);
+      await deal(two);
+      await state(page,()=>{
+        st.armAt=0;
+        const miss=st.q.answers.findIndex((_,j)=>j!==st.q.correctIndex);
+        handleAnswer(miss);
+        st.armAt=0;
+        handleAnswer(st.q.correctIndex);
+      });
+      await expect(page.locator('#nxt')).toBeVisible();
+      await expectNextClear(size,`${who}, after a miss`);
+    }
+  }
+});
+
 test('the Pokédex top row stays on one line on a narrow phone',async({page})=>{
   await openGame(page);
   await startGame(page,'reading');

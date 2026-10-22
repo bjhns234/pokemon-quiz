@@ -628,19 +628,26 @@ button.mon-strip:focus{outline:3px solid #1D4ED8;outline-offset:2px}
   #game .numpad{grid-template-columns:repeat(4,1fr)}
 }
 @media (max-height:360px){
-  #app-main{padding:1px 8px 0}
+  /* Use the full width so long answers wrap to two lines, not three.
+     Vertical padding is gone so the four answers and Ask for help clear
+     the Game bar before the child answers. */
+  .wrap{max-width:none}
+  #app-main{padding:0 2px}
   .hdr{margin-bottom:0}
   .who-btn{min-height:44px;padding:1px 8px 1px 1px;font-size:14px}
   .who-btn img{width:22px;height:22px}
   .subj-btn{min-height:44px;padding:2px 8px;font-size:14px}
   .q-head{display:none}
-  .card{padding:2px 8px;margin-bottom:0}
-  .qtext{margin-bottom:0;font-size:18px;line-height:1.2}
-  .mon-strip{align-items:flex-start;gap:6px;padding:1px 8px 0;margin-bottom:6px}
+  .card{padding:0 4px;margin-bottom:0}
+  .qtext{margin-bottom:0;font-size:18px;line-height:1}
+  .mon-strip{align-items:flex-start;gap:6px;padding:0 6px;margin-bottom:0}
+  /* Room on the left so the switch mark can sit beside the picture. */
+  .mon-strip .psvg{margin-left:12px}
   .psvg img,.mon-strip .psvg img{width:28px;height:28px}
-  /* The picture is only 28px here. A 14px mark cannot sit on that face,
-     so it hangs off the lower-left corner, in the gap above the question. */
-  .switch-mark{left:-18px;bottom:-20px;width:24px;height:24px}
+  /* The picture is only 28px here. The mark sits on the lower-left corner,
+     mostly beside the picture and inside the 44px row, so the face and the
+     question stay clear. */
+  .switch-mark{left:-20px;bottom:-16px;width:24px;height:24px}
   .pad-read{min-height:18px;font-size:14px;line-height:1;margin-bottom:0}
   .pad-wrap{margin-bottom:0}
   /* Two rows, not four. Keys stay 44px tall, and Ask for help still sits
@@ -649,11 +656,13 @@ button.mon-strip:focus{outline:3px solid #1D4ED8;outline-offset:2px}
   #game .numpad{gap:4px;grid-template-columns:repeat(6,1fr)}
   #parent-check .numpad{grid-template-columns:repeat(3,1fr)}
   .pad-key,.pad-check{min-height:44px;font-size:16px}
-  .help-btn{padding:4px 8px;min-height:44px;font-size:15px}
-  /* Two by two, same as every other size. Four across squeezed long
-     answers into a few words per line. Next scrolls into view instead. */
-  .ans-grid{gap:4px;margin-bottom:0}
-  .ans-btn{padding:4px 6px;min-height:44px;font-size:18px;line-height:1.25}
+  .help-btn{padding:0 8px;min-height:44px;font-size:15px;line-height:1.15}
+  /* Two by two. Padding stays inside the 44px target so a two-line
+     answer does not grow the row. The rows touch so a two-line question
+     and Ask for help still clear the bar; one answer can still wrap once
+     more without sliding under it. Next scrolls into view after. */
+  .ans-grid{gap:0;margin-bottom:0}
+  .ans-btn{padding:0 3px;min-height:44px;font-size:18px;line-height:1.05;border-width:1px}
   .verdict{font-size:16px;padding:2px 6px;margin:2px 0}
   .result-msg{padding:2px 6px;margin:0;font-size:14px;line-height:1.2}
 }
