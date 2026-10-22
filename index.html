@@ -18,9 +18,10 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;height:10
 #app-main{flex:1 1 auto;min-height:0;overflow:auto;padding:12px 16px 10px;padding-top:max(12px,env(safe-area-inset-top,0px));scroll-padding-bottom:12px}
 #game{display:none;flex-direction:column;min-height:0}
 #pokedex-page{display:none}
-/* The right padding is the sound button's lane. The button is 52px and sits 4px
-   in from the column edge, so 60px keeps Math / Reading / Science clear of it. */
-.hdr{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:14px;padding-right:60px}
+/* The sound button sits in this row, beside the trainer and the subject,
+   so it cannot cover the question, the card, or Parents' Back. */
+.hdr{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.hdr .app-name{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .hdr-tight{flex-wrap:nowrap;align-items:stretch}
 .hdr-tight .app-name{flex:1 1 auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;align-items:center}
 .hdr-tight .hdr-right{display:flex;align-items:center;flex:0 0 auto}
@@ -38,9 +39,15 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;height:10
 .pnum{font-size:14px;color:#4B5563;margin-bottom:2px;font-weight:500}
 .pname{font-size:22px;font-weight:700;color:#1A1A2E}
 /* A short row: picture, name, level, and one thin bar. No dex line and no XP numbers. */
-.mon-strip{display:flex;align-items:center;gap:12px;text-align:left;padding:10px 14px}
-.mon-strip .psvg{margin:0;flex:0 0 auto}
+.mon-strip{display:flex;align-items:center;gap:12px;text-align:left;padding:10px 14px;cursor:default}
+.mon-strip .psvg{position:relative;margin:0;flex:0 0 auto;animation:none}
+button.mon-strip{width:100%;border:none;font-family:inherit;color:inherit;cursor:pointer;min-width:44px;min-height:44px}
+button.mon-strip:focus{outline:3px solid #1D4ED8;outline-offset:2px}
 .mon-strip .psvg img{width:96px;height:96px}
+/* The only hint that this picture opens the picker. It stays off unless a switch is allowed.
+   Parked on the lower-left corner, mostly off the picture, so the face stays clear.
+   The mark itself stays at least 14px. */
+.switch-mark{position:absolute;left:-4px;bottom:-4px;width:28px;height:28px;border-radius:50%;background:#fff;border:1.5px solid #E5E7EB;font-size:14px;line-height:1;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:2}
 .mon-meta{flex:1 1 auto;min-width:0}
 .mon-strip .pname{font-size:22px;line-height:1.2}
 .mon-strip .xp-track{height:8px;margin-top:8px}
@@ -124,7 +131,7 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;height:10
 .tags{background:#FEF3C7;color:#92400E}
 .qtext{font-size:22px;color:#1A1A2E;line-height:1.45;margin-bottom:16px;font-weight:700}
 .ans-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
-.ans-btn{position:relative;display:flex;align-items:center;justify-content:center;gap:6px;background:#F9FAFB;border:2px solid #E5E7EB;border-radius:12px;padding:14px 10px;font-size:20px;font-weight:700;color:#1F2937;cursor:pointer;text-align:center;transition:background 0.15s,border-color 0.15s,color 0.15s;line-height:1.3;font-family:inherit;width:100%}
+.ans-btn{position:relative;display:flex;align-items:center;justify-content:center;gap:6px;background:#F9FAFB;border:2px solid #E5E7EB;border-radius:12px;padding:14px 10px;min-height:44px;font-size:20px;font-weight:700;color:#1F2937;cursor:pointer;text-align:center;transition:background 0.15s,border-color 0.15s,color 0.15s;line-height:1.3;font-family:inherit;width:100%}
 .ans-btn:hover:not(:disabled){border-color:#FF5722;color:#FF5722;background:#FFF3E0}
 .ans-btn.cor{background:#ECFDF5;border-color:#10B981;color:#065F46}
 .ans-btn.wrg{background:#FEF2F2;border-color:#EF4444;color:#991B1B}
@@ -169,7 +176,7 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;height:10
 .xp-earn{font-size:14px;font-weight:800;color:#065F46;margin-left:8px;line-height:1.2}
 .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;pointer-events:none}
 .prize-line{text-align:center;font-size:16px;font-weight:800;color:#92400E;background:#FEF3C7;border-radius:12px;padding:10px 12px;margin:8px 0}
-.nxt-btn{width:100%;background:#1A1A2E;color:white;border:none;border-radius:12px;padding:14px;font-size:20px;font-weight:800;cursor:pointer;font-family:inherit}
+.nxt-btn{width:100%;background:#1A1A2E;color:white;border:none;border-radius:12px;padding:14px;min-height:44px;font-size:20px;font-weight:800;cursor:pointer;font-family:inherit}
 .nxt-btn:hover{opacity:0.85}
 .pdx-gen-section{margin-bottom:16px}
 .pdx-gen-label{font-size:14px;font-weight:700;color:#4B5563;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:8px}
@@ -182,6 +189,7 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;height:10
 .reset-btn{position:relative;overflow:hidden;border:1px solid #D1D5DB;background:#fff;color:#374151;font-size:11px;font-weight:700;padding:5px 10px;border-radius:8px;cursor:pointer;touch-action:none;user-select:none;-webkit-user-select:none}
 .reset-fill{position:absolute;left:0;top:0;bottom:0;width:0;background:#FECACA}
 .reset-lbl{position:relative}
+.reset-short{display:none}
 .starter-card{background:#fff;border-radius:16px;padding:16px 14px 20px;margin-bottom:12px;box-shadow:0 2px 8px rgba(0,0,0,0.06)}
 .gen-section{margin-bottom:14px}
 .gen-label{font-size:14px;font-weight:700;color:#4B5563;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:6px;text-align:left}
@@ -206,7 +214,7 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;height:10
 .optr:hover{border-color:#065F46;background:#ECFDF5}
 .opts:hover{border-color:#92400E;background:#FFFBEB}
 .optx:hover{border-color:#6D28D9;background:#F5F3FF}
-.hdr-right{display:flex;align-items:center;gap:8px}
+.hdr-right{display:flex;align-items:center;gap:8px;flex:0 0 auto;flex-wrap:nowrap}
 .subj-btn{border:1px solid #E5E7EB;background:#fff;color:#374151;font-size:14px;font-weight:700;padding:8px 12px;min-height:44px;border-radius:8px;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
 .subj-btn:hover{border-color:#1A1A2E;color:#1A1A2E}
 .subj-btn-car{color:#374151;font-size:14px}
@@ -235,23 +243,22 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;height:10
    .switch-back so the two ends of the same trip look like each other. */
 .switch-btn{position:absolute;top:10px;left:10px;background:#F3F4F6;border:none;border-radius:10px;padding:6px 10px;cursor:pointer;font-family:inherit;font-size:14px;font-weight:700;color:#1F2937;display:inline-flex;align-items:center;gap:5px;line-height:1;transition:all 0.15s;z-index:2}
 .switch-btn:hover{background:#E5E7EB;color:#374151}
-.switch-count{font-size:14px;font-weight:700;color:#374151}
 .switch-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
 .switch-opt{position:relative;background:#F9FAFB;border:2px solid #E5E7EB;border-radius:14px;padding:12px 6px 8px;cursor:pointer;transition:all 0.18s;text-align:center;display:flex;flex-direction:column;align-items:center;gap:3px;font-family:inherit}
 .switch-opt:hover{border-color:#FF5722;background:#FFF7ED}
 .switch-opt img{width:56px;height:56px;object-fit:contain;display:block;pointer-events:none}
-.switch-opt-name{font-size:12px;font-weight:700;color:#1A1A2E;line-height:1.15}
+.switch-opt-name{font-size:14px;font-weight:700;color:#1A1A2E;line-height:1.15}
 .switch-opt-lvl{font-size:14px;font-weight:700;color:#374151}
 .switch-opt.current{border-color:#FF5722;background:#FFF3E0;cursor:default}
 .switch-opt.current:hover{background:#FFF3E0}
-.switch-opt-out{position:absolute;top:-7px;left:50%;transform:translateX(-50%);background:#FF5722;color:#fff;font-size:9px;font-weight:800;letter-spacing:0.05em;padding:2px 8px;border-radius:8px;white-space:nowrap}
+.switch-opt-out{position:absolute;top:-7px;left:50%;transform:translateX(-50%);background:#FF5722;color:#fff;font-size:14px;font-weight:800;letter-spacing:0.05em;padding:2px 8px;border-radius:8px;white-space:nowrap}
 .switch-opt.shiny{border-color:#F59E0B;background:#FFFBEB}
 .switch-opt.shiny:hover{background:#FEF3C7}
 .switch-opt-star{position:absolute;top:5px;right:6px;font-size:12px;line-height:1;pointer-events:none;filter:drop-shadow(0 1px 1px rgba(0,0,0,0.2))}
 /* Above the grid, not below it: at 13 Pokemon the bottom of this screen is
    already off the fold and at 45 it is a long scroll, and the way out of a screen
    should never be something you have to go looking for. */
-.switch-back{background:#F3F4F6;border:none;border-radius:10px;padding:7px 12px;font-size:14px;font-weight:700;color:#1F2937;cursor:pointer;font-family:inherit;margin-bottom:10px}
+.switch-back{background:#F3F4F6;border:none;border-radius:10px;padding:7px 12px;min-height:44px;font-size:14px;font-weight:700;color:#1F2937;cursor:pointer;font-family:inherit;margin-bottom:10px}
 .switch-back:hover{background:#E5E7EB;color:#374151}
 /* Shiny markers. A rare catch has to be unmistakable at a glance, so it
    reads three ways at once: a different sprite, a gold star, and a gold frame. */
@@ -488,9 +495,13 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;height:10
   .name-line-lbl{flex:1 0 100%}
   .name-line .who-field{flex:1 1 120px;min-width:120px}
 }
-/* Sits in the column's top-right, in the header's right padding, so it
-   never covers the subject button. 52px wide, 4px in from the column edge. */
-.mute-btn{position:absolute;z-index:1001;top:max(8px,env(safe-area-inset-top,0px));right:4px;width:52px;min-width:44px;height:44px;display:flex;align-items:center;justify-content:center;gap:2px;padding:0 3px;border-radius:999px;border:2px solid #1A1A2E;background:#fff;color:#1A1A2E;font-family:inherit;font-weight:800;font-size:14px;line-height:1;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.12);white-space:nowrap}
+/* In the header row once the page has drawn. Until then it stays in the
+   corner so the first paint still has a sound switch. 44px tall, same as
+   the trainer and subject buttons, and it never floats over them. */
+.mute-btn{position:static;flex:0 0 auto;width:auto;min-width:44px;height:44px;min-height:44px;display:flex;align-items:center;justify-content:center;gap:2px;padding:0 8px;border-radius:999px;border:2px solid #1A1A2E;background:#fff;color:#1A1A2E;font-family:inherit;font-weight:800;font-size:14px;line-height:1;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.12);white-space:nowrap}
+.wrap>.mute-btn{position:absolute;z-index:2;top:max(8px,env(safe-area-inset-top,0px));right:4px}
+.back-row{display:flex;align-items:center;gap:6px}
+.back-row .big-back{flex:1 1 auto;width:auto;min-width:0;margin-bottom:0}
 .mute-btn .mute-ico{font-size:15px;line-height:1}
 .mute-btn .mute-lbl{line-height:1}
 .parent-kicker{font-size:12px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#374151}
@@ -580,7 +591,7 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;height:10
   .qtext{margin-bottom:4px;font-size:20px;line-height:1.25}
   .pad-read{min-height:32px;font-size:24px;margin-bottom:2px}
   .numpad{gap:4px}
-  .pad-key,.pad-check{min-height:40px;font-size:20px}
+  .pad-key,.pad-check{min-height:44px;font-size:20px}
   .help-btn{padding:6px 8px;min-height:44px;font-size:15px}
 }
 /* A sideways phone. Reading keeps a small picture and its choices.
@@ -598,9 +609,9 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;height:10
   .q-head{margin-bottom:2px}
   .qtext{margin-bottom:2px;font-size:20px;line-height:1.25}
   .ans-grid{gap:4px;margin-bottom:2px}
-  .ans-btn{padding:6px 4px;min-height:36px;font-size:20px}
+  .ans-btn{padding:6px 4px;min-height:44px;font-size:20px}
   .help-btn{padding:4px 8px;min-height:44px;font-size:15px;line-height:1.2}
-  .nxt-btn{padding:8px;font-size:16px}
+  .nxt-btn{padding:8px;min-height:44px;font-size:16px}
   .verdict{font-size:16px;padding:4px 8px;margin:2px 0}
   .prize-line{font-size:14px;padding:4px 8px;margin:2px 0}
   .mon-strip{gap:8px;padding:2px 8px}
@@ -608,7 +619,7 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;height:10
   .pad-wrap{margin-bottom:2px}
   .pad-read{min-height:22px;font-size:18px;margin-bottom:2px}
   .numpad{gap:4px}
-  .pad-key,.pad-check{min-height:40px;font-size:18px}
+  .pad-key,.pad-check{min-height:44px;font-size:18px}
   .pad-check{grid-column:auto}
   body:has(.numpad) .pcard{display:none}
   body:has(.numpad) .q-head{display:none}
@@ -617,25 +628,43 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;height:10
   #game .numpad{grid-template-columns:repeat(4,1fr)}
 }
 @media (max-height:360px){
-  #app-main{padding:1px 8px 0}
+  /* Use the full width so long answers wrap to two lines, not three.
+     Vertical padding is gone so the four answers and Ask for help clear
+     the Game bar before the child answers. */
+  .wrap{max-width:none}
+  #app-main{padding:0 2px}
   .hdr{margin-bottom:0}
-  .who-btn{min-height:28px;padding:1px 8px 1px 1px;font-size:14px}
+  .who-btn{min-height:44px;padding:1px 8px 1px 1px;font-size:14px}
   .who-btn img{width:22px;height:22px}
-  .subj-btn{min-height:28px;padding:2px 8px;font-size:14px}
+  .subj-btn{min-height:44px;padding:2px 8px;font-size:14px}
   .q-head{display:none}
-  .card{padding:2px 8px;margin-bottom:0}
-  .qtext{margin-bottom:0;font-size:18px;line-height:1.2}
-  .mon-strip{gap:6px;padding:1px 8px}
+  .card{padding:0 4px;margin-bottom:0}
+  .qtext{margin-bottom:0;font-size:18px;line-height:1}
+  .mon-strip{align-items:flex-start;gap:6px;padding:0 6px;margin-bottom:0}
+  /* Room on the left so the switch mark can sit beside the picture. */
+  .mon-strip .psvg{margin-left:12px}
   .psvg img,.mon-strip .psvg img{width:28px;height:28px}
+  /* The picture is only 28px here. The mark sits on the lower-left corner,
+     mostly beside the picture and inside the 44px row, so the face and the
+     question stay clear. */
+  .switch-mark{left:-20px;bottom:-16px;width:24px;height:24px}
   .pad-read{min-height:18px;font-size:14px;line-height:1;margin-bottom:0}
   .pad-wrap{margin-bottom:0}
-  .numpad{gap:4px;grid-template-columns:repeat(4,1fr)}
+  /* Two rows, not four. Keys stay 44px tall, and Ask for help still sits
+     above the Game bar when the question wraps to two lines. A third row
+     of 44px keys pushes that button under the bar on a 320-tall phone. */
+  #game .numpad{gap:4px;grid-template-columns:repeat(6,1fr)}
   #parent-check .numpad{grid-template-columns:repeat(3,1fr)}
-  .pad-key,.pad-check{min-height:40px;font-size:16px}
-  .help-btn{padding:4px 8px;min-height:44px;font-size:15px}
-  .ans-grid{gap:4px;margin-bottom:0}
-  .ans-btn{padding:4px 4px;min-height:36px;font-size:18px}
+  .pad-key,.pad-check{min-height:44px;font-size:16px}
+  .help-btn{padding:0 8px;min-height:44px;font-size:15px;line-height:1.15}
+  /* Two by two. Padding stays inside the 44px target so a two-line
+     answer does not grow the row. The rows touch so a two-line question
+     and Ask for help still clear the bar; one answer can still wrap once
+     more without sliding under it. Next scrolls into view after. */
+  .ans-grid{gap:0;margin-bottom:0}
+  .ans-btn{padding:0 3px;min-height:44px;font-size:18px;line-height:1.05;border-width:1px}
   .verdict{font-size:16px;padding:2px 6px;margin:2px 0}
+  .result-msg{padding:2px 6px;margin:0;font-size:14px;line-height:1.2}
 }
 /* An old save asks for a name. Phones and short screens drop the picture
    so the question stays up. A tablet or a laptop keeps the picture, the
@@ -658,7 +687,7 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;height:10
   body:has(#name-ask) .q-head{display:none}
   body:has(#name-ask) .card{padding:6px 8px;margin-bottom:4px}
   body:has(#name-ask) .qtext{margin-bottom:4px;font-size:18px;line-height:1.25}
-  body:has(#name-ask) .ans-btn{min-height:36px;padding:6px 4px}
+  body:has(#name-ask) .ans-btn{min-height:44px;padding:6px 4px}
 }
 /* Parents PIN on a short sideways phone. The button stays under the
    keys instead of sticking on top of them, and every key stays on screen. */
@@ -667,6 +696,10 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;height:10
   #parent-page:has(#parent-check){flex:1 1 auto;min-height:0;display:flex;flex-direction:column;overflow:hidden}
   #parent-page:has(#parent-check) .hdr{display:none}
   #parent-page:has(#parent-check) .big-back{flex:0 0 auto;padding:4px 10px;margin-bottom:2px;min-height:32px;font-size:14px}
+  /* Sound sits beside Back on this screen, because the header row is hidden
+     to keep the pad on screen. The row is as tall as the 44px sound button. */
+  #parent-page:has(#parent-check) .back-row{flex:0 0 auto;margin-bottom:2px}
+  #parent-page:has(#parent-check) .back-row .big-back{flex:1 1 auto;width:auto;min-width:0;margin-bottom:0}
   #parent-check{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;overflow:hidden;padding:4px 8px;margin:0}
   #parent-check .parent-kicker,#parent-check .parent-lead{display:none}
   #parent-check .parent-title{font-size:15px;margin:0}
@@ -736,7 +769,9 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;height:10
   .hv-mark svg{width:20px;height:20px}
   .hv-group{padding:3px;gap:2px}
   .hv-op{font-size:16px}
-  .hv-cap{margin-top:2px;font-size:12px}
+  /* Stay at 14px. A shorter screen used to drop this to 12px, which is
+     too small beside the counting picture. */
+  .hv-cap{margin-top:2px;font-size:14px}
   .ten-frame{grid-template-columns:repeat(5,18px);grid-auto-rows:18px;gap:2px;padding:3px}
   .ten-frame .hv-mark,.tf-cell.empty,.tf-cell.slot{width:18px;height:18px}
   .ten-frame .hv-mark svg{width:14px;height:14px}
@@ -777,6 +812,29 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;height:10
   .lvl-badge,.streak-pill,.shiny-badge,.subj-btn,.who-btn,.subj-btn-car,.gym-time-lbl,.hv-cap,.pad-note,.badge,.reset-btn,.gym-role,.wild-badge,.catch-counter,.flee-btn,.catch-balls-lbl,.starter-opt-name,.subj-opt-sub,.who-sub,.parent-kicker,.hang-on,.award-kicker,.switch-opt-out,.pdx-num,.pdx-name,.pdx-fact,.gen-label,.pdx-gen-label{font-size:14px}
   .pname,.mon-strip .pname{font-size:22px}
   .mon-strip .psvg img{width:96px;height:96px}
+}
+/* A narrow phone shares one row between the name, the subject, and sound.
+   GitHub's fonts run wider than a laptop's, and "Your name?" was clipped by
+   about 13px at 320 wide. Less padding, a smaller picture, and a higher cap
+   keep the whole label on screen. */
+@media (max-width:400px){
+  #app-main{padding-left:4px;padding-right:4px}
+  .hdr,.hdr-right{gap:2px}
+  .who-btn{max-width:70%;padding:2px;gap:3px}
+  .who-btn img{width:22px;height:22px}
+  .subj-btn{padding-left:4px;padding-right:4px;gap:3px}
+  .mute-btn{padding-left:2px;padding-right:2px}
+  /* Trainer, Pokédex, Reset, and sound stay on one line.
+     The long reset sentence becomes "Hold to reset" so every word is visible.
+     A long trainer name gives up space before that row wraps. */
+  #pokedex-page .hdr{flex-wrap:nowrap;align-items:center}
+  #pokedex-page .who-btn{flex:1 1 auto;min-width:44px;max-width:none}
+  #pokedex-page .who-btn span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  #pokedex-page .app-name{flex:0 0 auto}
+  #pokedex-page .reset-btn{flex:0 0 auto;padding:4px 4px}
+  #pokedex-page .reset-long{display:none}
+  #pokedex-page .reset-short{display:inline}
+  #pokedex-page .hdr-right{flex:0 0 auto}
 }
 </style>
 </head>
@@ -2861,7 +2919,7 @@ function whoButtonHTML(id){
   const face=faceForKid(kid);
   const name=String(kid.name||'').trim();
   const unset=!!kid.askName||!name||(kid.askName!==false&&name==='Trainer');
-  const label=unset?'Add your name':kid.name;
+  const label=unset?'Your name?':kid.name;
   return `<button type="button" class="who-btn" id="${id}">${pkSprite(face.pi,28,face.shiny)}<span>${escapeHtml(label)}</span></button>`;
 }
 function bigBackHTML(id,label){
@@ -2874,6 +2932,7 @@ function starterLineForNum(num){
 }
 function placeParentsLink(){}
 function showGameChrome(){
+  shelterMute();
   view='game';
   profilesEl.style.display='none';
   profilesEl.innerHTML='';
@@ -3070,6 +3129,7 @@ function trySaveProfile(){
   }
 }
 function renderWho(){
+  shelterMute();
   view='who';
   gameEl.style.display='none';
   pdxEl.style.display='none';
@@ -3094,6 +3154,7 @@ function renderWho(){
     profilesEl.innerHTML=h;
     document.getElementById('remove-no').addEventListener('click',()=>{pendingDelete=null;whoMode='list';renderWho();});
     document.getElementById('remove-yes').addEventListener('click',()=>deleteProfile(pendingDelete));
+    dockMute();
     return;
   }
   if(whoMode==='create'||whoMode==='edit'){
@@ -3152,6 +3213,7 @@ function renderWho(){
     document.getElementById('profile-save').addEventListener('click',trySaveProfile);
     const rm=document.getElementById('edit-remove');
     if(rm&&editKid)rm.addEventListener('click',()=>{pendingDelete=editKid.id;whoMode='confirm';renderWho();});
+    dockMute();
     return;
   }
   const back=activeKid()?bigBackHTML('who-back','Back to the game'):'';
@@ -3193,6 +3255,7 @@ function renderWho(){
     renderWho();
     histPush('who-form');
   }));
+  dockMute();
 }
 function subjectSnap(data,sub){
   const s=(data.stats||{})[sub]||{};
@@ -3401,6 +3464,7 @@ function openParent(){
   histPush('parent');
 }
 function renderParent(){
+  shelterMute();
   view='parent';
   gameEl.style.display='none';
   pdxEl.style.display='none';
@@ -3422,6 +3486,7 @@ function renderParent(){
     wireParentPad();
     document.getElementById('parent-go').addEventListener('click',submitParentQuiz);
     document.getElementById('parent-back').addEventListener('click',closeParent);
+    dockMute();
     return;
   }
   const timerOn=gymTimerEnabled();
@@ -3439,6 +3504,7 @@ function renderParent(){
   document.getElementById('parent-back').addEventListener('click',closeParent);
   const timerBtn=document.getElementById('gym-timer-toggle');
   if(timerBtn)timerBtn.addEventListener('click',()=>{setGymTimerEnabled(!gymTimerEnabled());renderParent();});
+  dockMute();
 }
 
 let profiles={activeId:null,kids:[]};
@@ -4101,8 +4167,12 @@ function answerLiveText(){
     return `✗ Not quite. It got away! The answer was ${ans}`;
   }
   const ok=!!st.cor;
-  let text=ok?'✓ Correct!':'✗ Not quite';
-  if(ok&&st.lastXp>0)text+=` +${st.lastXp} XP`;
+  // The try number changes on every miss. The same "Not quite" twice in a
+  // row would not be spoken again, because this one region only announces
+  // when its text actually changes.
+  if(!ok)return `✗ Not quite (try ${st.tries})`;
+  let text='✓ Correct!';
+  if(st.lastXp>0)text+=` +${st.lastXp} XP`;
   return text;
 }
 function syncAnswerLive(){
@@ -4223,7 +4293,52 @@ function wireNameAsk(root){
   if(nameIn)nameIn.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();saveAskedName();}});
 }
 
+// The sound button is one element for the whole app. Pages replace their
+// HTML, so it has to step out first or that replacement would delete it.
+function shelterMute(){
+  const mute=document.getElementById('mute-btn');
+  const park=document.querySelector('.wrap');
+  if(!mute||!park||mute.parentElement===park)return;
+  park.insertBefore(mute,park.firstChild);
+}
+// Park it in the header row. On the short Parents gate the header is hidden
+// so the pad can fit, and the button sits beside Back instead of on top of it.
+function dockMute(){
+  const mute=document.getElementById('mute-btn');
+  if(!mute)return;
+  const page=[gameEl,pdxEl,profilesEl,parentEl].find(el=>el&&getComputedStyle(el).display!=='none');
+  if(!page){shelterMute();return;}
+  const hdr=[...page.querySelectorAll('.hdr')].find(el=>{
+    if(getComputedStyle(el).display==='none')return false;
+    const r=el.getBoundingClientRect();
+    return r.width>0&&r.height>0;
+  });
+  if(hdr){
+    let slot=hdr.querySelector('.hdr-right');
+    if(!slot){
+      slot=document.createElement('span');
+      slot.className='hdr-right';
+      hdr.appendChild(slot);
+    }
+    if(mute.parentElement!==slot)slot.appendChild(mute);
+    return;
+  }
+  const back=page.querySelector('.big-back');
+  if(back){
+    let row=back.parentElement&&back.parentElement.classList.contains('back-row')?back.parentElement:null;
+    if(!row){
+      row=document.createElement('div');
+      row.className='back-row';
+      back.replaceWith(row);
+      row.appendChild(back);
+    }
+    if(mute.parentElement!==row)row.appendChild(mute);
+    return;
+  }
+  shelterMute();
+}
 function render(){
+  shelterMute();
   syncAnswerLive();
   if(view==='who'){renderWho();return;}
   if(view==='parent'){renderParent();return;}
@@ -4256,6 +4371,7 @@ function render(){
     const pr=document.getElementById('pick-random');if(pr)pr.addEventListener('click',pickRandomStarter);
     const whoEarly=gameEl.querySelector('#who-btn');if(whoEarly)whoEarly.addEventListener('click',openProfiles);
     wireNameAsk(gameEl);
+    dockMute();
     return;
   }
 
@@ -4294,12 +4410,14 @@ function render(){
     const p=PKM[tm.pi];
     const xpMx=xpToNext(tm.level);
     const pct=Math.min(100,Math.round(tm.xp/xpMx*100));
-    // Inside the card, so it reads as a control ON this Pokemon rather than a
-    // separate thing between the Pokemon and the question. Switching no longer
-    // changes the question, so it's safe mid-question. Hidden while an evolution is
-    // queued, though: processEvolution evolves whoever is active when Next is
-    // pressed, so switching first would evolve the wrong Pokemon.
-    h+=`<div class="card pcard mon-strip"><div class="psvg ${st.anim}">${pkSprite(tm.pi,96,tm.shiny)}</div><div class="mon-meta"><div class="pname">${p.n}${tm.shiny?` <span class="shiny-badge">${SHINY_STAR} Shiny</span>`:''} <span class="lvl-badge${st.lvlUpMsg?' lvl-up':''}">Lv ${tm.level}</span></div><div class="xp-track" aria-hidden="true"><div class="xp-fill" style="width:${pct}%"></div></div></div></div>`;
+    // Same rule as the Pokédex Switch button (canOfferSwitch): two or more
+    // Pokémon, no evolution waiting, and a practice question. The strip is the
+    // button then. Otherwise it is just the picture and the name.
+    const offerSwitch=canOfferSwitch();
+    const strip=`<div class="psvg ${st.anim}">${offerSwitch?'<span class="switch-mark" aria-hidden="true">&#128260;</span>':''}${pkSprite(tm.pi,96,tm.shiny)}</div><div class="mon-meta"><div class="pname">${p.n}${tm.shiny?` <span class="shiny-badge">${SHINY_STAR} Shiny</span>`:''} <span class="lvl-badge${st.lvlUpMsg?' lvl-up':''}">Lv ${tm.level}</span></div><div class="xp-track" aria-hidden="true"><div class="xp-fill" style="width:${pct}%"></div></div></div>`;
+    h+=offerSwitch
+      ?`<button type="button" class="card pcard mon-strip" id="mon-switch" aria-label="Switch Pokémon">${strip}</button>`
+      :`<div class="card pcard mon-strip">${strip}</div>`;
     // No level-up bar here: the Lv pill on the card above is lit instead, and the
     // Pokemon's name is already sitting beside it, so the bar's sentence said nothing
     // the card wasn't. st.lvlUpMsg survives as the flag for that -- the wild phase
@@ -4425,6 +4543,7 @@ function render(){
   }));
   gameEl.querySelectorAll('[data-switch-idx]').forEach(b=>b.addEventListener('click',()=>switchPokemon(+b.dataset.switchIdx)));
   const swb=gameEl.querySelector('#switch-btn');if(swb)swb.addEventListener('click',openSwitchPicker);
+  const monSw=gameEl.querySelector('#mon-switch');if(monSw)monSw.addEventListener('click',openSwitchPicker);
   const swc=gameEl.querySelector('#switch-cancel');if(swc)swc.addEventListener('click',closeSwitchPicker);
   gameEl.querySelectorAll('[data-subj]').forEach(b=>b.addEventListener('click',()=>chooseSubject(b.dataset.subj)));
   const sb=gameEl.querySelector('#subj-btn');if(sb)sb.addEventListener('click',openSubjectPicker);
@@ -4448,6 +4567,7 @@ function render(){
   armGymTimer();
   syncAnswerLive();
   if(view==='pdx')renderPokedex();
+  dockMute();
 }
 
 // A shiny slot is rendered only once it has actually been caught. Carrying 237
@@ -4462,12 +4582,13 @@ function pdxEntryHTML(pi,shiny){
 }
 
 function renderPokedex(){
-  let h=`<div class="hdr">${whoButtonHTML('who-btn-pdx')}<span class="app-name">Pokédex</span><button class="reset-btn" id="reset-btn"><span class="reset-fill" id="reset-fill"></span><span class="reset-lbl" id="reset-lbl">Hold to reset this trainer</span></button></div>`;
+  shelterMute();
+  let h=`<div class="hdr">${whoButtonHTML('who-btn-pdx')}<span class="app-name">Pokédex</span><button class="reset-btn" id="reset-btn"><span class="reset-fill" id="reset-fill"></span><span class="reset-lbl" id="reset-lbl"><span class="reset-long">Hold to reset this trainer</span><span class="reset-short">Hold to reset</span></span></button></div>`;
   const bits=[];
   SUBS.forEach(sub=>(st.badges[sub]||[]).forEach(t=>bits.push(badgeHTML(sub,t,false))));
   h+=`<div class="card pdx-badges"><div class="pdx-badge-hd">Gym badges</div>${bits.length?`<div class="badge-row">${bits.join('')}</div>`:'<div class="gym-wait">Win a Gym battle to earn your first badge.</div>'}</div>`;
-  const canSwitch=st.team.length>1&&!st.pendingEvo&&st.phase==='play';
-  const switchBtn=canSwitch?`<button class="switch-btn" id="switch-btn" type="button"><span>&#128260;</span><span>Switch</span><span class="switch-count">${st.team.length}</span></button>`:'';
+  const canSwitch=canOfferSwitch();
+  const switchBtn=canSwitch?`<button class="switch-btn" id="switch-btn" type="button"><span>&#128260;</span><span>Switch Pokémon</span></button>`:'';
   const candyBtn=st.items.candy>0&&!st.pendingEvo&&(st.phase==='play'||st.phase==='award')?`<button class="candy-btn" id="candy-btn" type="button">&#127853; Rare Candy · ${st.items.candy}</button>`:'';
   const greatNote=st.items.great>0?`<div class="great-note">Great Ball ready</div>`:'';
   if(switchBtn||candyBtn||greatNote)h+=`<div class="card dex-tools">${switchBtn}${candyBtn}${greatNote}</div>`;
@@ -4490,6 +4611,7 @@ function renderPokedex(){
   if(swb)swb.addEventListener('click',()=>{view='game';showGameChrome();openSwitchPicker();});
   const candy=pdxEl.querySelector('#candy-btn');
   if(candy)candy.addEventListener('click',useCandy);
+  dockMute();
 }
 
 // Held rather than tapped so a stray finger can't wipe the Pokedex.
@@ -4500,11 +4622,18 @@ function wireReset(){
   const lbl=document.getElementById('reset-lbl');
   const HOLD=2000;
   let timer=null,raf=null,t0=0;
+  function paintReset(text){
+    const long=lbl.querySelector('.reset-long');
+    const short=lbl.querySelector('.reset-short');
+    if(!long||!short){lbl.textContent=text;return;}
+    long.textContent=text;
+    short.textContent=text==='Hold to reset this trainer'?'Hold to reset':text;
+  }
   function stop(){
     if(timer){clearTimeout(timer);timer=null;}
     if(raf){cancelAnimationFrame(raf);raf=null;}
     fill.style.width='0%';
-    lbl.textContent='Hold to reset this trainer';
+    paintReset('Hold to reset this trainer');
   }
   function tick(){
     const p=Math.min(1,(Date.now()-t0)/HOLD);
@@ -4515,7 +4644,7 @@ function wireReset(){
     e.preventDefault();
     if(timer)return;
     t0=Date.now();
-    lbl.textContent='Keep holding…';
+    paintReset('Keep holding…');
     raf=requestAnimationFrame(tick);
     timer=setTimeout(()=>{
       stop();
@@ -4527,10 +4656,12 @@ function wireReset(){
 }
 
 function switchView(v){
+  shelterMute();
   if(v!=='game'){pauseGymTimer();hideMoments();}
   view=v;
   if(v==='game'){
     showGameChrome();
+    dockMute();
     armGymTimer();
     return;
   }
@@ -5131,6 +5262,11 @@ function pickStarter(lineIdx,shiny){
 // and hand it back on either exit. The phase is never persisted -- loadSaved
 // derives it from whether a team exists -- so quitting mid-switch reopens on the
 // game, not on a picker with no question behind it.
+// The Pokédex button and the picture on the Game tab both use this, so one
+// cannot be tappable while the other is hidden.
+function canOfferSwitch(){
+  return st.team.length>1&&!st.pendingEvo&&st.phase==='play';
+}
 function openSwitchPicker(){
   if(st.phase==='switch')return;
   st.switchReturn=st.phase;
@@ -5503,6 +5639,26 @@ function commitAttempt(ok,choice,nextDraft){
   if(firstTry&&st.phase==='play')tickGymCool();
   save();
   render();
+  // A long answer can leave Next, or the hint, under the Game bar.
+  // Bring that one piece into view. Skip it when it is already on screen,
+  // and don't move focus — the spoken announcement lives outside this scroller.
+  revealAnswer();
+}
+function revealAnswer(){
+  const main=document.getElementById('app-main');
+  const nav=document.getElementById('bottom-nav');
+  if(!main||!nav)return;
+  const nxt=document.getElementById('nxt');
+  const hint=document.querySelector('#game .qcard .result-msg, #game .qcard .gym-hint');
+  const target=nxt||hint;
+  if(!target)return;
+  const tr=target.getBoundingClientRect();
+  if(tr.width<1||tr.height<1)return;
+  const nr=nav.getBoundingClientRect();
+  const mr=main.getBoundingClientRect();
+  if(tr.top>=mr.top-0.5&&tr.bottom<=nr.top+0.5)return;
+  const reduce=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  target.scrollIntoView({block:'nearest',inline:'nearest',behavior:reduce?'auto':'smooth'});
 }
 
 document.getElementById("nav-game").addEventListener("click",()=>{

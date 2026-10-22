@@ -114,10 +114,16 @@ function readScreen(){
   return {qtext,answer,small,faint};
 }
 
-test('before an answer there are four controls, and the card has at most one tag',async({page})=>{
+test('before an answer there are four controls, and five when switching is available',async({page})=>{
   const controls=await state(page,playControls);
   expect(controls.length).toBeLessThanOrEqual(4);
   expect(controls).toEqual(expect.arrayContaining(['mute-btn','who-btn','subj-btn','help-btn']));
+  expect(controls).not.toContain('mon-switch');
+  await state(page,()=>{st.team.push({pi:LINES[1][0],level:5,xp:0,shiny:false});render();});
+  const switching=await state(page,playControls);
+  expect(switching.length).toBe(controls.length+1);
+  expect(switching.length).toBeLessThanOrEqual(5);
+  expect(switching).toEqual(expect.arrayContaining(['mute-btn','who-btn','subj-btn','help-btn','mon-switch']));
   await expect(page.locator('#game .hdr')).not.toContainText('Pokémon');
   await expect(page.locator('#game')).not.toContainText("What's your name?");
   await expect(page.locator('#game .pnum, #game .xp-row, #game .badge-row, #game .candy-btn, #game .great-note, #game #switch-btn')).toHaveCount(0);
@@ -356,7 +362,7 @@ test('the announcement is one place that stays put when the answer changes',asyn
   expect(after.same).toBe(true);
   expect(after.text).toContain('Not quite');
   expect(after.lives).toBe(1);
-  await expect(page.locator('#who-btn')).toContainText('Add your name');
+  await expect(page.locator('#who-btn')).toContainText('Your name?');
 });
 
 test('the XP just earned is written on the answer line',async({page})=>{

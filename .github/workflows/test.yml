@@ -6,7 +6,9 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    # The browser install also downloads fonts. A slow mirror has used the
+    # whole 10 minutes and cancelled the job before any test ran.
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
