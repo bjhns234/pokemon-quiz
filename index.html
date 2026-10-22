@@ -39,9 +39,13 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;height:10
 .pnum{font-size:14px;color:#4B5563;margin-bottom:2px;font-weight:500}
 .pname{font-size:22px;font-weight:700;color:#1A1A2E}
 /* A short row: picture, name, level, and one thin bar. No dex line and no XP numbers. */
-.mon-strip{display:flex;align-items:center;gap:12px;text-align:left;padding:10px 14px}
-.mon-strip .psvg{margin:0;flex:0 0 auto}
+.mon-strip{display:flex;align-items:center;gap:12px;text-align:left;padding:10px 14px;cursor:default}
+.mon-strip .psvg{position:relative;margin:0;flex:0 0 auto;animation:none}
+button.mon-strip{width:100%;border:none;font-family:inherit;color:inherit;cursor:pointer;min-width:44px;min-height:44px}
+button.mon-strip:focus{outline:3px solid #1D4ED8;outline-offset:2px}
 .mon-strip .psvg img{width:96px;height:96px}
+/* The only hint that this picture opens the picker. It stays off unless a switch is allowed. */
+.switch-mark{position:absolute;right:0;bottom:0;width:16px;height:16px;border-radius:50%;background:#fff;border:1.5px solid #E5E7EB;font-size:10px;line-height:1;display:flex;align-items:center;justify-content:center;pointer-events:none}
 .mon-meta{flex:1 1 auto;min-width:0}
 .mon-strip .pname{font-size:22px;line-height:1.2}
 .mon-strip .xp-track{height:8px;margin-top:8px}
@@ -4374,12 +4378,14 @@ function render(){
     const p=PKM[tm.pi];
     const xpMx=xpToNext(tm.level);
     const pct=Math.min(100,Math.round(tm.xp/xpMx*100));
-    // Inside the card, so it reads as a control ON this Pokemon rather than a
-    // separate thing between the Pokemon and the question. Switching no longer
-    // changes the question, so it's safe mid-question. Hidden while an evolution is
-    // queued, though: processEvolution evolves whoever is active when Next is
-    // pressed, so switching first would evolve the wrong Pokemon.
-    h+=`<div class="card pcard mon-strip"><div class="psvg ${st.anim}">${pkSprite(tm.pi,96,tm.shiny)}</div><div class="mon-meta"><div class="pname">${p.n}${tm.shiny?` <span class="shiny-badge">${SHINY_STAR} Shiny</span>`:''} <span class="lvl-badge${st.lvlUpMsg?' lvl-up':''}">Lv ${tm.level}</span></div><div class="xp-track" aria-hidden="true"><div class="xp-fill" style="width:${pct}%"></div></div></div></div>`;
+    // Same rule as the Pokédex Switch button (canOfferSwitch): two or more
+    // Pokémon, no evolution waiting, and a practice question. The strip is the
+    // button then. Otherwise it is just the picture and the name.
+    const offerSwitch=canOfferSwitch();
+    const strip=`<div class="psvg ${st.anim}">${offerSwitch?'<span class="switch-mark" aria-hidden="true">&#128260;</span>':''}${pkSprite(tm.pi,96,tm.shiny)}</div><div class="mon-meta"><div class="pname">${p.n}${tm.shiny?` <span class="shiny-badge">${SHINY_STAR} Shiny</span>`:''} <span class="lvl-badge${st.lvlUpMsg?' lvl-up':''}">Lv ${tm.level}</span></div><div class="xp-track" aria-hidden="true"><div class="xp-fill" style="width:${pct}%"></div></div></div>`;
+    h+=offerSwitch
+      ?`<button type="button" class="card pcard mon-strip" id="mon-switch" aria-label="Switch Pokémon">${strip}</button>`
+      :`<div class="card pcard mon-strip">${strip}</div>`;
     // No level-up bar here: the Lv pill on the card above is lit instead, and the
     // Pokemon's name is already sitting beside it, so the bar's sentence said nothing
     // the card wasn't. st.lvlUpMsg survives as the flag for that -- the wild phase
@@ -4505,6 +4511,7 @@ function render(){
   }));
   gameEl.querySelectorAll('[data-switch-idx]').forEach(b=>b.addEventListener('click',()=>switchPokemon(+b.dataset.switchIdx)));
   const swb=gameEl.querySelector('#switch-btn');if(swb)swb.addEventListener('click',openSwitchPicker);
+  const monSw=gameEl.querySelector('#mon-switch');if(monSw)monSw.addEventListener('click',openSwitchPicker);
   const swc=gameEl.querySelector('#switch-cancel');if(swc)swc.addEventListener('click',closeSwitchPicker);
   gameEl.querySelectorAll('[data-subj]').forEach(b=>b.addEventListener('click',()=>chooseSubject(b.dataset.subj)));
   const sb=gameEl.querySelector('#subj-btn');if(sb)sb.addEventListener('click',openSubjectPicker);
@@ -4548,7 +4555,7 @@ function renderPokedex(){
   const bits=[];
   SUBS.forEach(sub=>(st.badges[sub]||[]).forEach(t=>bits.push(badgeHTML(sub,t,false))));
   h+=`<div class="card pdx-badges"><div class="pdx-badge-hd">Gym badges</div>${bits.length?`<div class="badge-row">${bits.join('')}</div>`:'<div class="gym-wait">Win a Gym battle to earn your first badge.</div>'}</div>`;
-  const canSwitch=st.team.length>1&&!st.pendingEvo&&st.phase==='play';
+  const canSwitch=canOfferSwitch();
   const switchBtn=canSwitch?`<button class="switch-btn" id="switch-btn" type="button"><span>&#128260;</span><span>Switch Pokémon</span></button>`:'';
   const candyBtn=st.items.candy>0&&!st.pendingEvo&&(st.phase==='play'||st.phase==='award')?`<button class="candy-btn" id="candy-btn" type="button">&#127853; Rare Candy · ${st.items.candy}</button>`:'';
   const greatNote=st.items.great>0?`<div class="great-note">Great Ball ready</div>`:'';
@@ -5216,6 +5223,11 @@ function pickStarter(lineIdx,shiny){
 // and hand it back on either exit. The phase is never persisted -- loadSaved
 // derives it from whether a team exists -- so quitting mid-switch reopens on the
 // game, not on a picker with no question behind it.
+// The Pokédex button and the picture on the Game tab both use this, so one
+// cannot be tappable while the other is hidden.
+function canOfferSwitch(){
+  return st.team.length>1&&!st.pendingEvo&&st.phase==='play';
+}
 function openSwitchPicker(){
   if(st.phase==='switch')return;
   st.switchReturn=st.phase;

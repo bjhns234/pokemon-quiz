@@ -1,7 +1,7 @@
 // Short phones: the sound button stays in the header row, and the buttons
 // a child actually taps are at least 44px tall.
 const {test,expect}=require('@playwright/test');
-const {openGame,startGame,state}=require('./helpers');
+const {openGame,startGame,state,answer,serve}=require('./helpers');
 
 const SIZES=[
   {width:667,height:375},
@@ -187,6 +187,149 @@ test('Switch Pokémon stays on the Pokédex, and the picker stays easy to read',
       expect(font,`picker name at ${size.width}x${size.height}`).toBeGreaterThanOrEqual(14);
     }
   }
+});
+
+async function expectSwitchClear(page,size){
+  const box=await page.locator('#mon-switch').boundingBox();
+  expect(box,`strip at ${size.width}x${size.height}`).toBeTruthy();
+  expect(box.height,`strip height at ${size.width}x${size.height}`).toBeGreaterThanOrEqual(44);
+  expect(box.width,`strip width at ${size.width}x${size.height}`).toBeGreaterThanOrEqual(44);
+  await expectMuteClear(page,size);
+  const hits=await page.evaluate(()=>{
+    const el=document.getElementById('mon-switch');
+    const mb=el.getBoundingClientRect();
+    function shown(node){
+      if(!node||node===el||el.contains(node)||node.contains(el))return false;
+      const s=getComputedStyle(node);
+      if(s.display==='none'||s.visibility==='hidden')return false;
+      const r=node.getBoundingClientRect();
+      return r.width>2&&r.height>2;
+    }
+    function hit(r){
+      const w=Math.min(mb.right,r.right)-Math.max(mb.left,r.left);
+      const h=Math.min(mb.bottom,r.bottom)-Math.max(mb.top,r.top);
+      return w>0.5&&h>0.5;
+    }
+    const bad=[];
+    for(const node of document.querySelectorAll('button,a,input,select,textarea')){
+      if(!shown(node))continue;
+      if(hit(node.getBoundingClientRect()))bad.push(node.id||String(node.className).slice(0,48));
+    }
+    return bad;
+  });
+  expect(hits,`strip overlaps at ${size.width}x${size.height}: ${hits.join(', ')}`).toEqual([]);
+}
+
+test('tapping the Pokémon on the Game tab opens the picker',async({page})=>{
+  await openGame(page);
+  await startGame(page,'reading');
+  await state(page,()=>{
+    st.team.push({pi:LINES[1][0],level:5,xp:0,shiny:false});
+    render();
+  });
+  const strip=page.locator('#mon-switch');
+  await expect(strip).toBeVisible();
+  await expect(strip).toHaveAttribute('aria-label','Switch Pokémon');
+  await expect(strip.locator('.switch-mark')).toBeVisible();
+  await expect(page.locator('#game #switch-btn')).toHaveCount(0);
+  strip.focus();
+  const ring=await strip.evaluate(el=>{
+    const s=getComputedStyle(el);
+    return {style:s.outlineStyle,width:parseFloat(s.outlineWidth)};
+  });
+  expect(ring.style).not.toBe('none');
+  expect(ring.width).toBeGreaterThanOrEqual(2);
+  for(const size of SIZES){
+    await page.setViewportSize(size);
+    await toTop(page);
+    await expectSwitchClear(page,size);
+  }
+  await page.setViewportSize({width:375,height:667});
+  await page.click('#mon-switch');
+  await expect(page.getByText('Choose your Pokémon!')).toBeVisible();
+  await page.click('#switch-cancel');
+  await answer(page,true);
+  await expect(page.locator('#mon-switch')).toBeVisible();
+  await expect(page.locator('#mon-switch')).toHaveAttribute('aria-label','Switch Pokémon');
+});
+
+test('one Pokémon does not turn the strip into a button',async({page})=>{
+  await openGame(page);
+  await startGame(page,'reading');
+  const strip=page.locator('#game .mon-strip');
+  await expect(strip).toBeVisible();
+  await expect(page.locator('#mon-switch')).toHaveCount(0);
+  await expect(strip.locator('.switch-mark')).toHaveCount(0);
+  const quiet=await strip.evaluate(el=>({
+    tag:el.tagName,
+    role:el.getAttribute('role'),
+    tab:el.tabIndex,
+    cursor:getComputedStyle(el).cursor,
+  }));
+  expect(quiet).toEqual({tag:'DIV',role:null,tab:-1,cursor:'default'});
+  await strip.click();
+  await expect(page.getByText('Choose your Pokémon!')).toHaveCount(0);
+  expect(await state(page,()=>st.phase)).toBe('play');
+  expect(await state(page,()=>canOfferSwitch())).toBe(false);
+
+  await state(page,()=>{
+    st.team.push({pi:LINES[1][0],level:5,xp:0,shiny:false});
+    st.pendingEvo={fromPi:st.team[0].pi,toPi:st.team[0].pi+1};
+    render();
+  });
+  await expect(page.locator('#mon-switch')).toHaveCount(0);
+  expect(await state(page,()=>canOfferSwitch())).toBe(false);
+  await page.click('#nav-pdx');
+  await expect(page.locator('#switch-btn')).toHaveCount(0);
+
+  await page.click('#nav-game');
+  await state(page,()=>{
+    st.pendingEvo=null;
+    st.cor=true;
+    triggerWildEncounter(false);
+    render();
+  });
+  await expect(page.locator('#mon-switch, #game .mon-strip')).toHaveCount(0);
+  expect(await state(page,()=>canOfferSwitch())).toBe(false);
+
+  await state(page,()=>{
+    st.phase='gym';
+    st.wild=null;
+    st.award=null;
+    st.gym={sub:'math',tier:1,queue:[0],qi:0,kid:4,lead:5,solved:false,over:null};
+    st.q=serveQuestion('math',1,0,questionPname());
+    render();
+  });
+  await expect(page.locator('#mon-switch, #game .mon-strip')).toHaveCount(0);
+
+  await state(page,()=>{
+    st.phase='award';
+    st.gym=null;
+    st.award={again:true,sub:'math',tier:1,xp:0,candy:0,great:0,grew:false,partner:null};
+    render();
+  });
+  await expect(page.locator('#mon-switch, #game .mon-strip')).toHaveCount(0);
+  await expect(page.locator('.award-card')).toBeVisible();
+});
+
+test('switching from the Game tab keeps the same question',async({page})=>{
+  await openGame(page);
+  await startGame(page,'reading');
+  await state(page,()=>{st.team.push({pi:LINES[1][0],level:5,xp:0,shiny:false});});
+  await serve(page,{sub:'reading'});
+  await answer(page,false);
+  const before=await state(page,()=>({text:st.q.question,key:reviewKey(st.q.tmpl),wrong:[...st.wrong]}));
+  const [oldName,newName]=await state(page,()=>[PKM[st.team[0].pi].n,PKM[st.team[1].pi].n]);
+  expect(before.text).toContain(oldName);
+  await page.click('#mon-switch');
+  await expect(page.getByText('Choose your Pokémon!')).toBeVisible();
+  await page.click('[data-switch-idx="1"]');
+  const after=await state(page,()=>({text:st.q.question,key:reviewKey(st.q.tmpl),wrong:[...st.wrong],phase:st.phase}));
+  expect(after.phase).toBe('play');
+  expect(after.key).toBe(before.key);
+  expect(after.wrong).toEqual(before.wrong);
+  expect(after.text).toBe(before.text.split(oldName).join(newName));
+  await expect(page.locator('#mon-switch')).toBeVisible();
 });
 
 test('counting captions stay 14px on a short phone',async({page})=>{
