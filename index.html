@@ -18,9 +18,10 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;height:10
 #app-main{flex:1 1 auto;min-height:0;overflow:auto;padding:12px 16px 10px;padding-top:max(12px,env(safe-area-inset-top,0px));scroll-padding-bottom:12px}
 #game{display:none;flex-direction:column;min-height:0}
 #pokedex-page{display:none}
-/* The right padding is the sound button's lane. The button is 52px and sits 4px
-   in from the column edge, so 60px keeps Math / Reading / Science clear of it. */
-.hdr{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:14px;padding-right:60px}
+/* The sound button sits in this row, beside the trainer and the subject,
+   so it cannot cover the question, the card, or Parents' Back. */
+.hdr{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.hdr .app-name{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .hdr-tight{flex-wrap:nowrap;align-items:stretch}
 .hdr-tight .app-name{flex:1 1 auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;align-items:center}
 .hdr-tight .hdr-right{display:flex;align-items:center;flex:0 0 auto}
@@ -124,7 +125,7 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;height:10
 .tags{background:#FEF3C7;color:#92400E}
 .qtext{font-size:22px;color:#1A1A2E;line-height:1.45;margin-bottom:16px;font-weight:700}
 .ans-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
-.ans-btn{position:relative;display:flex;align-items:center;justify-content:center;gap:6px;background:#F9FAFB;border:2px solid #E5E7EB;border-radius:12px;padding:14px 10px;font-size:20px;font-weight:700;color:#1F2937;cursor:pointer;text-align:center;transition:background 0.15s,border-color 0.15s,color 0.15s;line-height:1.3;font-family:inherit;width:100%}
+.ans-btn{position:relative;display:flex;align-items:center;justify-content:center;gap:6px;background:#F9FAFB;border:2px solid #E5E7EB;border-radius:12px;padding:14px 10px;min-height:44px;font-size:20px;font-weight:700;color:#1F2937;cursor:pointer;text-align:center;transition:background 0.15s,border-color 0.15s,color 0.15s;line-height:1.3;font-family:inherit;width:100%}
 .ans-btn:hover:not(:disabled){border-color:#FF5722;color:#FF5722;background:#FFF3E0}
 .ans-btn.cor{background:#ECFDF5;border-color:#10B981;color:#065F46}
 .ans-btn.wrg{background:#FEF2F2;border-color:#EF4444;color:#991B1B}
@@ -169,7 +170,7 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;height:10
 .xp-earn{font-size:14px;font-weight:800;color:#065F46;margin-left:8px;line-height:1.2}
 .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;pointer-events:none}
 .prize-line{text-align:center;font-size:16px;font-weight:800;color:#92400E;background:#FEF3C7;border-radius:12px;padding:10px 12px;margin:8px 0}
-.nxt-btn{width:100%;background:#1A1A2E;color:white;border:none;border-radius:12px;padding:14px;font-size:20px;font-weight:800;cursor:pointer;font-family:inherit}
+.nxt-btn{width:100%;background:#1A1A2E;color:white;border:none;border-radius:12px;padding:14px;min-height:44px;font-size:20px;font-weight:800;cursor:pointer;font-family:inherit}
 .nxt-btn:hover{opacity:0.85}
 .pdx-gen-section{margin-bottom:16px}
 .pdx-gen-label{font-size:14px;font-weight:700;color:#4B5563;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:8px}
@@ -206,7 +207,7 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;height:10
 .optr:hover{border-color:#065F46;background:#ECFDF5}
 .opts:hover{border-color:#92400E;background:#FFFBEB}
 .optx:hover{border-color:#6D28D9;background:#F5F3FF}
-.hdr-right{display:flex;align-items:center;gap:8px}
+.hdr-right{display:flex;align-items:center;gap:8px;flex:0 0 auto;flex-wrap:nowrap}
 .subj-btn{border:1px solid #E5E7EB;background:#fff;color:#374151;font-size:14px;font-weight:700;padding:8px 12px;min-height:44px;border-radius:8px;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
 .subj-btn:hover{border-color:#1A1A2E;color:#1A1A2E}
 .subj-btn-car{color:#374151;font-size:14px}
@@ -488,9 +489,13 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;height:10
   .name-line-lbl{flex:1 0 100%}
   .name-line .who-field{flex:1 1 120px;min-width:120px}
 }
-/* Sits in the column's top-right, in the header's right padding, so it
-   never covers the subject button. 52px wide, 4px in from the column edge. */
-.mute-btn{position:absolute;z-index:1001;top:max(8px,env(safe-area-inset-top,0px));right:4px;width:52px;min-width:44px;height:44px;display:flex;align-items:center;justify-content:center;gap:2px;padding:0 3px;border-radius:999px;border:2px solid #1A1A2E;background:#fff;color:#1A1A2E;font-family:inherit;font-weight:800;font-size:14px;line-height:1;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.12);white-space:nowrap}
+/* In the header row once the page has drawn. Until then it stays in the
+   corner so the first paint still has a sound switch. 44px tall, same as
+   the trainer and subject buttons, and it never floats over them. */
+.mute-btn{position:static;flex:0 0 auto;width:auto;min-width:44px;height:44px;min-height:44px;display:flex;align-items:center;justify-content:center;gap:2px;padding:0 8px;border-radius:999px;border:2px solid #1A1A2E;background:#fff;color:#1A1A2E;font-family:inherit;font-weight:800;font-size:14px;line-height:1;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.12);white-space:nowrap}
+.wrap>.mute-btn{position:absolute;z-index:2;top:max(8px,env(safe-area-inset-top,0px));right:4px}
+.back-row{display:flex;align-items:center;gap:6px}
+.back-row .big-back{flex:1 1 auto;width:auto;min-width:0;margin-bottom:0}
 .mute-btn .mute-ico{font-size:15px;line-height:1}
 .mute-btn .mute-lbl{line-height:1}
 .parent-kicker{font-size:12px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#374151}
@@ -580,7 +585,7 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;height:10
   .qtext{margin-bottom:4px;font-size:20px;line-height:1.25}
   .pad-read{min-height:32px;font-size:24px;margin-bottom:2px}
   .numpad{gap:4px}
-  .pad-key,.pad-check{min-height:40px;font-size:20px}
+  .pad-key,.pad-check{min-height:44px;font-size:20px}
   .help-btn{padding:6px 8px;min-height:44px;font-size:15px}
 }
 /* A sideways phone. Reading keeps a small picture and its choices.
@@ -598,9 +603,9 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;height:10
   .q-head{margin-bottom:2px}
   .qtext{margin-bottom:2px;font-size:20px;line-height:1.25}
   .ans-grid{gap:4px;margin-bottom:2px}
-  .ans-btn{padding:6px 4px;min-height:36px;font-size:20px}
+  .ans-btn{padding:6px 4px;min-height:44px;font-size:20px}
   .help-btn{padding:4px 8px;min-height:44px;font-size:15px;line-height:1.2}
-  .nxt-btn{padding:8px;font-size:16px}
+  .nxt-btn{padding:8px;min-height:44px;font-size:16px}
   .verdict{font-size:16px;padding:4px 8px;margin:2px 0}
   .prize-line{font-size:14px;padding:4px 8px;margin:2px 0}
   .mon-strip{gap:8px;padding:2px 8px}
@@ -608,7 +613,7 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;height:10
   .pad-wrap{margin-bottom:2px}
   .pad-read{min-height:22px;font-size:18px;margin-bottom:2px}
   .numpad{gap:4px}
-  .pad-key,.pad-check{min-height:40px;font-size:18px}
+  .pad-key,.pad-check{min-height:44px;font-size:18px}
   .pad-check{grid-column:auto}
   body:has(.numpad) .pcard{display:none}
   body:has(.numpad) .q-head{display:none}
@@ -619,9 +624,9 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;height:10
 @media (max-height:360px){
   #app-main{padding:1px 8px 0}
   .hdr{margin-bottom:0}
-  .who-btn{min-height:28px;padding:1px 8px 1px 1px;font-size:14px}
+  .who-btn{min-height:44px;padding:1px 8px 1px 1px;font-size:14px}
   .who-btn img{width:22px;height:22px}
-  .subj-btn{min-height:28px;padding:2px 8px;font-size:14px}
+  .subj-btn{min-height:44px;padding:2px 8px;font-size:14px}
   .q-head{display:none}
   .card{padding:2px 8px;margin-bottom:0}
   .qtext{margin-bottom:0;font-size:18px;line-height:1.2}
@@ -629,12 +634,15 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;height:10
   .psvg img,.mon-strip .psvg img{width:28px;height:28px}
   .pad-read{min-height:18px;font-size:14px;line-height:1;margin-bottom:0}
   .pad-wrap{margin-bottom:0}
-  .numpad{gap:4px;grid-template-columns:repeat(4,1fr)}
+  /* Two rows, not four. Keys stay 44px tall, and Ask for help still sits
+     above the Game bar when the question wraps to two lines. A third row
+     of 44px keys pushes that button under the bar on a 320-tall phone. */
+  #game .numpad{gap:4px;grid-template-columns:repeat(6,1fr)}
   #parent-check .numpad{grid-template-columns:repeat(3,1fr)}
-  .pad-key,.pad-check{min-height:40px;font-size:16px}
+  .pad-key,.pad-check{min-height:44px;font-size:16px}
   .help-btn{padding:4px 8px;min-height:44px;font-size:15px}
   .ans-grid{gap:4px;margin-bottom:0}
-  .ans-btn{padding:4px 4px;min-height:36px;font-size:18px}
+  .ans-btn{padding:4px 4px;min-height:44px;font-size:18px}
   .verdict{font-size:16px;padding:2px 6px;margin:2px 0}
 }
 /* An old save asks for a name. Phones and short screens drop the picture
@@ -658,7 +666,7 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;height:10
   body:has(#name-ask) .q-head{display:none}
   body:has(#name-ask) .card{padding:6px 8px;margin-bottom:4px}
   body:has(#name-ask) .qtext{margin-bottom:4px;font-size:18px;line-height:1.25}
-  body:has(#name-ask) .ans-btn{min-height:36px;padding:6px 4px}
+  body:has(#name-ask) .ans-btn{min-height:44px;padding:6px 4px}
 }
 /* Parents PIN on a short sideways phone. The button stays under the
    keys instead of sticking on top of them, and every key stays on screen. */
@@ -667,6 +675,10 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;height:10
   #parent-page:has(#parent-check){flex:1 1 auto;min-height:0;display:flex;flex-direction:column;overflow:hidden}
   #parent-page:has(#parent-check) .hdr{display:none}
   #parent-page:has(#parent-check) .big-back{flex:0 0 auto;padding:4px 10px;margin-bottom:2px;min-height:32px;font-size:14px}
+  /* Sound sits beside Back on this screen, because the header row is hidden
+     to keep the pad on screen. The row is as tall as the 44px sound button. */
+  #parent-page:has(#parent-check) .back-row{flex:0 0 auto;margin-bottom:2px}
+  #parent-page:has(#parent-check) .back-row .big-back{flex:1 1 auto;width:auto;min-width:0;margin-bottom:0}
   #parent-check{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;overflow:hidden;padding:4px 8px;margin:0}
   #parent-check .parent-kicker,#parent-check .parent-lead{display:none}
   #parent-check .parent-title{font-size:15px;margin:0}
@@ -736,7 +748,9 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;height:10
   .hv-mark svg{width:20px;height:20px}
   .hv-group{padding:3px;gap:2px}
   .hv-op{font-size:16px}
-  .hv-cap{margin-top:2px;font-size:12px}
+  /* Stay at 14px. A shorter screen used to drop this to 12px, which is
+     too small beside the counting picture. */
+  .hv-cap{margin-top:2px;font-size:14px}
   .ten-frame{grid-template-columns:repeat(5,18px);grid-auto-rows:18px;gap:2px;padding:3px}
   .ten-frame .hv-mark,.tf-cell.empty,.tf-cell.slot{width:18px;height:18px}
   .ten-frame .hv-mark svg{width:14px;height:14px}
@@ -777,6 +791,15 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;height:10
   .lvl-badge,.streak-pill,.shiny-badge,.subj-btn,.who-btn,.subj-btn-car,.gym-time-lbl,.hv-cap,.pad-note,.badge,.reset-btn,.gym-role,.wild-badge,.catch-counter,.flee-btn,.catch-balls-lbl,.starter-opt-name,.subj-opt-sub,.who-sub,.parent-kicker,.hang-on,.award-kicker,.switch-opt-out,.pdx-num,.pdx-name,.pdx-fact,.gen-label,.pdx-gen-label{font-size:14px}
   .pname,.mon-strip .pname{font-size:22px}
   .mon-strip .psvg img{width:96px;height:96px}
+}
+/* A narrow phone shares one row between the name, the subject, and sound.
+   A little less padding keeps "Your name?" from turning into "You…". */
+@media (max-width:400px){
+  #app-main{padding-left:8px;padding-right:8px}
+  .hdr,.hdr-right{gap:4px}
+  .who-btn{padding-right:6px}
+  .subj-btn{padding-left:8px;padding-right:8px}
+  .mute-btn{padding-left:4px;padding-right:4px}
 }
 </style>
 </head>
@@ -2861,7 +2884,7 @@ function whoButtonHTML(id){
   const face=faceForKid(kid);
   const name=String(kid.name||'').trim();
   const unset=!!kid.askName||!name||(kid.askName!==false&&name==='Trainer');
-  const label=unset?'Add your name':kid.name;
+  const label=unset?'Your name?':kid.name;
   return `<button type="button" class="who-btn" id="${id}">${pkSprite(face.pi,28,face.shiny)}<span>${escapeHtml(label)}</span></button>`;
 }
 function bigBackHTML(id,label){
@@ -2874,6 +2897,7 @@ function starterLineForNum(num){
 }
 function placeParentsLink(){}
 function showGameChrome(){
+  shelterMute();
   view='game';
   profilesEl.style.display='none';
   profilesEl.innerHTML='';
@@ -3070,6 +3094,7 @@ function trySaveProfile(){
   }
 }
 function renderWho(){
+  shelterMute();
   view='who';
   gameEl.style.display='none';
   pdxEl.style.display='none';
@@ -3094,6 +3119,7 @@ function renderWho(){
     profilesEl.innerHTML=h;
     document.getElementById('remove-no').addEventListener('click',()=>{pendingDelete=null;whoMode='list';renderWho();});
     document.getElementById('remove-yes').addEventListener('click',()=>deleteProfile(pendingDelete));
+    dockMute();
     return;
   }
   if(whoMode==='create'||whoMode==='edit'){
@@ -3152,6 +3178,7 @@ function renderWho(){
     document.getElementById('profile-save').addEventListener('click',trySaveProfile);
     const rm=document.getElementById('edit-remove');
     if(rm&&editKid)rm.addEventListener('click',()=>{pendingDelete=editKid.id;whoMode='confirm';renderWho();});
+    dockMute();
     return;
   }
   const back=activeKid()?bigBackHTML('who-back','Back to the game'):'';
@@ -3193,6 +3220,7 @@ function renderWho(){
     renderWho();
     histPush('who-form');
   }));
+  dockMute();
 }
 function subjectSnap(data,sub){
   const s=(data.stats||{})[sub]||{};
@@ -3401,6 +3429,7 @@ function openParent(){
   histPush('parent');
 }
 function renderParent(){
+  shelterMute();
   view='parent';
   gameEl.style.display='none';
   pdxEl.style.display='none';
@@ -3422,6 +3451,7 @@ function renderParent(){
     wireParentPad();
     document.getElementById('parent-go').addEventListener('click',submitParentQuiz);
     document.getElementById('parent-back').addEventListener('click',closeParent);
+    dockMute();
     return;
   }
   const timerOn=gymTimerEnabled();
@@ -3439,6 +3469,7 @@ function renderParent(){
   document.getElementById('parent-back').addEventListener('click',closeParent);
   const timerBtn=document.getElementById('gym-timer-toggle');
   if(timerBtn)timerBtn.addEventListener('click',()=>{setGymTimerEnabled(!gymTimerEnabled());renderParent();});
+  dockMute();
 }
 
 let profiles={activeId:null,kids:[]};
@@ -4101,8 +4132,12 @@ function answerLiveText(){
     return `✗ Not quite. It got away! The answer was ${ans}`;
   }
   const ok=!!st.cor;
-  let text=ok?'✓ Correct!':'✗ Not quite';
-  if(ok&&st.lastXp>0)text+=` +${st.lastXp} XP`;
+  // The try number changes on every miss. The same "Not quite" twice in a
+  // row would not be spoken again, because this one region only announces
+  // when its text actually changes.
+  if(!ok)return `✗ Not quite (try ${st.tries})`;
+  let text='✓ Correct!';
+  if(st.lastXp>0)text+=` +${st.lastXp} XP`;
   return text;
 }
 function syncAnswerLive(){
@@ -4223,7 +4258,52 @@ function wireNameAsk(root){
   if(nameIn)nameIn.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();saveAskedName();}});
 }
 
+// The sound button is one element for the whole app. Pages replace their
+// HTML, so it has to step out first or that replacement would delete it.
+function shelterMute(){
+  const mute=document.getElementById('mute-btn');
+  const park=document.querySelector('.wrap');
+  if(!mute||!park||mute.parentElement===park)return;
+  park.insertBefore(mute,park.firstChild);
+}
+// Park it in the header row. On the short Parents gate the header is hidden
+// so the pad can fit, and the button sits beside Back instead of on top of it.
+function dockMute(){
+  const mute=document.getElementById('mute-btn');
+  if(!mute)return;
+  const page=[gameEl,pdxEl,profilesEl,parentEl].find(el=>el&&getComputedStyle(el).display!=='none');
+  if(!page){shelterMute();return;}
+  const hdr=[...page.querySelectorAll('.hdr')].find(el=>{
+    if(getComputedStyle(el).display==='none')return false;
+    const r=el.getBoundingClientRect();
+    return r.width>0&&r.height>0;
+  });
+  if(hdr){
+    let slot=hdr.querySelector('.hdr-right');
+    if(!slot){
+      slot=document.createElement('span');
+      slot.className='hdr-right';
+      hdr.appendChild(slot);
+    }
+    if(mute.parentElement!==slot)slot.appendChild(mute);
+    return;
+  }
+  const back=page.querySelector('.big-back');
+  if(back){
+    let row=back.parentElement&&back.parentElement.classList.contains('back-row')?back.parentElement:null;
+    if(!row){
+      row=document.createElement('div');
+      row.className='back-row';
+      back.replaceWith(row);
+      row.appendChild(back);
+    }
+    if(mute.parentElement!==row)row.appendChild(mute);
+    return;
+  }
+  shelterMute();
+}
 function render(){
+  shelterMute();
   syncAnswerLive();
   if(view==='who'){renderWho();return;}
   if(view==='parent'){renderParent();return;}
@@ -4256,6 +4336,7 @@ function render(){
     const pr=document.getElementById('pick-random');if(pr)pr.addEventListener('click',pickRandomStarter);
     const whoEarly=gameEl.querySelector('#who-btn');if(whoEarly)whoEarly.addEventListener('click',openProfiles);
     wireNameAsk(gameEl);
+    dockMute();
     return;
   }
 
@@ -4448,6 +4529,7 @@ function render(){
   armGymTimer();
   syncAnswerLive();
   if(view==='pdx')renderPokedex();
+  dockMute();
 }
 
 // A shiny slot is rendered only once it has actually been caught. Carrying 237
@@ -4462,6 +4544,7 @@ function pdxEntryHTML(pi,shiny){
 }
 
 function renderPokedex(){
+  shelterMute();
   let h=`<div class="hdr">${whoButtonHTML('who-btn-pdx')}<span class="app-name">Pokédex</span><button class="reset-btn" id="reset-btn"><span class="reset-fill" id="reset-fill"></span><span class="reset-lbl" id="reset-lbl">Hold to reset this trainer</span></button></div>`;
   const bits=[];
   SUBS.forEach(sub=>(st.badges[sub]||[]).forEach(t=>bits.push(badgeHTML(sub,t,false))));
@@ -4490,6 +4573,7 @@ function renderPokedex(){
   if(swb)swb.addEventListener('click',()=>{view='game';showGameChrome();openSwitchPicker();});
   const candy=pdxEl.querySelector('#candy-btn');
   if(candy)candy.addEventListener('click',useCandy);
+  dockMute();
 }
 
 // Held rather than tapped so a stray finger can't wipe the Pokedex.
@@ -4527,10 +4611,12 @@ function wireReset(){
 }
 
 function switchView(v){
+  shelterMute();
   if(v!=='game'){pauseGymTimer();hideMoments();}
   view=v;
   if(v==='game'){
     showGameChrome();
+    dockMute();
     armGymTimer();
     return;
   }

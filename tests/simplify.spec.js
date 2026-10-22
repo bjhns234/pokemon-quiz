@@ -356,7 +356,7 @@ test('the announcement is one place that stays put when the answer changes',asyn
   expect(after.same).toBe(true);
   expect(after.text).toContain('Not quite');
   expect(after.lives).toBe(1);
-  await expect(page.locator('#who-btn')).toContainText('Add your name');
+  await expect(page.locator('#who-btn')).toContainText('Your name?');
 });
 
 test('the XP just earned is written on the answer line',async({page})=>{
