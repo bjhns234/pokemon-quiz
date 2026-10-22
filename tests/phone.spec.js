@@ -186,6 +186,8 @@ test('Switch Pokémon stays on the Pokédex, and the picker stays easy to read',
     for(const font of fonts){
       expect(font,`picker name at ${size.width}x${size.height}`).toBeGreaterThanOrEqual(14);
     }
+    const outNow=await page.locator('.switch-opt-out').evaluate(el=>parseFloat(getComputedStyle(el).fontSize));
+    expect(outNow,`OUT NOW at ${size.width}x${size.height}`).toBeGreaterThanOrEqual(14);
   }
 });
 
@@ -231,6 +233,8 @@ test('tapping the Pokémon on the Game tab opens the picker',async({page})=>{
   await expect(strip).toBeVisible();
   await expect(strip).toHaveAttribute('aria-label','Switch Pokémon');
   await expect(strip.locator('.switch-mark')).toBeVisible();
+  const mark=await strip.locator('.switch-mark').evaluate(el=>parseFloat(getComputedStyle(el).fontSize));
+  expect(mark).toBeGreaterThanOrEqual(14);
   await expect(page.locator('#game #switch-btn')).toHaveCount(0);
   strip.focus();
   const ring=await strip.evaluate(el=>{
@@ -243,6 +247,18 @@ test('tapping the Pokémon on the Game tab opens the picker',async({page})=>{
     await page.setViewportSize(size);
     await toTop(page);
     await expectSwitchClear(page,size);
+    const corner=await strip.locator('.switch-mark').evaluate(el=>{
+      const m=el.getBoundingClientRect();
+      const img=el.parentElement.querySelector('img').getBoundingClientRect();
+      return {
+        font:parseFloat(getComputedStyle(el).fontSize),
+        leftOfCenter:m.left+m.width/2<img.left+img.width*0.55,
+        belowMiddle:m.top+m.height/2>img.top+img.height*0.45,
+      };
+    });
+    expect(corner.font,`badge text at ${size.width}x${size.height}`).toBeGreaterThanOrEqual(14);
+    expect(corner.leftOfCenter,`badge covers the face at ${size.width}x${size.height}`).toBe(true);
+    expect(corner.belowMiddle,`badge covers the face at ${size.width}x${size.height}`).toBe(true);
   }
   await page.setViewportSize({width:375,height:667});
   await page.click('#mon-switch');
@@ -330,6 +346,84 @@ test('switching from the Game tab keeps the same question',async({page})=>{
   expect(after.wrong).toEqual(before.wrong);
   expect(after.text).toBe(before.text.split(oldName).join(newName));
   await expect(page.locator('#mon-switch')).toBeVisible();
+});
+
+test('Next stays above the bar after a right answer and after a miss',async({page})=>{
+  test.setTimeout(120000);
+  await openGame(page);
+  await startGame(page,'reading');
+  async function deal(two){
+    await state(page,two=>{
+      if(two){
+        if(st.team.length<2)st.team.push({pi:LINES[1][0],level:5,xp:0,shiny:false});
+      }else{
+        st.team=st.team.slice(0,1);
+        st.activeIdx=0;
+      }
+      st.pendingEvo=null;
+      st.phase='play';st.subject='reading';
+      st.q=serveQuestion('reading',1,0,questionPname());
+      st.tries=0;st.cor=false;st.wrong=[];st.helped=false;st.armAt=0;st.wildEscape=false;st.draft='';
+      render();
+    },two);
+  }
+  async function expectNextClear(size,label){
+    await toTop(page);
+    const gap=await page.evaluate(()=>{
+      const nxt=document.getElementById('nxt').getBoundingClientRect();
+      const nav=document.getElementById('bottom-nav').getBoundingClientRect();
+      return {below:nxt.bottom-nav.top,scroll:document.getElementById('app-main').scrollTop};
+    });
+    expect(gap.scroll,`${label} scrolled at ${size.width}x${size.height}`).toBe(0);
+    expect(gap.below,`${label} Next is under the bar at ${size.width}x${size.height}`).toBeLessThanOrEqual(0.5);
+  }
+  for(const size of SIZES){
+    await page.setViewportSize(size);
+    for(const two of [false,true]){
+      const who=two?'2 Pokémon':'1 Pokémon';
+      await deal(two);
+      await state(page,()=>{st.armAt=0;handleAnswer(st.q.correctIndex);});
+      await expect(page.locator('#nxt')).toBeVisible();
+      await expectNextClear(size,`${who}, correct`);
+      await deal(two);
+      await state(page,()=>{
+        st.armAt=0;
+        const miss=st.q.answers.findIndex((_,j)=>j!==st.q.correctIndex);
+        handleAnswer(miss);
+        st.armAt=0;
+        handleAnswer(st.q.correctIndex);
+      });
+      await expect(page.locator('#nxt')).toBeVisible();
+      await expectNextClear(size,`${who}, after a miss`);
+    }
+  }
+});
+
+test('the Pokédex top row stays on one line on a narrow phone',async({page})=>{
+  await openGame(page);
+  await startGame(page,'reading');
+  await page.click('#nav-pdx');
+  await expect(page.locator('#pokedex-page .hdr')).toBeVisible();
+  for(const width of [320,375]){
+    await page.setViewportSize({width,height:568});
+    await toTop(page);
+    const row=await page.evaluate(()=>{
+      const hdr=document.querySelector('#pokedex-page .hdr');
+      const bits=[...hdr.children].filter(el=>el.getBoundingClientRect().height>2);
+      const tops=bits.map(el=>el.getBoundingClientRect().top);
+      const bottoms=bits.map(el=>el.getBoundingClientRect().bottom);
+      return {oneRow:Math.max(...tops)<Math.min(...bottoms),height:hdr.getBoundingClientRect().height};
+    });
+    expect(row.oneRow,`Pokédex header wraps at ${width}px`).toBe(true);
+    expect(row.height,`Pokédex header height at ${width}px`).toBeLessThan(60);
+    const reset=await page.locator('#reset-btn').evaluate(el=>({
+      text:el.innerText.replace(/\s+/g,' ').trim(),
+      sw:el.scrollWidth,
+      cw:el.clientWidth,
+    }));
+    expect(reset.text,`reset label at ${width}px`).toBe('Hold to reset');
+    expect(reset.sw,`reset label clipped at ${width}px`).toBeLessThanOrEqual(reset.cw+1);
+  }
 });
 
 test('counting captions stay 14px on a short phone',async({page})=>{

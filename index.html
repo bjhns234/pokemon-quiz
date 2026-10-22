@@ -44,8 +44,10 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;height:10
 button.mon-strip{width:100%;border:none;font-family:inherit;color:inherit;cursor:pointer;min-width:44px;min-height:44px}
 button.mon-strip:focus{outline:3px solid #1D4ED8;outline-offset:2px}
 .mon-strip .psvg img{width:96px;height:96px}
-/* The only hint that this picture opens the picker. It stays off unless a switch is allowed. */
-.switch-mark{position:absolute;right:0;bottom:0;width:16px;height:16px;border-radius:50%;background:#fff;border:1.5px solid #E5E7EB;font-size:10px;line-height:1;display:flex;align-items:center;justify-content:center;pointer-events:none}
+/* The only hint that this picture opens the picker. It stays off unless a switch is allowed.
+   Parked on the lower-left corner, mostly off the picture, so the face stays clear.
+   The mark itself stays at least 14px. */
+.switch-mark{position:absolute;left:-4px;bottom:-4px;width:28px;height:28px;border-radius:50%;background:#fff;border:1.5px solid #E5E7EB;font-size:14px;line-height:1;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:2}
 .mon-meta{flex:1 1 auto;min-width:0}
 .mon-strip .pname{font-size:22px;line-height:1.2}
 .mon-strip .xp-track{height:8px;margin-top:8px}
@@ -187,6 +189,7 @@ button.mon-strip:focus{outline:3px solid #1D4ED8;outline-offset:2px}
 .reset-btn{position:relative;overflow:hidden;border:1px solid #D1D5DB;background:#fff;color:#374151;font-size:11px;font-weight:700;padding:5px 10px;border-radius:8px;cursor:pointer;touch-action:none;user-select:none;-webkit-user-select:none}
 .reset-fill{position:absolute;left:0;top:0;bottom:0;width:0;background:#FECACA}
 .reset-lbl{position:relative}
+.reset-short{display:none}
 .starter-card{background:#fff;border-radius:16px;padding:16px 14px 20px;margin-bottom:12px;box-shadow:0 2px 8px rgba(0,0,0,0.06)}
 .gen-section{margin-bottom:14px}
 .gen-label{font-size:14px;font-weight:700;color:#4B5563;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:6px;text-align:left}
@@ -248,7 +251,7 @@ button.mon-strip:focus{outline:3px solid #1D4ED8;outline-offset:2px}
 .switch-opt-lvl{font-size:14px;font-weight:700;color:#374151}
 .switch-opt.current{border-color:#FF5722;background:#FFF3E0;cursor:default}
 .switch-opt.current:hover{background:#FFF3E0}
-.switch-opt-out{position:absolute;top:-7px;left:50%;transform:translateX(-50%);background:#FF5722;color:#fff;font-size:9px;font-weight:800;letter-spacing:0.05em;padding:2px 8px;border-radius:8px;white-space:nowrap}
+.switch-opt-out{position:absolute;top:-7px;left:50%;transform:translateX(-50%);background:#FF5722;color:#fff;font-size:14px;font-weight:800;letter-spacing:0.05em;padding:2px 8px;border-radius:8px;white-space:nowrap}
 .switch-opt.shiny{border-color:#F59E0B;background:#FFFBEB}
 .switch-opt.shiny:hover{background:#FEF3C7}
 .switch-opt-star{position:absolute;top:5px;right:6px;font-size:12px;line-height:1;pointer-events:none;filter:drop-shadow(0 1px 1px rgba(0,0,0,0.2))}
@@ -633,8 +636,11 @@ button.mon-strip:focus{outline:3px solid #1D4ED8;outline-offset:2px}
   .q-head{display:none}
   .card{padding:2px 8px;margin-bottom:0}
   .qtext{margin-bottom:0;font-size:18px;line-height:1.2}
-  .mon-strip{gap:6px;padding:1px 8px}
+  .mon-strip{align-items:flex-start;gap:6px;padding:1px 8px 0;margin-bottom:6px}
   .psvg img,.mon-strip .psvg img{width:28px;height:28px}
+  /* The picture is only 28px here. A 14px mark cannot sit on that face,
+     so it hangs off the lower-left corner, in the gap above the question. */
+  .switch-mark{left:-18px;bottom:-20px;width:24px;height:24px}
   .pad-read{min-height:18px;font-size:14px;line-height:1;margin-bottom:0}
   .pad-wrap{margin-bottom:0}
   /* Two rows, not four. Keys stay 44px tall, and Ask for help still sits
@@ -644,9 +650,12 @@ button.mon-strip:focus{outline:3px solid #1D4ED8;outline-offset:2px}
   #parent-check .numpad{grid-template-columns:repeat(3,1fr)}
   .pad-key,.pad-check{min-height:44px;font-size:16px}
   .help-btn{padding:4px 8px;min-height:44px;font-size:15px}
-  .ans-grid{gap:4px;margin-bottom:0}
-  .ans-btn{padding:4px 4px;min-height:44px;font-size:18px}
+  /* One row. Two rows of 44px answers push Next under the Game bar
+     once the Pokémon strip is 44px tall as well. */
+  .ans-grid{grid-template-columns:repeat(4,1fr);gap:4px;margin-bottom:0}
+  .ans-btn{padding:4px 4px;min-height:44px;font-size:16px;line-height:1.15}
   .verdict{font-size:16px;padding:2px 6px;margin:2px 0}
+  .result-msg{padding:2px 6px;margin:0;font-size:14px;line-height:1.2}
 }
 /* An old save asks for a name. Phones and short screens drop the picture
    so the question stays up. A tablet or a laptop keeps the picture, the
@@ -806,6 +815,17 @@ button.mon-strip:focus{outline:3px solid #1D4ED8;outline-offset:2px}
   .who-btn img{width:22px;height:22px}
   .subj-btn{padding-left:4px;padding-right:4px;gap:3px}
   .mute-btn{padding-left:2px;padding-right:2px}
+  /* Trainer, Pokédex, Reset, and sound stay on one line.
+     The long reset sentence becomes "Hold to reset" so every word is visible.
+     A long trainer name gives up space before that row wraps. */
+  #pokedex-page .hdr{flex-wrap:nowrap;align-items:center}
+  #pokedex-page .who-btn{flex:1 1 auto;min-width:44px;max-width:none}
+  #pokedex-page .who-btn span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  #pokedex-page .app-name{flex:0 0 auto}
+  #pokedex-page .reset-btn{flex:0 0 auto;padding:4px 4px}
+  #pokedex-page .reset-long{display:none}
+  #pokedex-page .reset-short{display:inline}
+  #pokedex-page .hdr-right{flex:0 0 auto}
 }
 </style>
 </head>
@@ -4554,7 +4574,7 @@ function pdxEntryHTML(pi,shiny){
 
 function renderPokedex(){
   shelterMute();
-  let h=`<div class="hdr">${whoButtonHTML('who-btn-pdx')}<span class="app-name">Pokédex</span><button class="reset-btn" id="reset-btn"><span class="reset-fill" id="reset-fill"></span><span class="reset-lbl" id="reset-lbl">Hold to reset this trainer</span></button></div>`;
+  let h=`<div class="hdr">${whoButtonHTML('who-btn-pdx')}<span class="app-name">Pokédex</span><button class="reset-btn" id="reset-btn"><span class="reset-fill" id="reset-fill"></span><span class="reset-lbl" id="reset-lbl"><span class="reset-long">Hold to reset this trainer</span><span class="reset-short">Hold to reset</span></span></button></div>`;
   const bits=[];
   SUBS.forEach(sub=>(st.badges[sub]||[]).forEach(t=>bits.push(badgeHTML(sub,t,false))));
   h+=`<div class="card pdx-badges"><div class="pdx-badge-hd">Gym badges</div>${bits.length?`<div class="badge-row">${bits.join('')}</div>`:'<div class="gym-wait">Win a Gym battle to earn your first badge.</div>'}</div>`;
@@ -4593,11 +4613,18 @@ function wireReset(){
   const lbl=document.getElementById('reset-lbl');
   const HOLD=2000;
   let timer=null,raf=null,t0=0;
+  function paintReset(text){
+    const long=lbl.querySelector('.reset-long');
+    const short=lbl.querySelector('.reset-short');
+    if(!long||!short){lbl.textContent=text;return;}
+    long.textContent=text;
+    short.textContent=text==='Hold to reset this trainer'?'Hold to reset':text;
+  }
   function stop(){
     if(timer){clearTimeout(timer);timer=null;}
     if(raf){cancelAnimationFrame(raf);raf=null;}
     fill.style.width='0%';
-    lbl.textContent='Hold to reset this trainer';
+    paintReset('Hold to reset this trainer');
   }
   function tick(){
     const p=Math.min(1,(Date.now()-t0)/HOLD);
@@ -4608,7 +4635,7 @@ function wireReset(){
     e.preventDefault();
     if(timer)return;
     t0=Date.now();
-    lbl.textContent='Keep holding…';
+    paintReset('Keep holding…');
     raf=requestAnimationFrame(tick);
     timer=setTimeout(()=>{
       stop();
