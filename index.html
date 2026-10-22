@@ -650,10 +650,10 @@ button.mon-strip:focus{outline:3px solid #1D4ED8;outline-offset:2px}
   #parent-check .numpad{grid-template-columns:repeat(3,1fr)}
   .pad-key,.pad-check{min-height:44px;font-size:16px}
   .help-btn{padding:4px 8px;min-height:44px;font-size:15px}
-  /* One row. Two rows of 44px answers push Next under the Game bar
-     once the Pokémon strip is 44px tall as well. */
-  .ans-grid{grid-template-columns:repeat(4,1fr);gap:4px;margin-bottom:0}
-  .ans-btn{padding:4px 4px;min-height:44px;font-size:16px;line-height:1.15}
+  /* Two by two, same as every other size. Four across squeezed long
+     answers into a few words per line. Next scrolls into view instead. */
+  .ans-grid{gap:4px;margin-bottom:0}
+  .ans-btn{padding:4px 6px;min-height:44px;font-size:18px;line-height:1.25}
   .verdict{font-size:16px;padding:2px 6px;margin:2px 0}
   .result-msg{padding:2px 6px;margin:0;font-size:14px;line-height:1.2}
 }
@@ -5630,6 +5630,26 @@ function commitAttempt(ok,choice,nextDraft){
   if(firstTry&&st.phase==='play')tickGymCool();
   save();
   render();
+  // A long answer can leave Next, or the hint, under the Game bar.
+  // Bring that one piece into view. Skip it when it is already on screen,
+  // and don't move focus — the spoken announcement lives outside this scroller.
+  revealAnswer();
+}
+function revealAnswer(){
+  const main=document.getElementById('app-main');
+  const nav=document.getElementById('bottom-nav');
+  if(!main||!nav)return;
+  const nxt=document.getElementById('nxt');
+  const hint=document.querySelector('#game .qcard .result-msg, #game .qcard .gym-hint');
+  const target=nxt||hint;
+  if(!target)return;
+  const tr=target.getBoundingClientRect();
+  if(tr.width<1||tr.height<1)return;
+  const nr=nav.getBoundingClientRect();
+  const mr=main.getBoundingClientRect();
+  if(tr.top>=mr.top-0.5&&tr.bottom<=nr.top+0.5)return;
+  const reduce=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  target.scrollIntoView({block:'nearest',inline:'nearest',behavior:reduce?'auto':'smooth'});
 }
 
 document.getElementById("nav-game").addEventListener("click",()=>{

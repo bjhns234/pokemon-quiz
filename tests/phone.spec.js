@@ -348,12 +348,34 @@ test('switching from the Game tab keeps the same question',async({page})=>{
   await expect(page.locator('#mon-switch')).toBeVisible();
 });
 
-test('Next stays above the bar after a right answer and after a miss',async({page})=>{
+test('a long answer scrolls Next above the bar',async({page})=>{
   test.setTimeout(120000);
   await openGame(page);
   await startGame(page,'reading');
-  async function deal(two){
-    await state(page,two=>{
+  await page.setViewportSize({width:568,height:320});
+  const cases=await state(page,()=>{
+    const named=[
+      {sub:'science',lv:3,idx:26},
+      {sub:'science',lv:3,idx:33},
+      {sub:'science',lv:3,idx:42},
+      {sub:'reading',lv:3,idx:12},
+      {sub:'reading',lv:3,idx:41},
+    ];
+    let longest=null;
+    for(const sub of Object.keys(QB)){
+      for(const lv of Object.keys(QB[sub])){
+        QB[sub][lv].forEach((q,idx)=>{
+          const n=String(q[0]).length;
+          if(!longest||n>longest.n)longest={sub,lv:+lv,idx,n};
+        });
+      }
+    }
+    const all=named.slice();
+    if(!named.some(c=>c.sub===longest.sub&&c.lv===longest.lv&&c.idx===longest.idx))all.push(longest);
+    return all;
+  });
+  async function deal(two,spec){
+    await state(page,({two,spec})=>{
       if(two){
         if(st.team.length<2)st.team.push({pi:LINES[1][0],level:5,xp:0,shiny:false});
       }else{
@@ -361,31 +383,44 @@ test('Next stays above the bar after a right answer and after a miss',async({pag
         st.activeIdx=0;
       }
       st.pendingEvo=null;
-      st.phase='play';st.subject='reading';
-      st.q=serveQuestion('reading',1,0,questionPname());
+      st.phase='play';st.subject=spec.sub;
+      st.q=serveQuestion(spec.sub,spec.lv,spec.idx,questionPname());
       st.tries=0;st.cor=false;st.wrong=[];st.helped=false;st.armAt=0;st.wildEscape=false;st.draft='';
+      st.lastXp=0;st.streakMsg='';st.rematchMsg='';
       render();
-    },two);
+      document.getElementById('app-main').scrollTop=0;
+    },{two,spec});
   }
-  async function expectNextClear(size,label){
-    await toTop(page);
-    const gap=await page.evaluate(()=>{
-      const nxt=document.getElementById('nxt').getBoundingClientRect();
-      const nav=document.getElementById('bottom-nav').getBoundingClientRect();
-      return {below:nxt.bottom-nav.top,scroll:document.getElementById('app-main').scrollTop};
-    });
-    expect(gap.scroll,`${label} scrolled at ${size.width}x${size.height}`).toBe(0);
-    expect(gap.below,`${label} Next is under the bar at ${size.width}x${size.height}`).toBeLessThanOrEqual(0.5);
+  async function nextInView(label){
+    await expect.poll(async()=>page.evaluate(()=>{
+      const nxt=document.getElementById('nxt');
+      const nav=document.getElementById('bottom-nav');
+      const main=document.getElementById('app-main');
+      if(!nxt)return false;
+      const t=nxt.getBoundingClientRect();
+      const n=nav.getBoundingClientRect();
+      const m=main.getBoundingClientRect();
+      return t.height>=44&&t.top>=m.top-0.5&&t.bottom<=n.top+0.5;
+    }),{timeout:4000,message:label}).toBe(true);
   }
-  for(const size of SIZES){
-    await page.setViewportSize(size);
-    for(const two of [false,true]){
-      const who=two?'2 Pokémon':'1 Pokémon';
-      await deal(two);
+  await deal(false,cases[0]);
+  const look=await page.evaluate(()=>{
+    const btn=document.querySelector('.ans-btn');
+    const cols=getComputedStyle(document.querySelector('.ans-grid')).gridTemplateColumns.split(' ').filter(Boolean).length;
+    return {font:parseFloat(getComputedStyle(btn).fontSize),h:btn.getBoundingClientRect().height,cols};
+  });
+  expect(look.font).toBeGreaterThanOrEqual(18);
+  expect(look.h).toBeGreaterThanOrEqual(44);
+  expect(look.cols).toBe(2);
+  for(const two of [false,true]){
+    for(const spec of cases){
+      const who=`${two?'2 Pokémon':'1 Pokémon'} ${spec.sub} ${spec.lv} #${spec.idx}`;
+      await deal(two,spec);
       await state(page,()=>{st.armAt=0;handleAnswer(st.q.correctIndex);});
-      await expect(page.locator('#nxt')).toBeVisible();
-      await expectNextClear(size,`${who}, correct`);
-      await deal(two);
+      await nextInView(`${who}, correct`);
+      await expect(page.locator('#answer-live')).toContainText('Correct');
+      expect(await page.evaluate(()=>document.activeElement&&document.activeElement.id)).not.toBe('nxt');
+      await deal(two,spec);
       await state(page,()=>{
         st.armAt=0;
         const miss=st.q.answers.findIndex((_,j)=>j!==st.q.correctIndex);
@@ -393,10 +428,81 @@ test('Next stays above the bar after a right answer and after a miss',async({pag
         st.armAt=0;
         handleAnswer(st.q.correctIndex);
       });
-      await expect(page.locator('#nxt')).toBeVisible();
-      await expectNextClear(size,`${who}, after a miss`);
+      await nextInView(`${who}, after a miss`);
+      await expect(page.locator('#answer-live')).toContainText('Correct');
+      expect(await page.evaluate(()=>document.activeElement&&document.activeElement.id)).not.toBe('nxt');
     }
   }
+});
+
+test('Next does not scroll when it already fits',async({page})=>{
+  await openGame(page);
+  await startGame(page,'reading');
+  await page.setViewportSize({width:568,height:320});
+  await state(page,()=>{
+    st.team=st.team.slice(0,1);
+    st.activeIdx=0;
+    st.pendingEvo=null;
+    st.phase='play';st.subject='reading';
+    st.q=serveQuestion('reading',1,0,questionPname());
+    st.tries=0;st.cor=false;st.wrong=[];st.helped=false;st.armAt=0;st.wildEscape=false;st.draft='';
+    render();
+    document.getElementById('app-main').scrollTop=0;
+  });
+  const moved=await state(page,()=>{
+    const main=document.getElementById('app-main');
+    const before=main.scrollTop;
+    st.armAt=0;
+    handleAnswer(st.q.correctIndex);
+    return {before,after:main.scrollTop};
+  });
+  await page.evaluate(()=>new Promise(r=>setTimeout(r,500)));
+  const after=await page.evaluate(()=>document.getElementById('app-main').scrollTop);
+  expect(moved.before).toBe(0);
+  expect(moved.after).toBe(0);
+  expect(after).toBe(0);
+  const clear=await page.evaluate(()=>{
+    const t=document.getElementById('nxt').getBoundingClientRect();
+    const n=document.getElementById('bottom-nav').getBoundingClientRect();
+    return t.bottom<=n.top+0.5;
+  });
+  expect(clear).toBe(true);
+});
+
+test('reduced motion brings Next into view without a smooth scroll',async({page})=>{
+  await page.emulateMedia({reducedMotion:'reduce'});
+  await openGame(page);
+  await startGame(page,'science');
+  await page.setViewportSize({width:568,height:320});
+  await state(page,()=>{
+    if(st.team.length<2)st.team.push({pi:LINES[1][0],level:5,xp:0,shiny:false});
+    st.pendingEvo=null;
+    st.phase='play';st.subject='science';
+    st.q=serveQuestion('science',3,42,questionPname());
+    st.tries=0;st.cor=false;st.wrong=[];st.helped=false;st.armAt=0;st.wildEscape=false;st.draft='';
+    render();
+    document.getElementById('app-main').scrollTop=0;
+  });
+  const jumped=await state(page,()=>{
+    const main=document.getElementById('app-main');
+    const before=main.scrollTop;
+    st.armAt=0;
+    handleAnswer(st.q.correctIndex);
+    const nxt=document.getElementById('nxt').getBoundingClientRect();
+    const nav=document.getElementById('bottom-nav').getBoundingClientRect();
+    const live=document.getElementById('answer-live').textContent;
+    return {
+      before,
+      after:main.scrollTop,
+      visible:nxt.bottom<=nav.top+0.5&&nxt.top>=0,
+      focus:document.activeElement&&document.activeElement.id,
+      live,
+    };
+  });
+  expect(jumped.after).toBeGreaterThan(jumped.before);
+  expect(jumped.visible).toBe(true);
+  expect(jumped.focus).not.toBe('nxt');
+  expect(jumped.live).toContain('Correct');
 });
 
 test('the Pokédex top row stays on one line on a narrow phone',async({page})=>{
