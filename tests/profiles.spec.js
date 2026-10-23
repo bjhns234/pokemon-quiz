@@ -317,6 +317,8 @@ test('the parent page stays behind a math check and shows each child apart',asyn
   await expect(samCard).toContainText('Charge Badge');
   await expect(samCard).toContainText('3 right out of 5');
   await expect(samCard).not.toContainText('5 right out of 7');
+  await expect(samCard.locator('.parent-focus')).toHaveCount(1);
+  await expect(samCard.locator('.parent-miss')).toHaveCount(0);
   await expect(samCard).not.toContainText('What is 8 + 7?');
   await expect(samCard).not.toContainText('Rhyming');
   await expect(page.locator('#parent-back')).toContainText("Back to who's playing");

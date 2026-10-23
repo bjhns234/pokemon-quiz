@@ -1365,8 +1365,9 @@ function subjectChoices(){
   const on=enabledSubjects();
   return on.length>1?[...on,SUBJ_MIX]:on.slice();
 }
-// A saved or requested choice that the flag turned off becomes the one
-// subject still offered (math, unless the list says otherwise).
+// Which subject to ask right now. A saved choice the flag turned off is not
+// rewritten; this only picks an enabled subject to deal (math, unless the
+// list says otherwise).
 function activeSubject(choice){
   const on=enabledSubjects();
   if(choice&&choice!==SUBJ_MIX&&on.indexOf(choice)>=0)return choice;
@@ -2428,11 +2429,12 @@ function mkState(saved){
   parkHiddenSubject(s);
   return s;
 }
-// A save can still name reading or science. The team, XP, levels, badges,
-// and streaks stay; only the battle on screen moves to a subject the flag
-// still offers, so load never waits on a question that will not be dealt.
+// A save can still name reading or science. That choice stays stored, so
+// turning the flag back on restores it. Play asks an enabled subject
+// instead. The team, XP, levels, badges, and streaks stay. A Gym or award
+// for a hidden subject is set aside so load never waits on a question
+// that will not be dealt.
 function parkHiddenSubject(s){
-  s.subject=activeSubject(s.subject);
   if(s.gym&&!subjectOn(s.gym.sub)){
     s.gym=null;
     if(s.phase==='gym')s.phase=s.team&&s.team.length?'play':'starter';
@@ -2639,9 +2641,10 @@ function parseGameSave(data){
       activeIdx,
       // Saves written before the chooser existed have no subject; falling back
       // to mix reproduces exactly how they used to behave when every subject
-      // is offered, so SAVE_V holds. A subject the flag turned off loads as
-      // the subject still on offer. The stored object is not rewritten here.
-      subject:activeSubject(SUBJ_CHOICES.includes(data.subject)?data.subject:SUBJ_MIX),
+      // is offered, so SAVE_V holds. A subject the flag turned off stays
+      // stored. Play asks an enabled subject instead, and turning the flag
+      // back on restores this choice. The stored object is not rewritten here.
+      subject:SUBJ_CHOICES.includes(data.subject)?data.subject:SUBJ_MIX,
       // Saves from before records existed have none; 0 just means "no record yet",
       // so SAVE_V holds here the same way it did for the subject chooser.
       bestStreak:Math.max(0,data.bestStreak|0),
@@ -3404,11 +3407,15 @@ function parentKidHTML(kid){
   enabledSubjects().forEach(sub=>{
     subjectSnap(data,sub).badges.forEach(t=>badges.push(badgeName(sub,t)));
   });
-  h+=`<p>Badges: ${escapeHtml(badges.length?badges.join(', '):'No badges yet')}</p>`;
+  // Hidden-subject badges stay out of this list. With nothing visible, skip
+  // the line entirely: "No badges yet" is wrong when a hidden badge exists.
+  // An orange box with no misses is skipped in that same case. A real miss
+  // still gets the box, and a visible badge keeps the old empty box.
+  if(badges.length)h+=`<p>Badges: ${escapeHtml(badges.join(', '))}</p>`;
   const misses=missList(practice);
   const overall=recentBits(practice,null);
   const totalAtt=enabledSubjects().reduce((n,sub)=>n+subjectSnap(data,sub).att,0);
-  if(misses.length||overall||totalAtt>0){
+  if(misses.length||(badges.length&&(overall||totalAtt>0))){
     h+=`<div class="parent-focus">`;
     if(misses.length){
       misses.forEach(m=>{
@@ -4405,7 +4412,6 @@ function render(){
   if(st.phase==='subject'&&!multiSubject()){
     st.phase=st.subjectReturn||(st.team.length?'play':'starter');
     st.subjectReturn=null;
-    st.subject=activeSubject(st.subject);
     if((st.phase==='play'||st.phase==='wild')&&!st.q){loadQuestion();return;}
   }
   const showSubj=multiSubject()&&(st.phase==='play'||st.phase==='wild');
@@ -4588,7 +4594,7 @@ function render(){
       prizeBit=`${partnerBit}<div class="award-prize">+${a.xp} XP</div><div class="award-prize">Rare Candy ×${a.candy}</div><div class="award-prize">Great Ball ×${a.great} — it helps on your next wild Pokémon.</div>`;
     }
     const grew=a.grew?`<div class="award-prize">${PKM[activePi()].n} grew stronger!</div>`:'';
-    const waiting=multiSubject()?`New ${SNAME[a.sub]} questions are waiting.`:'New questions are waiting.';
+    const waiting=multiSubject()?`New ${SNAME[a.sub]} questions are waiting.`:'New questions unlocked!';
     h+=`<div class="card award-card"><div class="award-scroll"><div class="award-kicker">Gym prize</div><div class="award-pop">${badgeHTML(a.sub,a.tier,true)}</div><div class="award-title">You earned the ${badgeName(a.sub,a.tier)}!</div><div class="award-sub">${waiting}</div>${prizeBit}${grew}</div><button class="award-go" id="award-go">Yay!</button></div>`;
   }
 
@@ -4650,7 +4656,7 @@ function renderPokedex(){
   let h=`<div class="hdr">${whoButtonHTML('who-btn-pdx')}<span class="app-name">Pokédex</span><button class="reset-btn" id="reset-btn"><span class="reset-fill" id="reset-fill"></span><span class="reset-lbl" id="reset-lbl"><span class="reset-long">Hold to reset this trainer</span><span class="reset-short">Hold to reset</span></span></button></div>`;
   const bits=[];
   enabledSubjects().forEach(sub=>(st.badges[sub]||[]).forEach(t=>bits.push(badgeHTML(sub,t,false))));
-  h+=`<div class="card pdx-badges"><div class="pdx-badge-hd">Gym badges</div>${bits.length?`<div class="badge-row">${bits.join('')}</div>`:'<div class="gym-wait">Win a Gym battle to earn your first badge.</div>'}</div>`;
+  h+=`<div class="card pdx-badges"><div class="pdx-badge-hd">Gym badges</div>${bits.length?`<div class="badge-row">${bits.join('')}</div>`:'<div class="gym-wait">Win a Gym battle to earn a badge!</div>'}</div>`;
   const canSwitch=canOfferSwitch();
   const switchBtn=canSwitch?`<button class="switch-btn" id="switch-btn" type="button"><span>&#128260;</span><span>Switch Pokémon</span></button>`:'';
   const candyBtn=st.items.candy>0&&!st.pendingEvo&&(st.phase==='play'||st.phase==='award')?`<button class="candy-btn" id="candy-btn" type="button">&#127853; Rare Candy · ${st.items.candy}</button>`:'';
@@ -4765,8 +4771,9 @@ function openSubjectPicker(){
 
 function chooseSubject(sub){
   if(subjectChoices().indexOf(sub)<0){
-    if(multiSubject())return;
-    sub=enabledSubjects()[0];
+    // A hidden subject is not a new pick. Leave the stored choice alone so
+    // turning the flag back on restores it. Play already asks an enabled one.
+    return;
   }
   st.subject=sub;
   st.phase=st.subjectReturn||'play';
@@ -5320,7 +5327,6 @@ function pickStarter(lineIdx,shiny){
 }
 
 function enterAfterStarter(){
-  st.subject=activeSubject(st.subject);
   if(!activeKid())ensureProfile();
   // Tests and the starter buttons both land here, sometimes while the
   // "who's playing" screen is still the one on display.
@@ -5895,7 +5901,6 @@ function applyHistory(screen,extra){
         st.phase=st.subjectReturn||'play';
         st.subjectReturn=null;
       }
-      st.subject=activeSubject(st.subject);
       showGameChrome();
       if((st.phase==='play'&&!st.q)||(st.phase==='gym'&&st.gym&&!st.q))bootInto();
       else render();

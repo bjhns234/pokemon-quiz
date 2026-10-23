@@ -140,7 +140,7 @@ test('a reading or science save loads into math with the same progress',async({p
       badges:JSON.parse(JSON.stringify(st.badges)),
       gym:st.gym,
     }));
-    expect(got.subject).toBe('math');
+    expect(got.subject).toBe(subject);
     expect(got.phase).toBe('play');
     expect(got.q).toBe('math');
     expect(got.level).toBe(12);
@@ -252,4 +252,67 @@ test('putting every subject back in the flag restores the old game',async({page}
   const card=page.locator('[data-kid-name="Trainer"]');
   await expect(card).toContainText('Rhyming');
   await expect(card).toContainText('Reading:');
+});
+
+test('a reading save stays reading after math play and returns when the flag does',async({page})=>{
+  const errors=await openGame(page,{save:progressSave('reading')});
+  expect(await state(page,()=>st.subject)).toBe('reading');
+  expect(await state(page,()=>st.q.subject)).toBe('math');
+  const kept=await state(page,()=>({level:st.team[0].level,xp:st.team[0].xp,best:st.bestStreak,badges:JSON.parse(JSON.stringify(st.badges))}));
+  await answer(page,true);
+  expect(await state(page,()=>st.subject)).toBe('reading');
+  expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('pkq-save')).kids[0].data.subject)).toBe('reading');
+  const after=await state(page,()=>({level:st.team[0].level,best:st.bestStreak,badges:JSON.parse(JSON.stringify(st.badges))}));
+  expect(after.level).toBe(kept.level);
+  expect(after.best).toBe(kept.best);
+  expect(after.badges).toEqual(kept.badges);
+  expect(kept.xp).toBe(40);
+  await enableAllSubjects(page);
+  await nextQuestion(page);
+  expect(await state(page,()=>st.subject)).toBe('reading');
+  expect(await state(page,()=>st.q.subject)).toBe('reading');
+  expect(errors).toEqual([]);
+});
+
+async function passParentGate(page){
+  const q=await page.locator('#parent-q').innerText();
+  const m=q.match(/(\d+)\s*times\s*(\d+)/i);
+  expect(m,'parent check should be a multiplication').not.toBeNull();
+  for(const d of String(Number(m[1])*Number(m[2])))await page.locator(`[data-parent-digit="${d}"]`).click();
+  await page.click('#parent-go');
+}
+
+test('empty badge copy does not say there is no badge',async({page})=>{
+  const save=progressSave('reading');
+  save.kids[0].data.stats.math={cor:4,att:5,level:1,cs:0,ws:0};
+  save.kids[0].data.stats.reading={cor:8,att:9,level:1,cs:0,ws:0};
+  save.kids[0].data.stats.science={cor:0,att:0,level:1,cs:0,ws:0};
+  save.kids[0].data.badges={math:[],reading:[1],science:[]};
+  save.kids[0].data.review=[];
+  const errors=await openGame(page,{save});
+  await page.click('#nav-pdx');
+  await expect(page.locator('.gym-wait')).toHaveText('Win a Gym battle to earn a badge!');
+  await expect(page.locator('#pokedex-page')).not.toContainText('Tale Badge');
+  await expect(page.locator('#pokedex-page')).not.toContainText('first badge');
+  await page.click('#parents-link');
+  await passParentGate(page);
+  const card=page.locator('[data-kid-name="Maya"]');
+  await expect(card).toContainText('4 right out of 5');
+  await expect(card).not.toContainText('No badges yet');
+  await expect(card).not.toContainText('Badges');
+  await expect(card).not.toContainText('Tale Badge');
+  await expect(card.locator('.parent-focus')).toHaveCount(0);
+  expect(await state(page,()=>st.badges.reading.slice())).toEqual([1]);
+  expect(errors).toEqual([]);
+});
+
+test('a gym prize says new questions are unlocked',async({page})=>{
+  await openGame(page);
+  await startGame(page);
+  await state(page,()=>{
+    st.phase='award';
+    st.award={sub:'math',tier:1,again:true};
+    render();
+  });
+  await expect(page.locator('.award-sub')).toHaveText('New questions unlocked!');
 });
