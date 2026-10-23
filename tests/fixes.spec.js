@@ -244,10 +244,9 @@ test.describe('phone and gym',()=>{
     expect(await state(page,()=>st.tries)).toBe(1);
   });
 
-  test('Parents, the subject, and the name are big enough, and the resting tab is readable',async({page})=>{
-    const subj=await page.locator('#subj-btn').boundingBox();
+  test('Parents and the name are big enough, and the resting tab is readable',async({page})=>{
+    await expect(page.locator('#subj-btn')).toHaveCount(0);
     const who=await page.locator('#who-btn').boundingBox();
-    expect(subj.height).toBeGreaterThanOrEqual(44);
     expect(who.height).toBeGreaterThanOrEqual(44);
     await page.click('#nav-pdx');
     const parents=await page.locator('#parents-link').boundingBox();
@@ -283,11 +282,7 @@ test.describe('phone and gym',()=>{
 
   test('browser Back moves inside the game and leaves only from who is playing',async({page})=>{
     const q=await state(page,()=>st.q.question);
-    await page.click('#subj-btn');
-    await expect(page.locator('body')).toContainText('Starts after this question');
-    await page.goBack();
-    expect(await state(page,()=>st.q.question)).toBe(q);
-    await expect(page.locator('#subj-btn')).toBeVisible();
+    await expect(page.locator('#subj-btn, .subj-opt')).toHaveCount(0);
 
     await page.click('#nav-pdx');
     await page.click('#parents-link');
@@ -397,7 +392,7 @@ test('an old save shows the question without scrolling on a small or sideways ph
   }
 });
 
-test('the sound button never covers the subject button',async({page})=>{
+test('the sound button never covers the trainer chip',async({page})=>{
   await openGame(page);
   await startGame(page,'math');
   const sizes=[
@@ -411,33 +406,22 @@ test('the sound button never covers the subject button',async({page})=>{
   ];
   for(const size of sizes){
     await page.setViewportSize(size);
-    for(const subject of ['math','reading','science']){
-      await state(page,sub=>{chooseSubject(sub);st.phase='play';render();},subject);
-      await page.evaluate(()=>window.scrollTo(0,0));
-      const subj=await page.locator('#subj-btn').boundingBox();
-      const mute=await page.locator('#mute-btn').boundingBox();
-      const who=await page.locator('#who-btn').boundingBox();
-      expect(subj).not.toBeNull();
-      expect(mute).not.toBeNull();
-      const gap=mute.x-(subj.x+subj.width);
-      expect(gap,`${subject} at ${size.width}x${size.height}`).toBeGreaterThanOrEqual(2);
-      const yOverlap=Math.min(mute.y+mute.height,subj.y+subj.height)-Math.max(mute.y,subj.y);
-      if(yOverlap>0) expect(gap).toBeGreaterThanOrEqual(2);
-      const whoGap=mute.x-(who.x+who.width);
-      const whoY=Math.min(mute.y+mute.height,who.y+who.height)-Math.max(mute.y,who.y);
-      if(whoY>0) expect(whoGap).toBeGreaterThanOrEqual(2);
-      const hitsSubject=await page.evaluate(({x,y})=>{
-        const el=document.elementFromPoint(x,y);
-        const target=document.getElementById('subj-btn');
-        return !!(el&&target&&(el===target||target.contains(el)));
-      },{x:subj.x+subj.width-3,y:subj.y+subj.height/2});
-      expect(hitsSubject,`${subject} ${size.width}x${size.height}`).toBe(true);
-    }
-    const subj=await page.locator('#subj-btn').boundingBox();
-    await page.mouse.click(subj.x+subj.width-3,subj.y+subj.height/2);
-    await expect(page.getByText('What do you want to practice?')).toBeVisible();
+    await page.evaluate(()=>window.scrollTo(0,0));
+    await expect(page.locator('#subj-btn, .subj-opt')).toHaveCount(0);
+    const mute=await page.locator('#mute-btn').boundingBox();
+    const who=await page.locator('#who-btn').boundingBox();
+    expect(mute).not.toBeNull();
+    expect(who).not.toBeNull();
+    const whoGap=mute.x-(who.x+who.width);
+    const whoY=Math.min(mute.y+mute.height,who.y+who.height)-Math.max(mute.y,who.y);
+    if(whoY>0) expect(whoGap,`${size.width}x${size.height}`).toBeGreaterThanOrEqual(2);
+    const hitsTrainer=await page.evaluate(({x,y})=>{
+      const el=document.elementFromPoint(x,y);
+      const target=document.getElementById('who-btn');
+      return !!(el&&target&&(el===target||target.contains(el)));
+    },{x:who.x+who.width-3,y:who.y+who.height/2});
+    expect(hitsTrainer,`${size.width}x${size.height}`).toBe(true);
     await expect(page.locator('#mute-btn')).toHaveAttribute('aria-pressed','false');
-    await state(page,()=>{st.phase='play';render();});
   }
 });
 
@@ -447,7 +431,8 @@ test('adding a trainer does not leave a second Who\'s playing in Back',async({pa
   await page.fill('#profile-name','Maya');
   await page.click('[data-avatar="001"]');
   await page.click('#profile-save');
-  await expect(page.getByText('What do you want to practice?')).toBeVisible();
+  await expect(page.locator('.qtext')).toBeVisible();
+  await expect(page.locator('#subj-btn, .subj-opt')).toHaveCount(0);
   await page.goBack();
   await expect(page.getByText("Who's playing?")).toBeVisible();
   await page.goBack();
