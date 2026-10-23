@@ -74,16 +74,16 @@ test.describe('scoring',()=>{
 });
 
 test.describe('no free skips',()=>{
-  test('changing subject keeps the open question; the new subject starts next',async({page})=>{
-    await serve(page,{sub:'reading',lv:1,idx:0});
+  test('there is no subject button, and a hidden subject cannot be dealt next',async({page})=>{
+    await expect(page.locator('#subj-btn, .subj-opt')).toHaveCount(0);
+    await serve(page,{sub:'math',lv:1,idx:0});
     const before=await q(page);
-    await page.click('#subj-btn');
-    await expect(page.locator('body')).toContainText('Starts after this question');
-    await page.click('[data-subj="math"]');
+    await state(page,()=>chooseSubject('reading'));
     expect(await q(page)).toEqual(before);
     await answer(page,true);
     await nextQuestion(page);
     expect(await state(page,()=>st.q.subject)).toBe('math');
+    expect(await state(page,()=>st.subject)).toBe('math');
   });
 
   test('switching Pokemon keeps the question and redraws it with the new name',async({page})=>{
@@ -211,12 +211,13 @@ test.describe('Rematches',()=>{
     expect(await state(page,()=>st.review[0].wins)).toBe(0);
   });
 
-  test('a single-subject choice holds back Rematches from other subjects',async({page})=>{
-    await state(page,()=>{st.subject='math';st.review=[{sub:'reading',lv:1,idx:0,wins:0,due:0}];});
+  test('a hidden-subject Rematch is never dealt, even if the save asked for mix',async({page})=>{
+    await state(page,()=>{st.subject='math';st.review=[{sub:'reading',lv:1,idx:0,wins:0,due:0},{sub:'science',lv:1,idx:0,wins:0,due:0}];});
     for(let i=0;i<5;i++){await nextQuestion(page);expect(await state(page,()=>st.q.subject)).toBe('math');}
     await state(page,()=>{st.subject=SUBJ_MIX;});
     await nextQuestion(page);
-    expect(await state(page,()=>reviewKey(st.q.tmpl))).toBe('reading/1/0');
+    expect(await state(page,()=>st.q.subject)).toBe('math');
+    expect(await state(page,()=>st.review.map(r=>r.sub).sort())).toEqual(['reading','science']);
   });
 });
 

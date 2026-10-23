@@ -268,18 +268,19 @@ test('keyboard digits, Backspace, and Enter drive the number pad',async({page})=
   await expect(page.locator('#pad-read')).toContainText('✓');
 });
 
-test('Forward after a new trainer returns to the subject chooser',async({page})=>{
+test('Forward after a new trainer returns to the question',async({page})=>{
   await openGame(page);
   await page.click('#profile-new');
   await page.fill('#profile-name','Maya');
   await page.click('[data-avatar="001"]');
   await page.click('#profile-save');
-  await expect(page.getByText('What do you want to practice?')).toBeVisible();
+  await expect(page.locator('.qtext')).toBeVisible();
+  await expect(page.locator('#subj-btn, .subj-opt')).toHaveCount(0);
   await page.goBack();
   await expect(page.getByText("Who's playing?")).toBeVisible();
   await page.goForward();
-  await expect(page.getByText('What do you want to practice?')).toBeVisible();
-  await expect(page.locator('.qtext')).toHaveCount(0);
+  await expect(page.locator('.qtext')).toBeVisible();
+  await expect(page.locator('.subj-opt')).toHaveCount(0);
   await page.goBack();
   await expect(page.getByText("Who's playing?")).toBeVisible();
   await page.goBack();
@@ -326,18 +327,16 @@ async function showGymEnding(page,kind){
   },kind);
 }
 
-test('short landscape keeps subjects, gym endings, and the trainer form tappable',async({page})=>{
+test('short landscape keeps the question, gym endings, and the trainer form tappable',async({page})=>{
   test.setTimeout(90000);
   await openGame(page);
   await page.setViewportSize({width:568,height:320});
   await page.evaluate(()=>pickStarter(0,false));
-  await expect(page.getByText('What do you want to practice?')).toBeVisible();
-  const subjects=['math','reading','science','mix'];
-  expect(await page.locator('.subj-opt').count()).toBe(4);
-  for(const sub of subjects)await centerHits(page,`.subj-opt[data-subj="${sub}"]`);
-  const mix=await page.locator('.subj-opt[data-subj="mix"]').boundingBox();
-  await page.mouse.click(mix.x+mix.width/2,mix.y+mix.height/2);
   await expect(page.locator('.qtext')).toBeVisible();
+  await expect(page.locator('#subj-btn, .subj-opt')).toHaveCount(0);
+  await centerHits(page,'#who-btn');
+  await centerHits(page,'#mute-btn');
+  await centerHits(page,'#help-btn');
   await expect(page.locator('#pokedex-page')).toBeHidden();
   await expect(page.locator('#nav-game')).toHaveClass(/nav-active/);
 

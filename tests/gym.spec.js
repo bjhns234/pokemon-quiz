@@ -1,7 +1,7 @@
 // Gym Leaders gate a difficulty step. Five clean answers in a row unlock a
 // battle for the tier he is already on; the next tier opens only after a win.
 const {test,expect}=require('@playwright/test');
-const {openGame,startGame,state,answer,nextQuestion,pinXp}=require('./helpers');
+const {openGame,startGame,enableAllSubjects,state,answer,nextQuestion,pinXp}=require('./helpers');
 
 let errors;
 test.beforeEach(async({page})=>{
@@ -104,6 +104,7 @@ test('a Gym the family already fills sends a shiny, and both colours send an ext
   expect(await state(page,()=>st.team.filter(t=>PKM[t.pi].n==='Pikachu').map(t=>!!t.shiny).sort())).toEqual([false,true]);
 
   await state(page,()=>{st.phase='play';st.award=null;});
+  await enableAllSubjects(page);
   await offerGym(page,'reading',1);
   // Reading's partner is Eevee. Own both colours first.
   const eevee=await state(page,()=>piByName('Eevee'));
@@ -279,6 +280,7 @@ test('a Gym miss still comes back as a Rematch',async({page})=>{
 
 test('answering inside a Gym still grows a streak',async({page})=>{
   await pinXp(page);
+  await enableAllSubjects(page);
   await offerGym(page,'science',1);
   await page.click('[data-gym-start="science"]');
   await expect(page.locator('.gym-name')).toHaveText('Psyduck');
@@ -571,6 +573,7 @@ test('Not now stays dismissed across a reload',async({page})=>{
 });
 
 test('a reading Gym on the harder tier is timed and awards the Legend Badge',async({page})=>{
+  await enableAllSubjects(page);
   expect(await state(page,()=>maxLevel('reading'))).toBe(4);
   await enableGymTimer(page);
   await offerGym(page,'reading',3);
@@ -583,6 +586,7 @@ test('a reading Gym on the harder tier is timed and awards the Legend Badge',asy
 });
 
 test('a grade 1 science Gym has no timer',async({page})=>{
+  await enableAllSubjects(page);
   expect(await state(page,()=>maxLevel('science'))).toBe(3);
   await offerGym(page,'science',2);
   await page.click('[data-gym-start="science"]');

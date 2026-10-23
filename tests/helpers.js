@@ -15,10 +15,18 @@ async function openGame(page,{save}={}){
   return errors;
 }
 
-// Skips the starter screen and the reveal animation: first starter, not shiny,
-// then the subject chooser, which is what deals the first question.
+// Skips the starter screen and the reveal animation: first starter, not shiny.
+// With one subject enabled, that deals the first question. With several, the
+// chooser is what deals it, so chooseSubject still runs.
 async function startGame(page,subject='mix'){
   await page.evaluate(sub=>{pickStarter(0,false);chooseSubject(sub);},subject);
+}
+
+// Puts reading and science back on offer. The page has to already be open.
+async function enableAllSubjects(page){
+  await page.evaluate(()=>{
+    ENABLED_SUBJECTS.splice(0,ENABLED_SUBJECTS.length,'math','reading','science');
+  });
 }
 
 // The game's state lives in top-level `let` bindings (st, QB, ...), which page
@@ -39,7 +47,7 @@ function answer(page,correct){
 // encounter roll, so a test decides for itself when an encounter happens.
 const nextQuestion=page=>page.evaluate(()=>loadQuestion());
 
-module.exports={GAME_URL,openGame,startGame,state,answer,nextQuestion};
+module.exports={GAME_URL,openGame,startGame,enableAllSubjects,state,answer,nextQuestion};
 
 // Puts a specific question on screen, reset exactly as a fresh deal would be.
 // Takes its QB address; with no address it finds the first question in `sub`

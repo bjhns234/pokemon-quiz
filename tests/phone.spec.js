@@ -93,7 +93,7 @@ async function expectMuteClear(page,size){
   expect(hits,`sound overlaps at ${size.width}x${size.height}: ${hits.join(', ')}`).toEqual([]);
 }
 
-test('trainer, subject, answers, and Next stay 44px, and sound stays clear',async({page})=>{
+test('trainer, answers, and Next stay 44px, and sound stays clear',async({page})=>{
   test.setTimeout(120000);
   await openGame(page);
   await startGame(page,'reading');
@@ -102,7 +102,7 @@ test('trainer, subject, answers, and Next stay 44px, and sound stays clear',asyn
     await showReading(page);
     await toTop(page);
     await expectTall(page,'#who-btn',size);
-    await expectTall(page,'#subj-btn',size);
+    await expect(page.locator('#subj-btn')).toHaveCount(0);
     await expectTall(page,'.ans-btn',size);
     await expectMuteClear(page,size);
     if(size.width===375||size.width===320){

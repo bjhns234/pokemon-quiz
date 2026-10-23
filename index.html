@@ -18,7 +18,7 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;height:10
 #app-main{flex:1 1 auto;min-height:0;overflow:auto;padding:12px 16px 10px;padding-top:max(12px,env(safe-area-inset-top,0px));scroll-padding-bottom:12px}
 #game{display:none;flex-direction:column;min-height:0}
 #pokedex-page{display:none}
-/* The sound button sits in this row, beside the trainer and the subject,
+/* The sound button sits in this row, beside the trainer,
    so it cannot cover the question, the card, or Parents' Back. */
 .hdr{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:14px}
 .hdr .app-name{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -658,10 +658,10 @@ button.mon-strip:focus{outline:3px solid #1D4ED8;outline-offset:2px}
   .pad-key,.pad-check{min-height:44px;font-size:16px}
   .help-btn{padding:0 8px;min-height:44px;font-size:15px;line-height:1.15}
   /* Two by two. Padding stays inside the 44px target so a two-line
-     answer does not grow the row. The rows touch so a two-line question
-     and Ask for help still clear the bar; one answer can still wrap once
+     answer does not grow the row. A few pixels between the buttons, and
+     Ask for help still clears the bar; one answer can still wrap once
      more without sliding under it. Next scrolls into view after. */
-  .ans-grid{gap:0;margin-bottom:0}
+  .ans-grid{gap:3px;margin-bottom:0}
   .ans-btn{padding:0 3px;min-height:44px;font-size:18px;line-height:1.05;border-width:1px}
   .verdict{font-size:16px;padding:2px 6px;margin:2px 0}
   .result-msg{padding:2px 6px;margin:0;font-size:14px;line-height:1.2}
@@ -1349,6 +1349,30 @@ const SUBJ_BLURB={math:"Numbers and counting",reading:"Words and letters",scienc
 const SUBJ_OPT_CLS={math:"optm",reading:"optr",science:"opts",mix:"optx"};
 function subjShort(s){return s===SUBJ_MIX?"Mix":SNAME[s];}
 function subjTitle(s){return s===SUBJ_MIX?"Mix it up":SNAME[s];}
+
+// Which subjects the game offers. Reading and science stay in the bank below;
+// add them back to this list to show the chooser, their questions, and their
+// Gyms again. One line. An empty or unknown list falls back to math so a
+// question can always be dealt.
+const ENABLED_SUBJECTS=['math'];
+function enabledSubjects(){
+  const list=SUBS.filter(s=>ENABLED_SUBJECTS.indexOf(s)>=0);
+  return list.length?list:['math'];
+}
+function subjectOn(sub){return enabledSubjects().indexOf(sub)>=0;}
+function multiSubject(){return enabledSubjects().length>1;}
+function subjectChoices(){
+  const on=enabledSubjects();
+  return on.length>1?[...on,SUBJ_MIX]:on.slice();
+}
+// A saved or requested choice that the flag turned off becomes the one
+// subject still offered (math, unless the list says otherwise).
+function activeSubject(choice){
+  const on=enabledSubjects();
+  if(choice&&choice!==SUBJ_MIX&&on.indexOf(choice)>=0)return choice;
+  if(choice===SUBJ_MIX&&on.length>1)return SUBJ_MIX;
+  return on[0];
+}
 
 const QB={
 math:{
@@ -2116,7 +2140,7 @@ let subjectBag=[];
 let lastSubject=null;
 function refillSubjectBag(){
   const bag=[];
-  SUBS.forEach(sub=>{for(let i=0;i<(SUBJECT_WEIGHTS[sub]||0);i++)bag.push(sub);});
+  enabledSubjects().forEach(sub=>{for(let i=0;i<(SUBJECT_WEIGHTS[sub]||0);i++)bag.push(sub);});
   const b=shuffle(bag);
   // Don't let a new bag open with the subject the previous one closed on.
   if(b.length>1&&b[0]===lastSubject){
@@ -2126,17 +2150,22 @@ function refillSubjectBag(){
   subjectBag=b;
 }
 // `choice` is what the player picked in the chooser. A single subject bypasses
-// the bag entirely; the bag exists only to serve "mix".
+// the bag entirely; the bag exists only to serve "mix". A choice the flag
+// turned off never waits on that subject — it deals an enabled one instead.
 function nextSubject(choice){
-  if(choice&&choice!==SUBJ_MIX&&SUBS.includes(choice)){
+  const on=enabledSubjects();
+  const picked=activeSubject(choice);
+  if(picked!==SUBJ_MIX){
     // Remembered, and the half-used bag dropped, so that switching back to mix
     // doesn't open on the subject he just spent twenty questions on.
-    lastSubject=choice;
+    lastSubject=picked;
     subjectBag=[];
-    return choice;
+    return picked;
   }
+  while(subjectBag.length&&on.indexOf(subjectBag[0])<0)subjectBag.shift();
   if(subjectBag.length===0)refillSubjectBag();
-  if(subjectBag.length===0)return SUBS[0]; // every weight is 0 — misconfigured
+  while(subjectBag.length&&on.indexOf(subjectBag[0])<0)subjectBag.shift();
+  if(subjectBag.length===0)return on[0]; // every weight is 0 — misconfigured
   lastSubject=subjectBag.shift();
   return lastSubject;
 }
@@ -2366,7 +2395,7 @@ function mkState(saved){
     wild:null,
     pendingEvo:null,
     lvlUpMsg:null,
-    subject:SUBJ_MIX,
+    subject:activeSubject(SUBJ_MIX),
     subjectReturn:null,
     switchReturn:null,
     // Miss topics and the last few answers, for the parent page. Empty on old
@@ -2396,7 +2425,26 @@ function mkState(saved){
     // happens, so leaving during the animation keeps the Pokémon.
     s.phase=saved.award?'award':saved.gym?'gym':saved.team.length>0?'play':'starter';
   }
+  parkHiddenSubject(s);
   return s;
+}
+// A save can still name reading or science. The team, XP, levels, badges,
+// and streaks stay; only the battle on screen moves to a subject the flag
+// still offers, so load never waits on a question that will not be dealt.
+function parkHiddenSubject(s){
+  s.subject=activeSubject(s.subject);
+  if(s.gym&&!subjectOn(s.gym.sub)){
+    s.gym=null;
+    if(s.phase==='gym')s.phase=s.team&&s.team.length?'play':'starter';
+  }
+  if(s.award&&!subjectOn(s.award.sub)){
+    s.award=null;
+    if(s.phase==='award')s.phase=s.team&&s.team.length?'play':'starter';
+  }
+  if(s.phase==='subject'&&!multiSubject()){
+    s.phase=s.subjectReturn||(s.team&&s.team.length?'play':'starter');
+    s.subjectReturn=null;
+  }
 }
 
 // ---- save / restore -------------------------------------------------------
@@ -2590,8 +2638,10 @@ function parseGameSave(data){
       starter:typeof data.starter==='number'?data.starter:null,
       activeIdx,
       // Saves written before the chooser existed have no subject; falling back
-      // to mix reproduces exactly how they used to behave, so SAVE_V holds.
-      subject:SUBJ_CHOICES.includes(data.subject)?data.subject:SUBJ_MIX,
+      // to mix reproduces exactly how they used to behave when every subject
+      // is offered, so SAVE_V holds. A subject the flag turned off loads as
+      // the subject still on offer. The stored object is not rewritten here.
+      subject:activeSubject(SUBJ_CHOICES.includes(data.subject)?data.subject:SUBJ_MIX),
       // Saves from before records existed have none; 0 just means "no record yet",
       // so SAVE_V holds here the same way it did for the subject chooser.
       bestStreak:Math.max(0,data.bestStreak|0),
@@ -3024,12 +3074,7 @@ function beginWithPokemon(num,shiny){
   st.team=[{pi,level:STARTER_START_LEVEL,xp:0,shiny}];
   st.activeIdx=0;
   markDex(pi,shiny);
-  st.subjectReturn='play';
-  st.phase='subject';
-  view='game';
-  save();
-  render();
-  histPush('game');
+  enterAfterStarter();
   return true;
 }
 function createProfile(name,avatar){
@@ -3275,7 +3320,7 @@ function plainTier(sub,level){
 }
 function recentRows(practice,sub){
   if(!practice||!Array.isArray(practice.recent))return [];
-  return practice.recent.filter(r=>r&&(!sub||r.s===sub)).slice(-10);
+  return practice.recent.filter(r=>r&&subjectOn(r.s)&&(!sub||r.s===sub)).slice(-10);
 }
 function recentBits(practice,sub){
   const last=recentRows(practice,sub);
@@ -3288,7 +3333,7 @@ function missList(practice){
     const parts=k.split('|');
     const t=practice.topics[k];
     const recent=topicRecentOf(t);
-    if(!SUBS.includes(parts[0])||!topicStillMissing(recent))return null;
+    if(!subjectOn(parts[0])||!topicStillMissing(recent))return null;
     return{sub:parts[0],topic:parts[1],n:recent.filter(x=>x===0).length,ex:Array.isArray(t.ex)?t.ex:[]};
   }).filter(t=>t&&t.n>0).sort((a,b)=>b.n-a.n).slice(0,5);
 }
@@ -3299,7 +3344,7 @@ function liveRematches(data,why){
   const rev=Array.isArray(data.review)?data.review:[];
   const out=[];
   rev.forEach(r=>{
-    if(!r||!SUBS.includes(r.sub))return;
+    if(!r||!subjectOn(r.sub))return;
     const helped=r.why==='help';
     if(why==='help'? !helped : helped)return;
     const bank=QB[r.sub]&&QB[r.sub][r.lv]&&QB[r.sub][r.lv][r.idx];
@@ -3320,7 +3365,7 @@ function practiceLine(kid){
     return `Practice ${topics.slice(0,-1).join(', ')}, and ${topics[topics.length-1]}.`;
   }
   const overall=recentBits(practice,null);
-  const totalAtt=SUBS.reduce((n,sub)=>n+subjectSnap(data,sub).att,0);
+  const totalAtt=enabledSubjects().reduce((n,sub)=>n+subjectSnap(data,sub).att,0);
   if(overall)return 'Nothing to practice right now.';
   if(totalAtt>0)return 'Play a little more and this will say what to practice.';
   return "Hasn't started playing yet.";
@@ -3336,9 +3381,13 @@ function scoreLine(kid){
     else if(overall.help>1)s+=`, ${overall.help} after a hint`;
     return s;
   }
-  const cor=SUBS.reduce((n,sub)=>n+subjectSnap(data,sub).cor,0);
-  const att=SUBS.reduce((n,sub)=>n+subjectSnap(data,sub).att,0);
+  const cor=enabledSubjects().reduce((n,sub)=>n+subjectSnap(data,sub).cor,0);
+  const att=enabledSubjects().reduce((n,sub)=>n+subjectSnap(data,sub).att,0);
   return att?`${cor} right out of ${att}`:'';
+}
+function rematchReportLine(r){
+  const name=multiSubject()?(SNAME[r.sub]+': '):'';
+  return `<p>${escapeHtml(name+r.q)}</p>`;
 }
 function parentKidHTML(kid){
   const data=kid.data;
@@ -3352,13 +3401,13 @@ function parentKidHTML(kid){
   if(!data||!Array.isArray(data.team)||!data.team.length)return h+`</div>`;
   const practice=data.practice&&typeof data.practice==='object'?data.practice:freshPractice();
   const badges=[];
-  SUBS.forEach(sub=>{
+  enabledSubjects().forEach(sub=>{
     subjectSnap(data,sub).badges.forEach(t=>badges.push(badgeName(sub,t)));
   });
   h+=`<p>Badges: ${escapeHtml(badges.length?badges.join(', '):'No badges yet')}</p>`;
   const misses=missList(practice);
   const overall=recentBits(practice,null);
-  const totalAtt=SUBS.reduce((n,sub)=>n+subjectSnap(data,sub).att,0);
+  const totalAtt=enabledSubjects().reduce((n,sub)=>n+subjectSnap(data,sub).att,0);
   if(misses.length||overall||totalAtt>0){
     h+=`<div class="parent-focus">`;
     if(misses.length){
@@ -3372,13 +3421,13 @@ function parentKidHTML(kid){
   const again=liveRematches(data,'miss');
   if(again.length){
     h+=`<div class="parent-again"><h3>Trying these again</h3>`;
-    again.forEach(r=>{h+=`<p>${escapeHtml(SNAME[r.sub])}: ${escapeHtml(r.q)}</p>`;});
+    again.forEach(r=>{h+=rematchReportLine(r);});
     h+=`</div>`;
   }
   const hinted=liveRematches(data,'help');
   if(hinted.length){
     h+=`<div class="parent-again"><h3>Right after a hint</h3><p class="parent-note">Got these right after asking for help. The game will ask them again.</p>`;
-    hinted.forEach(r=>{h+=`<p>${escapeHtml(SNAME[r.sub])}: ${escapeHtml(r.q)}</p>`;});
+    hinted.forEach(r=>{h+=rematchReportLine(r);});
     h+=`</div>`;
   }
   return h+`</div>`;
@@ -3616,7 +3665,9 @@ function updStats(sub,ok){
   }
 }
 function gymQueue(sub,tier){
-  const n=QB[sub][tier].length;
+  const bank=QB[sub]&&QB[sub][tier];
+  const n=bank?bank.length:0;
+  if(!n)return [];
   const bag=[];
   while(bag.length<GYM_QUESTIONS){
     const order=[];for(let i=0;i<n;i++)order.push(i);
@@ -3657,7 +3708,7 @@ function badgeHTML(sub,tier,big){
 }
 function badgeRowHTML(){
   const bits=[];
-  SUBS.forEach(sub=>(st.badges[sub]||[]).forEach(t=>bits.push(badgeHTML(sub,t,false))));
+  enabledSubjects().forEach(sub=>(st.badges[sub]||[]).forEach(t=>bits.push(badgeHTML(sub,t,false))));
   return bits.length?`<div class="badge-row">${bits.join('')}</div>`:'';
 }
 function grantGymPartner(sub){
@@ -3733,7 +3784,7 @@ function leaveAfterGym(){
   else loadQuestion();
 }
 function startGym(sub){
-  if(st.phase!=='play'||!st.cor||!gymReady(sub))return;
+  if(!subjectOn(sub)||st.phase!=='play'||!st.cor||!gymReady(sub))return;
   const tier=st.stats[sub].level;
   st.gym={sub,tier,queue:gymQueue(sub,tier),qi:0,kid:GYM_KID_HP,lead:GYM_LEAD_HP,solved:false,over:null};
   st.gymOffer[sub]=null;
@@ -3743,6 +3794,12 @@ function startGym(sub){
 }
 function dealGymQuestion(resume){
   const g=st.gym;if(!g)return;
+  if(!subjectOn(g.sub)||!QB[g.sub]||!QB[g.sub][g.tier]){
+    st.gym=null;
+    st.phase='play';
+    loadQuestion();
+    return;
+  }
   if(g.qi<0||g.qi>=g.queue.length){finishGymQueue();render();return;}
   st.q=serveQuestion(g.sub,g.tier,g.queue[g.qi],questionPname());
   st.sel=null;st.cor=false;st.anim='';st.lastXp=0;st.draft='';
@@ -3890,7 +3947,7 @@ function gymInviteHTML(){
   // Only after the question is finished. No "waiting" line while they are still answering.
   if(!st.cor)return '';
   let h='';
-  SUBS.forEach(sub=>{
+  enabledSubjects().forEach(sub=>{
     if(!gymReady(sub))return;
     const leader=GYM_LEADER[sub];
     h+=`<div class="gym-invite"><div class="gym-invite-txt">${leader} wants a Gym battle!</div><div class="gym-invite-row"><button class="gym-go" data-gym-start="${sub}">Battle</button><button class="gym-later" data-gym-later="${sub}">Not now</button></div></div>`;
@@ -4345,7 +4402,13 @@ function render(){
   // A Pokédex visit must not be kicked back to the game just because a timer
   // repainted the question underneath it.
   if(view!=='pdx')showGameChrome();
-  const showSubj=st.phase==='play'||st.phase==='wild';
+  if(st.phase==='subject'&&!multiSubject()){
+    st.phase=st.subjectReturn||(st.team.length?'play':'starter');
+    st.subjectReturn=null;
+    st.subject=activeSubject(st.subject);
+    if((st.phase==='play'||st.phase==='wild')&&!st.q){loadQuestion();return;}
+  }
+  const showSubj=multiSubject()&&(st.phase==='play'||st.phase==='wild');
   // The streak lives beside the subject pill on the question card now, not here.
   const hdrRight=showSubj
     ?`<button class="subj-btn" id="subj-btn">${SUBJ_ICON[st.subject]} ${subjShort(st.subject)}<span class="subj-btn-car">&#9662;</span></button>`
@@ -4377,7 +4440,7 @@ function render(){
 
   if(st.phase==='subject'){
     h+=`<div class="starter-card"><div class="subj-ask">What do you want to practice?</div><div class="subj-ask-sub">${st.q&&!st.cor&&!st.wildEscape?'Starts after this question':'You can change this any time'}</div><div class="subj-choice-grid">`;
-    SUBJ_CHOICES.forEach(s=>{
+    subjectChoices().forEach(s=>{
       h+=`<button class="subj-opt ${SUBJ_OPT_CLS[s]}${s===st.subject?' sel':''}" data-subj="${s}"><span class="subj-opt-ico">${SUBJ_ICON[s]}</span><span class="subj-opt-name">${subjTitle(s)}</span><span class="subj-opt-sub">${SUBJ_BLURB[s]}</span></button>`;
     });
     h+=`</div></div>`;
@@ -4525,7 +4588,8 @@ function render(){
       prizeBit=`${partnerBit}<div class="award-prize">+${a.xp} XP</div><div class="award-prize">Rare Candy ×${a.candy}</div><div class="award-prize">Great Ball ×${a.great} — it helps on your next wild Pokémon.</div>`;
     }
     const grew=a.grew?`<div class="award-prize">${PKM[activePi()].n} grew stronger!</div>`:'';
-    h+=`<div class="card award-card"><div class="award-scroll"><div class="award-kicker">Gym prize</div><div class="award-pop">${badgeHTML(a.sub,a.tier,true)}</div><div class="award-title">You earned the ${badgeName(a.sub,a.tier)}!</div><div class="award-sub">New ${SNAME[a.sub]} questions are waiting.</div>${prizeBit}${grew}</div><button class="award-go" id="award-go">Yay!</button></div>`;
+    const waiting=multiSubject()?`New ${SNAME[a.sub]} questions are waiting.`:'New questions are waiting.';
+    h+=`<div class="card award-card"><div class="award-scroll"><div class="award-kicker">Gym prize</div><div class="award-pop">${badgeHTML(a.sub,a.tier,true)}</div><div class="award-title">You earned the ${badgeName(a.sub,a.tier)}!</div><div class="award-sub">${waiting}</div>${prizeBit}${grew}</div><button class="award-go" id="award-go">Yay!</button></div>`;
   }
 
   gameEl.innerHTML=h;
@@ -4585,7 +4649,7 @@ function renderPokedex(){
   shelterMute();
   let h=`<div class="hdr">${whoButtonHTML('who-btn-pdx')}<span class="app-name">Pokédex</span><button class="reset-btn" id="reset-btn"><span class="reset-fill" id="reset-fill"></span><span class="reset-lbl" id="reset-lbl"><span class="reset-long">Hold to reset this trainer</span><span class="reset-short">Hold to reset</span></span></button></div>`;
   const bits=[];
-  SUBS.forEach(sub=>(st.badges[sub]||[]).forEach(t=>bits.push(badgeHTML(sub,t,false))));
+  enabledSubjects().forEach(sub=>(st.badges[sub]||[]).forEach(t=>bits.push(badgeHTML(sub,t,false))));
   h+=`<div class="card pdx-badges"><div class="pdx-badge-hd">Gym badges</div>${bits.length?`<div class="badge-row">${bits.join('')}</div>`:'<div class="gym-wait">Win a Gym battle to earn your first badge.</div>'}</div>`;
   const canSwitch=canOfferSwitch();
   const switchBtn=canSwitch?`<button class="switch-btn" id="switch-btn" type="button"><span>&#128260;</span><span>Switch Pokémon</span></button>`:'';
@@ -4692,7 +4756,7 @@ function switchView(v){
 // as the starter screen. The phase it interrupted is remembered and restored,
 // which is what lets a wild encounter survive a mid-fight subject change.
 function openSubjectPicker(){
-  if(st.phase==='subject')return;
+  if(!multiSubject()||st.phase==='subject')return;
   st.subjectReturn=st.phase;
   st.phase='subject';
   render();
@@ -4700,7 +4764,10 @@ function openSubjectPicker(){
 }
 
 function chooseSubject(sub){
-  if(!SUBJ_CHOICES.includes(sub))return;
+  if(subjectChoices().indexOf(sub)<0){
+    if(multiSubject())return;
+    sub=enabledSubjects()[0];
+  }
   st.subject=sub;
   st.phase=st.subjectReturn||'play';
   st.subjectReturn=null;
@@ -4733,8 +4800,9 @@ function findReview(tmpl){const k=reviewKey(tmpl);return st.review.find(r=>revie
 // The oldest-due Rematch the chosen subject allows, if one is due. Picking "Math
 // only" means math only -- a reading Rematch waits for him to come back to reading.
 function dueReview(){
+  const choice=activeSubject(st.subject);
   return st.review
-    .filter(r=>r.due<=st.served&&(st.subject===SUBJ_MIX||st.subject===r.sub))
+    .filter(r=>r.due<=st.served&&subjectOn(r.sub)&&(choice===SUBJ_MIX||choice===r.sub))
     .sort((a,b)=>a.due-b.due)[0]||null;
 }
 // Called once per question, off its first answer. `clean` is an unaided first-try
@@ -5246,15 +5314,28 @@ function pickStarter(lineIdx,shiny){
   st.team=[{pi:startPi,level:STARTER_START_LEVEL,xp:0,shiny}];
   st.activeIdx=0;
   markDex(startPi,shiny);
-  // Straight into the subject chooser; chooseSubject is what drops him into play.
-  st.subjectReturn='play';
-  st.phase='subject';
+  // One subject skips the chooser and deals a question. Several subjects
+  // still stop on the chooser; chooseSubject is what drops him into play.
+  enterAfterStarter();
+}
+
+function enterAfterStarter(){
+  st.subject=activeSubject(st.subject);
   if(!activeKid())ensureProfile();
   // Tests and the starter buttons both land here, sometimes while the
   // "who's playing" screen is still the one on display.
   view='game';
-  save();
-  render();
+  if(multiSubject()){
+    st.subjectReturn='play';
+    st.phase='subject';
+    save();
+    render();
+  } else {
+    st.subjectReturn=null;
+    st.phase='play';
+    save();
+    loadQuestion();
+  }
   histPush('game');
 }
 
@@ -5809,6 +5890,17 @@ function applyHistory(screen,extra){
   if(screen==='pdx'){closePickers();switchView('pdx');return;}
   if(screen==='subject'){
     view='game';
+    if(!multiSubject()){
+      if(st.phase==='subject'){
+        st.phase=st.subjectReturn||'play';
+        st.subjectReturn=null;
+      }
+      st.subject=activeSubject(st.subject);
+      showGameChrome();
+      if((st.phase==='play'&&!st.q)||(st.phase==='gym'&&st.gym&&!st.q))bootInto();
+      else render();
+      return;
+    }
     if(st.phase!=='subject'){
       st.subjectReturn=st.phase==='switch'?(st.switchReturn||'play'):st.phase;
       st.phase='subject';

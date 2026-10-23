@@ -1,4 +1,4 @@
-// The question screen stays a short path: trainer, subject, the Pokémon,
+// The question screen stays a short path: trainer, the Pokémon,
 // the question, the answers, and Ask for help. Extras live on the Pokédex.
 // A miss still lets the child try again, so Next appears only once the
 // question is finished (correct, or the wild Pokémon fled).
@@ -114,16 +114,18 @@ function readScreen(){
   return {qtext,answer,small,faint};
 }
 
-test('before an answer there are four controls, and five when switching is available',async({page})=>{
+test('before an answer there are three controls, and four when switching is available',async({page})=>{
   const controls=await state(page,playControls);
-  expect(controls.length).toBeLessThanOrEqual(4);
-  expect(controls).toEqual(expect.arrayContaining(['mute-btn','who-btn','subj-btn','help-btn']));
+  expect(controls.length).toBeLessThanOrEqual(3);
+  expect(controls).toEqual(expect.arrayContaining(['mute-btn','who-btn','help-btn']));
+  expect(controls).not.toContain('subj-btn');
   expect(controls).not.toContain('mon-switch');
   await state(page,()=>{st.team.push({pi:LINES[1][0],level:5,xp:0,shiny:false});render();});
   const switching=await state(page,playControls);
   expect(switching.length).toBe(controls.length+1);
-  expect(switching.length).toBeLessThanOrEqual(5);
-  expect(switching).toEqual(expect.arrayContaining(['mute-btn','who-btn','subj-btn','help-btn','mon-switch']));
+  expect(switching.length).toBeLessThanOrEqual(4);
+  expect(switching).toEqual(expect.arrayContaining(['mute-btn','who-btn','help-btn','mon-switch']));
+  expect(switching).not.toContain('subj-btn');
   await expect(page.locator('#game .hdr')).not.toContainText('Pokémon');
   await expect(page.locator('#game')).not.toContainText("What's your name?");
   await expect(page.locator('#game .pnum, #game .xp-row, #game .badge-row, #game .candy-btn, #game .great-note, #game #switch-btn')).toHaveCount(0);

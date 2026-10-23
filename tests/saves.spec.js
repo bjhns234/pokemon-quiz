@@ -11,7 +11,7 @@ const base={v:1,starter:0,activeIdx:0,team:[{num:'#001',level:7,xp:3}],dex:['#00
 test('a save from before subjects, records, shinies and Rematches still loads',async({page})=>{
   const errors=await openGame(page,{save:base});
   const s=await state(page,()=>({phase:st.phase,team:st.team.map(t=>[PKM[t.pi].num,t.level,!!t.shiny]),subject:st.subject,best:st.bestStreak,review:st.review,math:st.stats.math.level,hasQ:!!st.q}));
-  expect(s).toEqual({phase:'play',team:[['#001',7,false]],subject:'mix',best:0,review:[],math:2,hasQ:true});
+  expect(s).toEqual({phase:'play',team:[['#001',7,false]],subject:'math',best:0,review:[],math:2,hasQ:true});
   // Tiers already reached stay reached: badge the cleared tier, and don't
   // queue a battle he would have skipped before Gyms existed.
   expect(await state(page,()=>({badges:st.badges,timerOff:'timerOff' in st,items:st.items,offer:st.gymOffer.math,gym:st.gym}))).toEqual({
