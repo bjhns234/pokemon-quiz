@@ -1,6 +1,7 @@
 // Question variety at kindergarten and 1st grade. Missing a question still
 // brings it back as a Rematch after the usual gap, but a run of misses must
-// not collapse the game onto those few questions.
+// not collapse the game onto those few questions. Past kindergarten, every
+// 5th regular question is earlier work, and it still has to be a new question.
 const {test,expect}=require('@playwright/test');
 const {openGame,startGame,state}=require('./helpers');
 
@@ -39,12 +40,20 @@ function dealRun(page,level,miss){
     st.phase='play';
     st.q=null;
     const keys=[];
+    let reviews=0;
     for(let i=0;i<20;i++){
       st.stats.math.level=level;
       st.stats.math.ws=0;
       loadQuestion();
       keys.push(reviewKey(st.q.tmpl));
-      if(st.q.tmpl.lv!==level)throw new Error('dealt tier '+st.q.tmpl.lv);
+      if(st.q.tmpl.lv!==level){
+        // Past kindergarten, every 5th regular question is earlier work.
+        // It still has to be a real earlier question, with no label of its own.
+        if(!(level>1&&st.q.bankReview&&st.q.tmpl.lv<level))throw new Error('dealt tier '+st.q.tmpl.lv);
+        reviews++;
+      } else if(st.q.bankReview){
+        throw new Error('current tier marked as review');
+      }
       st.armAt=0;
       if(miss){
         const wrong=st.q.correctIndex===0?1:0;
@@ -52,6 +61,8 @@ function dealRun(page,level,miss){
       }
       commitAttempt(true,st.q.correctIndex);
     }
+    if(level<=1&&reviews)throw new Error('review at kindergarten');
+    if(level>1&&reviews!==4)throw new Error('expected 4 reviews, got '+reviews);
     return keys;
   },{level,miss});
 }

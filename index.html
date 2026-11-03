@@ -504,12 +504,21 @@ button.mon-strip:focus{outline:3px solid #1D4ED8;outline-offset:2px}
 .back-row .big-back{flex:1 1 auto;width:auto;min-width:0;margin-bottom:0}
 .mute-btn .mute-ico{font-size:15px;line-height:1}
 .mute-btn .mute-lbl{line-height:1}
-.parent-kicker{font-size:12px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#374151}
+.parent-kicker{font-size:14px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#374151}
 .parent-title{font-size:24px;font-weight:800;color:#1A1A2E;margin:2px 0 6px}
 .parent-lead{font-size:16px;color:#374151;line-height:1.45;margin-bottom:12px}
 .timer-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:4px;font-size:16px;font-weight:800;color:#1A1A2E}
 .timer-toggle{min-height:44px;min-width:88px;border-radius:999px;border:2px solid #1A1A2E;background:#fff;color:#1A1A2E;font-family:inherit;font-weight:800;font-size:16px;padding:8px 16px;cursor:pointer}
 .timer-toggle.on{background:#1A1A2E;color:#fff}
+.grade-row{margin-top:14px}
+.grade-row+.grade-row{border-top:1px solid #E5E7EB;padding-top:14px}
+.grade-name{font-size:16px;font-weight:800;color:#1A1A2E;margin-bottom:8px}
+/* Equal cells. auto-fill keeps an empty track, so a last button on its own
+   row stays one cell wide instead of stretching across the card. */
+.grade-choices{display:grid;grid-template-columns:repeat(auto-fill,minmax(8.25rem,1fr));gap:8px}
+.grade-choice{min-height:44px;min-width:0;padding:8px 10px;border-radius:12px;border:2px solid #1A1A2E;background:#fff;color:#1A1A2E;font-family:inherit;font-weight:800;font-size:16px;line-height:1.2;cursor:pointer;text-align:center;display:flex;align-items:center;justify-content:center}
+.grade-choice.sel{background:#1A1A2E;color:#fff}
+.grade-blurb{font-size:16px;font-weight:700;color:#1A1A2E;line-height:1.35;margin-top:10px}
 .parent-q{font-size:22px;font-weight:800;color:#1A1A2E;text-align:center;margin:8px 0}
 .parent-ans{width:100%;border:2px solid #E5E7EB;border-radius:14px;padding:12px;font-size:22px;font-weight:800;text-align:center;font-family:inherit;color:#1A1A2E}
 .parent-ans:focus{outline:none;border-color:#1A1A2E}
@@ -2240,6 +2249,33 @@ function pickIndex(sub,level){
 function pickBuiltIn(sub,level,pname){
   return serveQuestion(sub,level,pickIndex(sub,level),pname);
 }
+// One regular question in five, once the tier is past kindergarten, is drawn
+// from an earlier bank. The count is a counter, not a dice roll: question
+// 5, 10, 15… of the regular deals. Gym battles and Rematches are not regular
+// deals, so they neither take a turn nor move the counter. The tier just
+// below gets three of every five review picks. The other two are shared
+// evenly across whatever is lower than that.
+function reviewSourceTier(level, which){
+  const below=level-1;
+  if(below<1)return level;
+  const lower=[];
+  for(let t=below-1;t>=1;t--)lower.push(t);
+  if(!lower.length)return below;
+  const slot=((which|0)%5+5)%5;
+  if(slot<3)return below;
+  return lower[(slot-3)%lower.length];
+}
+function dealRegular(sub,pname){
+  const level=st.stats[sub].level|0;
+  if(level<=1)return pickBuiltIn(sub,level,pname);
+  if(!st.reviewCount)st.reviewCount={};
+  const n=(st.reviewCount[sub]|0)+1;
+  st.reviewCount[sub]=n;
+  if(n%5!==0)return pickBuiltIn(sub,level,pname);
+  const q=pickBuiltIn(sub,reviewSourceTier(level,((n/5)|0)-1),pname);
+  q.bankReview=true;
+  return q;
+}
 // Everything random about a serving is rolled here, once, and kept on the question
 // as `tmpl` -- so fillQuestion can redraw the same question with a different
 // Pokemon's name (a mid-question switch) without reshuffling the options under him.
@@ -2544,6 +2580,12 @@ function mkState(saved){
     subject:activeSubject(SUBJ_MIX),
     subjectReturn:null,
     switchReturn:null,
+    // 0 is Auto: the same move-up and move-down as always. 1–4 lock math at
+    // that tier. Missing on old saves, which is Auto.
+    grade:0,
+    // Regular questions dealt per subject while the tier is past 1. Every
+    // 5th one is a review. Not a score.
+    reviewCount:{math:0,reading:0,science:0},
     // Miss topics and the last few answers, for the parent page. Empty on old
     // saves: those answers still live in stats, they just were not tagged.
     practice:freshPractice(),
@@ -2567,6 +2609,10 @@ function mkState(saved){
     s.review=saved.review;
     s.seen=saved.seen||[];
     s.practice=saved.practice||freshPractice();
+    s.grade=saved.grade|0;
+    if(saved.reviewCount){
+      SUBS.forEach(sub=>{s.reviewCount[sub]=Math.max(0,saved.reviewCount[sub]|0);});
+    }
     // An award or a Gym in progress is resumed. A wild fight still in
     // progress is not. A catch or evolution is written down the moment it
     // happens, so leaving during the animation keeps the Pokémon.
@@ -2646,6 +2692,13 @@ function gamePayload(){
     gym:gymPayload(),
     award:st.award||undefined,
     practice:parsePractice(st.practice),
+    // Auto when missing. A number 1–4 keeps math at that tier.
+    settings:{grade:st.grade>=1&&st.grade<=4?st.grade:'auto'},
+    reviewCount:{
+      math:Math.max(0,(st.reviewCount&&st.reviewCount.math)|0),
+      reading:Math.max(0,(st.reviewCount&&st.reviewCount.reading)|0),
+      science:Math.max(0,(st.reviewCount&&st.reviewCount.science)|0),
+    },
   };
 }
 
@@ -2735,18 +2788,24 @@ function parseGameSave(data){
     // Tiers below the saved difficulty were already earned, Gym or not. Union
     // them with any badges the save names, and if a badge sits at or above the
     // saved tier, move the tier up to match so it is not fought again.
+    const gradeLock=gradeValue(data.settings&&data.settings.grade);
+    const mathLock=gradeLock?Math.min(gradeLock,maxLevel('math')):0;
     const badges={};
     SUBS.forEach(sub=>{
       const level=stats[sub].level;
       const set=new Set();
+      const locked=sub==='math'&&mathLock;
       for(let t=1;t<level;t++)set.add(t);
       const raw=(data.badges||{})[sub];
       if(Array.isArray(raw))raw.forEach(t=>{t=t|0;if(t>=1&&t<maxLevel(sub))set.add(t);});
       let top=level;
-      set.forEach(t=>{if(t+1>top)top=t+1;});
+      // A lock keeps the saved tier. A badge for that tier must not push
+      // the child up, and it must not be thrown away because they stayed.
+      if(!locked)set.forEach(t=>{if(t+1>top)top=t+1;});
       stats[sub].level=Math.min(maxLevel(sub),top);
+      if(locked&&stats[sub].level>mathLock)stats[sub].level=mathLock;
       for(let t=1;t<stats[sub].level;t++)set.add(t);
-      badges[sub]=[...set].filter(t=>t<stats[sub].level).sort((a,b)=>a-b);
+      badges[sub]=[...set].filter(t=>locked?(t>=1&&t<maxLevel(sub)):t<stats[sub].level).sort((a,b)=>a-b);
     });
     const gymOffer={};
     SUBS.forEach(sub=>{
@@ -2800,6 +2859,11 @@ function parseGameSave(data){
       candy:itemN(data.items&&data.items.candy),
       great:itemN(data.items&&data.items.great),
     };
+    const reviewCount={};
+    SUBS.forEach(sub=>{
+      const raw=data.reviewCount&&data.reviewCount[sub];
+      reviewCount[sub]=Math.max(0,raw|0);
+    });
 
     return{
       starter:typeof data.starter==='number'?data.starter:null,
@@ -2823,6 +2887,8 @@ function parseGameSave(data){
       team,pdx,sdx,stats,badges,gymOffer,gym,award,prizes,gymSnooze,
       items,
       practice:parsePractice(data.practice),
+      grade:mathLock,
+      reviewCount,
     };
   }catch(e){
     // corrupt or half-written save: start fresh rather than fail to a blank screen
@@ -2935,6 +3001,8 @@ function sanitizeKid(k){
   const data=k.data&&typeof k.data==='object'?k.data:null;
   const kid={id:k.id.slice(0,40),name:cleanName(k.name),avatar,data};
   if(k.askName)kid.askName=true;
+  // A grade picked before the first starter has no game payload yet.
+  if(!data&&k.settings&&typeof k.settings==='object')kid.settings={grade:gradeValue(k.settings.grade)||'auto'};
   return kid;
 }
 function activeKid(){return profiles.kids.find(k=>k.id===profiles.activeId)||null;}
@@ -2956,7 +3024,13 @@ function captureActive(){
     const t=st.team[Math.min(Math.max(0,st.activeIdx|0),st.team.length-1)]||st.team[0];
     kid.avatar=PKM[t.pi].num;
   }
-  kid.data=st.team.length?gamePayload():null;
+  if(st.team.length){
+    kid.data=gamePayload();
+    delete kid.settings;
+  } else {
+    kid.data=null;
+    kid.settings={grade:st.grade>=1&&st.grade<=4?st.grade:'auto'};
+  }
 }
 function writeRoster(){
   try{
@@ -2967,6 +3041,7 @@ function writeRoster(){
       kids:profiles.kids.map(k=>{
         const row={id:k.id,name:k.name,avatar:k.avatar,data:k.data||null};
         if(k.askName)row.askName=true;
+        if(!row.data&&k.settings)row.settings={grade:gradeValue(k.settings.grade)||'auto'};
         return row;
       }),
     }));
@@ -3199,6 +3274,7 @@ function selectProfile(id){
   profiles.activeId=id;
   const parsed=kid.data?parseGameSave(kid.data):null;
   st=mkState(parsed);
+  if(!parsed&&kid.settings)st.grade=gradeValue(kid.settings.grade);
   reshuffleDecks();
   subjectBag=[];
   lastSubject=null;
@@ -3671,8 +3747,138 @@ function closeParent(){
   const back=(viewBeforeParent==='who'||viewBeforeParent==='pdx')?viewBeforeParent:'game';
   if(back==='who')renderWho();
   else if(back==='pdx')switchView('pdx');
-  else{view='game';showGameChrome();if(st.phase==='gym')armGymTimer();}
+  else{
+    view='game';
+    showGameChrome();
+    render();
+    if(st.phase==='gym')armGymTimer();
+  }
   histDropIf('parent');
+}
+// Missing, blank, or anything that is not a real tier is Auto.
+function gradeValue(raw){
+  if(raw==null||raw===false)return 0;
+  if(typeof raw==='string'){
+    const s=raw.trim().toLowerCase();
+    if(!s||s==='auto')return 0;
+    if(s==='k'||s==='kindergarten')return 1;
+    if(s==='1st'||s==='first')return 2;
+    if(s==='2nd'||s==='second')return 3;
+    if(s==='3rd'||s==='third')return 4;
+    if(/^[1-4]$/.test(s))return parseInt(s,10);
+    return 0;
+  }
+  const n=typeof raw==='number'?raw:NaN;
+  if(n===1||n===2||n===3||n===4)return n;
+  return 0;
+}
+// Short names come from the same phrases the parent page already uses for a tier.
+function gradeName(tier){
+  if(!tier)return 'Auto';
+  const plain=(TIER_PLAIN.math||{})[tier]||'';
+  if(/^kindergarten/i.test(plain))return 'Kindergarten';
+  const m=/^(\d+(?:st|nd|rd|th))/i.exec(plain);
+  return m?m[1]:('Grade '+tier);
+}
+// One sentence for the grade that is selected. Written from what that tier
+// actually asks, not a second copy of the long parent-page phrase.
+function gradeBlurb(tier){
+  if(!tier)return 'Moves up after each Gym win.';
+  if(tier===1)return 'Kindergarten: counting, adding and subtracting to 5, shapes.';
+  if(tier===2)return '1st: adding and subtracting to 20, skip counting, tens and ones.';
+  if(tier===3)return '2nd: adding and subtracting to 100, odd and even, shapes.';
+  return '3rd: multiplying, dividing, fractions, time, and money.';
+}
+function kidGrade(kid){
+  if(!kid)return 0;
+  if(kid.id===profiles.activeId)return st.grade|0;
+  if(kid.data&&kid.data.settings)return gradeValue(kid.data.settings.grade);
+  if(kid.settings)return gradeValue(kid.settings.grade);
+  return 0;
+}
+function gradeChoices(){
+  const top=maxLevel('math');
+  const out=[{grade:0,name:'Auto'}];
+  for(let t=1;t<=top&&t<=4;t++)out.push({grade:t,name:gradeName(t)});
+  return out;
+}
+function gradeSettingHTML(){
+  let h=`<div class="card" id="grade-setting"><div class="parent-title" style="font-size:20px">Grade</div><p class="parent-lead">Pick a grade to keep questions at that level. Earlier work still comes back now and then.</p>`;
+  if(!profiles.kids.length){
+    return h+`<p class="parent-lead">No trainers yet. A child can make one from the game.</p></div>`;
+  }
+  const choices=gradeChoices();
+  const many=profiles.kids.length>1;
+  profiles.kids.forEach(kid=>{
+    const cur=kidGrade(kid);
+    const who=many?`<div class="grade-name">${escapeHtml(kid.name)}'s grade</div>`:'';
+    h+=`<div class="grade-row" data-grade-kid="${escapeHtml(kid.id)}">${who}<div class="grade-choices" role="radiogroup" aria-label="Grade for ${escapeHtml(kid.name)}">`;
+    choices.forEach(c=>{
+      const on=c.grade===cur;
+      h+=`<button type="button" class="grade-choice${on?' sel':''}" data-grade="${c.grade?String(c.grade):'auto'}" data-for="${escapeHtml(kid.id)}" aria-pressed="${on?'true':'false'}">${escapeHtml(c.name)}</button>`;
+    });
+    h+=`</div><p class="grade-blurb">${escapeHtml(gradeBlurb(cur))}</p></div>`;
+  });
+  return h+`</div>`;
+}
+function setKidGrade(kidId, raw){
+  const kid=profiles.kids.find(k=>k.id===kidId);
+  if(!kid)return;
+  const next=gradeValue(raw);
+  const stored=next>=1&&next<=4?next:'auto';
+  if(kid.id===profiles.activeId){
+    const prev=st.grade|0;
+    st.grade=next;
+    let deal=false;
+    if(next&&prev!==next){
+      const cap=Math.min(next,maxLevel('math'));
+      if(st.stats.math.level!==cap){
+        st.stats.math.level=cap;
+        st.stats.math.cs=0;
+        st.stats.math.ws=0;
+      }
+      const off=st.gymOffer.math;
+      if(off&&(off.tier!==st.stats.math.level||hasBadge('math',off.tier)))st.gymOffer.math=null;
+      // A battle for a different tier cannot stay on screen. The leader card
+      // is painted from the old DOM, so the game is marked stale until the
+      // next time that screen is shown.
+      if(st.gym&&st.gym.sub==='math'&&st.gym.tier!==cap){
+        if(gymTick){clearInterval(gymTick);gymTick=null;}
+        st.gym=null;
+        if(st.phase==='gym'||st.phase==='award')st.phase=st.team.length?'play':'starter';
+        deal=st.phase==='play';
+      }
+      const open=st.phase==='play'&&st.q&&!st.cor&&!st.q.rematch&&st.q.subject==='math'&&st.q.tmpl&&st.q.tmpl.lv!==cap;
+      if(open)deal=true;
+      if(deal)loadQuestion();
+      if(view!=='game')gameStale=true;
+    }
+    save();
+    return;
+  }
+  if(kid.data&&kid.data.stats&&kid.data.stats.math){
+    kid.data.settings=Object.assign({},kid.data.settings,{grade:stored});
+    if(next){
+      const cap=Math.min(next,maxLevel('math'));
+      if((kid.data.stats.math.level|0)!==cap){
+        kid.data.stats.math.level=cap;
+        kid.data.stats.math.cs=0;
+        kid.data.stats.math.ws=0;
+      }
+      const earned=kid.data.badges&&Array.isArray(kid.data.badges.math)&&kid.data.badges.math.indexOf(cap)>=0;
+      const off=kid.data.gymOffer&&kid.data.gymOffer.math;
+      if(off&&((off.tier|0)!==cap||earned))kid.data.gymOffer.math=null;
+      if(kid.data.gym&&kid.data.gym.sub==='math'&&(kid.data.gym.tier|0)>cap){
+        kid.data.gym=undefined;
+        if(kid.data.award&&kid.data.award.sub==='math')kid.data.award=undefined;
+      }
+    }
+    delete kid.settings;
+  } else {
+    kid.settings={grade:stored};
+  }
+  if(activeKid()&&st.team.length)save();
+  else writeRoster();
 }
 function openParent(){
   if(view!=='parent')viewBeforeParent=view;
@@ -3714,6 +3920,7 @@ function renderParent(){
   const timerOn=gymTimerEnabled();
   h+=`<div id="parent-report"><div class="parent-kicker">For parents</div><div class="parent-title">How they're doing</div><p class="parent-lead">Each child has their own game. One line says what to practice together.</p>`;
   h+=`<div class="card" id="timer-setting"><div class="parent-title" style="font-size:20px">Thinking time</div><p class="parent-lead">On harder Gym battles, a bar counts down while they think. It stays off unless you turn it on.</p><div class="timer-row"><span>Thinking time</span><button type="button" id="gym-timer-toggle" class="timer-toggle${timerOn?' on':''}" aria-pressed="${timerOn?'true':'false'}">${timerOn?'On':'Off'}</button></div></div>`;
+  h+=gradeSettingHTML();
   if(!profiles.kids.length){
     h+=`<div class="card"><p class="parent-lead">No trainers yet. A child can make one from the game.</p></div>`;
   } else {
@@ -3726,6 +3933,10 @@ function renderParent(){
   document.getElementById('parent-back').addEventListener('click',closeParent);
   const timerBtn=document.getElementById('gym-timer-toggle');
   if(timerBtn)timerBtn.addEventListener('click',()=>{setGymTimerEnabled(!gymTimerEnabled());renderParent();});
+  parentEl.querySelectorAll('.grade-choice').forEach(b=>b.addEventListener('click',()=>{
+    setKidGrade(b.dataset.for,b.dataset.grade);
+    renderParent();
+  }));
   dockMute();
 }
 
@@ -3739,7 +3950,17 @@ let parentQuiz=null;
 let parentMsg='';
 let parentDraft='';
 let viewBeforeParent='game';
+// The game DOM is hidden while Parents is open. A grade change can clear a
+// Gym or swap the question without painting that screen, so the next visit
+// has to draw it again. Otherwise the Gym Leader card stays up after phase
+// is already play.
+let gameStale=false;
 let st=mkState(loadSaved());
+// A grade chosen before the first starter lives on the trainer, not in a game.
+(function applyPendingGrade(){
+  const kid=activeKid();
+  if(kid&&!kid.data&&kid.settings)st.grade=gradeValue(kid.settings.grade);
+})();
 let view=openingWho?'who':'game';
 const gameEl=document.getElementById("game");
 const pdxEl=document.getElementById("pokedex-page");
@@ -3813,11 +4034,44 @@ function activePi(){const t=activeTM();return t?t.pi:0;}
 function genFromPi(pi){const li=LINES.findIndex(ln=>ln.includes(pi));if(li!==-1){return GENS.findIndex(g=>g.includes(li));}const w=PKM[pi];return w&&typeof w.gen==='number'?w.gen:0;}
 // Difficulty still adapts per subject, but the level is never shown to the player —
 // "Lv" in the UI means a Pokemon's level and nothing else.
-function updStats(sub,ok){
-  const s=st.stats[sub];s.att++;
+// 0 means Auto. A lock is a math tier the child does not rise past.
+function mathLock(){
+  const g=st.grade|0;
+  if(g<1)return 0;
+  return Math.min(g,maxLevel('math'));
+}
+// `skipStreak` is a review question from an earlier tier. It still counts as
+// an answer (and the caller still pays XP and queues a Rematch) but it does
+// not move the level-up or level-down run, and it does not wipe one either.
+function updStats(sub,ok,skipStreak){
+  const s=st.stats[sub];
+  s.att++;
+  if(ok)s.cor++;
+  if(skipStreak)return;
   if(ok){
-    s.cor++;s.cs++;s.ws=0;
-    if(s.cs>=LEVEL_UP_STREAK&&s.level<maxLevel(sub)){
+    s.cs++;s.ws=0;
+    if(s.cs<LEVEL_UP_STREAK)return;
+    const lock=sub==='math'?mathLock():0;
+    if(lock&&s.level>=lock){
+      s.cs=0;
+      // The badge for this tier is already theirs, or this is the top of the
+      // bank and there is no Gym above it. Five in a row is only the streak.
+      if(hasBadge(sub,s.level)||s.level>=maxLevel(sub))return;
+      const cur=st.gymOffer[sub];
+      if(cur&&cur.tier===s.level)return;
+      st.gymOffer[sub]={tier:s.level,cool:0};
+      return;
+    }
+    // Below a lock, five in a row climbs one tier and stops at the lock.
+    // It does not open a Gym the child would only use to get back.
+    if(lock&&s.level<lock){
+      s.cs=0;
+      s.level++;
+      const off=st.gymOffer[sub];
+      if(off&&off.tier!==s.level)st.gymOffer[sub]=null;
+      return;
+    }
+    if(s.level<maxLevel(sub)){
       s.cs=0;
       const tier=s.level;
       // Already cleared this tier (an old save, or a badge kept ahead of the
@@ -3831,7 +4085,8 @@ function updStats(sub,ok){
     s.ws++;s.cs=0;
     if(s.ws>=LEVEL_DOWN_STREAK&&s.level>1){
       s.level--;s.ws=0;
-      st.badges[sub]=(st.badges[sub]||[]).filter(t=>t<s.level);
+      // A lock is a ceiling, not a reason to take badges away.
+      if(!(sub==='math'&&mathLock()))st.badges[sub]=(st.badges[sub]||[]).filter(t=>t<s.level);
       const off=st.gymOffer[sub];
       if(off&&off.tier!==s.level)st.gymOffer[sub]=null;
     }
@@ -3925,7 +4180,12 @@ function finishGymWin(){
   const sub=g.sub,tier=g.tier;
   if(!hasBadge(sub,tier))st.badges[sub].push(tier);
   st.badges[sub].sort((a,b)=>a-b);
-  if(st.stats[sub].level===tier&&st.stats[sub].level<maxLevel(sub))st.stats[sub].level++;
+  if(st.stats[sub].level===tier&&st.stats[sub].level<maxLevel(sub)){
+    const lock=sub==='math'?mathLock():0;
+    // A win still earns the badge and the celebration. The lock is what
+    // keeps the next tier closed.
+    if(!lock||tier<lock)st.stats[sub].level++;
+  }
   st.gymOffer[sub]=null;
   const again=st.prizes[sub].indexOf(tier)>=0;
   let candy=0,partner=null,grew=false;
@@ -4786,7 +5046,12 @@ function render(){
       prizeBit=`${partnerBit}<div class="award-prize">+${a.xp} XP</div><div class="award-prize">Rare Candy ×${a.candy}</div><div class="award-prize">Great Ball ×${a.great} — it helps on your next wild Pokémon.</div>`;
     }
     const grew=a.grew?`<div class="award-prize">${PKM[activePi()].n} grew stronger!</div>`:'';
-    const waiting=multiSubject()?`New ${SNAME[a.sub]} questions are waiting.`:'New questions unlocked!';
+    // A grade lock still celebrates the badge. It does not pretend the next
+    // tier opened, because the questions stay where the parent set them.
+    const held=a.sub==='math'&&mathLock()&&st.stats.math.level===a.tier;
+    const waiting=held
+      ?'You earned the badge!'
+      :(multiSubject()?`New ${SNAME[a.sub]} questions are waiting.`:'New questions unlocked!');
     h+=`<div class="card award-card"><div class="award-scroll"><div class="award-kicker">Gym prize</div><div class="award-pop">${badgeHTML(a.sub,a.tier,true)}</div><div class="award-title">You earned the ${badgeName(a.sub,a.tier)}!</div><div class="award-sub">${waiting}</div>${prizeBit}${grew}</div><button class="award-go" id="award-go">Yay!</button></div>`;
   }
 
@@ -4922,7 +5187,8 @@ function switchView(v){
   if(v!=='game'){pauseGymTimer();hideMoments();}
   view=v;
   if(v==='game'){
-    showGameChrome();
+    if(gameStale){gameStale=false;render();}
+    else showGameChrome();
     dockMute();
     armGymTimer();
     return;
@@ -5060,7 +5326,7 @@ async function loadQuestion(){
     st.lastRematchAt=st.served;
   } else {
     const sub=nextSubject(st.subject);
-    q=pickBuiltIn(sub,st.stats[sub].level,pname);
+    q=dealRegular(sub,pname);
   }
   rememberSeen(q);
   st.q=q;st.sel=null;st.cor=false;st.anim="";st.helped=false;
@@ -5073,8 +5339,10 @@ async function loadQuestion(){
 function refillQuestion(){
   if(!st.q)return;
   const rematch=st.q.rematch;
+  const bankReview=st.q.bankReview;
   st.q=fillQuestion(st.q.tmpl,questionPname());
   st.q.rematch=rematch;
+  if(bankReview)st.q.bankReview=true;
 }
 
 // Shows the hint before he commits an answer. Only offered on a question he
@@ -5855,7 +6123,8 @@ function commitAttempt(ok,choice,nextDraft){
       // A Gym is the exception: hearts are already the penalty, so help must
       // not wipe the practice run that unlocked the battle.
       const sub=st.stats[st.q.subject];sub.att++;sub.cor++;
-      if(st.phase!=='gym')sub.cs=0;
+      // A review question must not wipe the run it is sitting inside.
+      if(st.phase!=='gym'&&!(st.q&&st.q.bankReview))sub.cs=0;
       if(st.phase==='play'||st.phase==='gym'){
         const tm=activeTM();
         if(tm){st.lastXp=XP_WITH_HELP;tm.xp+=st.lastXp;applyLevelUps();}
@@ -5865,7 +6134,7 @@ function commitAttempt(ok,choice,nextDraft){
       // Misses must not drop a tier, strip a badge, or arm another invite.
       const sub=st.stats[st.q.subject];sub.att++;if(ok)sub.cor++;
     } else {
-      updStats(st.q.subject,ok);
+      updStats(st.q.subject,ok,!!(st.q&&st.q.bankReview));
     }
     if(ok&&!helped){
       st.streak++;
