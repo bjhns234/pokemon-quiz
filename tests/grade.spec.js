@@ -130,6 +130,8 @@ test('locking kindergarten stays in tier 1, and a Gym win gives the badge only',
   await answer(page,true);
   await expect(page.locator('.award-card')).toBeVisible();
   await expect(page.locator('.award-card')).toContainText('Bolt Badge');
+  await expect(page.locator('.award-sub')).toHaveText('You earned the badge!');
+  await expect(page.locator('.award-card')).not.toContainText('Same questions');
   expect(await state(page,()=>({level:st.stats.math.level,badges:[...st.badges.math]}))).toEqual({level:1,badges:[1]});
   await page.click('#award-go');
 
@@ -356,6 +358,8 @@ test('a grade is saved per child and still selected after a reload',async({page}
   await openParents(page);
   await row(page,'Maya').locator('[data-grade="1"]').click();
   await row(page,'Leo').locator('[data-grade="3"]').click();
+  await expect(row(page,'Maya').locator('.grade-name')).toHaveText("Maya's grade");
+  await expect(row(page,'Leo').locator('.grade-name')).toHaveText("Leo's grade");
   await expect(row(page,'Maya').locator('[data-grade="1"]')).toHaveAttribute('aria-pressed','true');
   await expect(row(page,'Leo').locator('[data-grade="3"]')).toHaveAttribute('aria-pressed','true');
   await expect(row(page,'Maya').locator('[data-grade="3"]')).toHaveAttribute('aria-pressed','false');
@@ -383,6 +387,94 @@ test('a grade is saved per child and still selected after a reload',async({page}
   await page.click('#who-btn');
   await page.locator('[data-pick]').filter({hasText:'Leo'}).click();
   expect(await state(page,()=>({grade:st.grade,level:st.stats.math.level,name:activeKid().name}))).toEqual({grade:3,level:3,name:'Leo'});
+  expect(errors).toEqual([]);
+});
+
+test('the grade buttons are names only, equal size, and labeled per child',async({page})=>{
+  const errors=await fresh(page);
+  await openParents(page);
+  await expect(page.locator('#grade-setting .parent-lead').first()).toHaveText('Pick a grade to keep questions at that level. Earlier work still comes back now and then.');
+  await expect(page.locator('.grade-name')).toHaveCount(0);
+  await expect(page.locator('#grade-setting .grade-choice')).toHaveText(['Auto','Kindergarten','1st','2nd','3rd']);
+  await expect(page.locator('.grade-blurb')).toHaveText('Moves up after each Gym win.');
+  const blurbs={
+    '1':'Kindergarten: counting, adding and subtracting to 5, shapes.',
+    '2':'1st: adding and subtracting to 20, skip counting, tens and ones.',
+    '3':'2nd: adding and subtracting to 100, odd and even, shapes.',
+    '4':'3rd: multiplying, dividing, fractions, time, and money.',
+    auto:'Moves up after each Gym win.',
+  };
+  for(const grade of Object.keys(blurbs)){
+    await page.locator(`#grade-setting .grade-choice[data-grade="${grade}"]`).click();
+    await expect(page.locator('.grade-blurb')).toHaveText(blurbs[grade]);
+    const inside=await page.locator(`#grade-setting .grade-choice[data-grade="${grade}"]`).innerText();
+    expect(inside.trim()).not.toMatch(/counting|adding|Gym win/);
+  }
+
+  for(const size of [{width:768,height:1024},{width:568,height:320},{width:375,height:667},{width:320,height:568}]){
+    await page.setViewportSize(size);
+    const fit=await page.locator('#grade-setting .grade-choice').evaluateAll(els=>{
+      const row=els[0].parentElement.getBoundingClientRect();
+      const boxes=els.map(el=>el.getBoundingClientRect());
+      const widths=boxes.map(b=>Math.round(b.width));
+      const heights=boxes.map(b=>Math.round(b.height));
+      return {
+        widths,heights,
+        row:Math.round(row.width),
+        full:boxes.some(b=>b.width>row.width-8),
+      };
+    });
+    expect(Math.max(...fit.widths)-Math.min(...fit.widths),`widths at ${size.width}`).toBeLessThanOrEqual(2);
+    expect(Math.max(...fit.heights)-Math.min(...fit.heights),`heights at ${size.width}`).toBeLessThanOrEqual(2);
+    expect(fit.full,`stretched button at ${size.width}`).toBe(false);
+    expect(Math.min(...fit.heights)).toBeGreaterThanOrEqual(44);
+  }
+  expect(errors).toEqual([]);
+});
+
+test('a grade change replaces an open question and clears a Gym from the screen',async({page})=>{
+  const errors=await fresh(page);
+  const before=await state(page,()=>({lv:st.q.tmpl.lv,key:reviewKey(st.q.tmpl)}));
+  expect(before.lv).toBe(1);
+  await openParents(page);
+  await page.locator('#grade-setting .grade-choice[data-grade="2"]').click();
+  await backToGame(page);
+  const after=await state(page,()=>({lv:st.q.tmpl.lv,key:reviewKey(st.q.tmpl),cor:st.cor,phase:st.phase,gym:st.gym}));
+  expect(after).toMatchObject({lv:2,cor:false,phase:'play',gym:null});
+  expect(after.key).not.toBe(before.key);
+  await expect(page.locator('.gym-card, .gym-name, .gym-role')).toHaveCount(0);
+
+  await answer(page,true);
+  const solved=await state(page,()=>reviewKey(st.q.tmpl));
+  await openParents(page);
+  await page.locator('#grade-setting .grade-choice[data-grade="1"]').click();
+  await backToGame(page);
+  expect(await state(page,()=>reviewKey(st.q.tmpl))).toBe(solved);
+  expect(await state(page,()=>st.stats.math.level)).toBe(1);
+
+  await state(page,()=>{
+    st.stats.math.level=2;
+    st.stats.math.cs=0;
+    st.badges.math=[];
+    st.gymOffer.math={tier:2,cool:0};
+    st.cor=true;
+    st.grade=0;
+    render();
+  });
+  await page.click('[data-gym-start="math"]');
+  await expect(page.locator('.gym-role')).toHaveText('Gym Leader');
+  await expect(page.locator('.gym-name')).toBeVisible();
+  await page.click('#nav-pdx');
+  await page.click('#parents-link');
+  await passParentGate(page);
+  await page.locator('#grade-setting .grade-choice[data-grade="1"]').click();
+  expect(await state(page,()=>({phase:st.phase,gym:st.gym}))).toEqual({phase:'play',gym:null});
+  await page.click('#parent-back');
+  await page.click('#nav-game');
+  await expect(page.locator('.gym-card, .gym-name, .gym-role')).toHaveCount(0);
+  await expect(page.locator('.qtext')).toBeVisible();
+  expect(await state(page,()=>st.q.tmpl.lv)).toBe(1);
+  expect(await state(page,()=>st.phase)).toBe('play');
   expect(errors).toEqual([]);
 });
 

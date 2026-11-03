@@ -513,11 +513,12 @@ button.mon-strip:focus{outline:3px solid #1D4ED8;outline-offset:2px}
 .grade-row{margin-top:14px}
 .grade-row+.grade-row{border-top:1px solid #E5E7EB;padding-top:14px}
 .grade-name{font-size:16px;font-weight:800;color:#1A1A2E;margin-bottom:8px}
-.grade-choices{display:flex;flex-wrap:wrap;gap:8px}
-.grade-choice{flex:1 1 140px;max-width:100%;min-height:44px;min-width:44px;padding:8px 12px;border-radius:12px;border:2px solid #1A1A2E;background:#fff;color:#1A1A2E;font-family:inherit;font-weight:800;font-size:16px;line-height:1.2;cursor:pointer;text-align:left}
+/* Equal cells. auto-fill keeps an empty track, so a last button on its own
+   row stays one cell wide instead of stretching across the card. */
+.grade-choices{display:grid;grid-template-columns:repeat(auto-fill,minmax(8.25rem,1fr));gap:8px}
+.grade-choice{min-height:44px;min-width:0;padding:8px 10px;border-radius:12px;border:2px solid #1A1A2E;background:#fff;color:#1A1A2E;font-family:inherit;font-weight:800;font-size:16px;line-height:1.2;cursor:pointer;text-align:center;display:flex;align-items:center;justify-content:center}
 .grade-choice.sel{background:#1A1A2E;color:#fff}
-.grade-choice-name{display:block}
-.grade-choice-plain{display:block;margin-top:2px;font-size:14px;font-weight:700;line-height:1.3;overflow-wrap:anywhere}
+.grade-blurb{font-size:16px;font-weight:700;color:#1A1A2E;line-height:1.35;margin-top:10px}
 .parent-q{font-size:22px;font-weight:800;color:#1A1A2E;text-align:center;margin:8px 0}
 .parent-ans{width:100%;border:2px solid #E5E7EB;border-radius:14px;padding:12px;font-size:22px;font-weight:800;text-align:center;font-family:inherit;color:#1A1A2E}
 .parent-ans:focus{outline:none;border-color:#1A1A2E}
@@ -3779,9 +3780,14 @@ function gradeName(tier){
   const m=/^(\d+(?:st|nd|rd|th))/i.exec(plain);
   return m?m[1]:('Grade '+tier);
 }
-function gradePlain(tier){
-  if(!tier)return 'Same as today';
-  return (TIER_PLAIN.math||{})[tier]||'';
+// One sentence for the grade that is selected. Written from what that tier
+// actually asks, not a second copy of the long parent-page phrase.
+function gradeBlurb(tier){
+  if(!tier)return 'Moves up after each Gym win.';
+  if(tier===1)return 'Kindergarten: counting, adding and subtracting to 5, shapes.';
+  if(tier===2)return '1st: adding and subtracting to 20, skip counting, tens and ones.';
+  if(tier===3)return '2nd: adding and subtracting to 100, odd and even, shapes.';
+  return '3rd: multiplying, dividing, fractions, time, and money.';
 }
 function kidGrade(kid){
   if(!kid)return 0;
@@ -3797,21 +3803,21 @@ function gradeChoices(){
   return out;
 }
 function gradeSettingHTML(){
-  let h=`<div class="card" id="grade-setting"><div class="parent-title" style="font-size:20px">Grade</div><p class="parent-lead">Auto moves up after a Gym win. A grade keeps questions there. Earlier work still shows up now and then.</p>`;
+  let h=`<div class="card" id="grade-setting"><div class="parent-title" style="font-size:20px">Grade</div><p class="parent-lead">Pick a grade to keep questions at that level. Earlier work still comes back now and then.</p>`;
   if(!profiles.kids.length){
     return h+`<p class="parent-lead">No trainers yet. A child can make one from the game.</p></div>`;
   }
   const choices=gradeChoices();
+  const many=profiles.kids.length>1;
   profiles.kids.forEach(kid=>{
     const cur=kidGrade(kid);
-    h+=`<div class="grade-row" data-grade-kid="${escapeHtml(kid.id)}"><div class="grade-name">${escapeHtml(kid.name)}</div><div class="grade-choices" role="radiogroup" aria-label="Grade for ${escapeHtml(kid.name)}">`;
+    const who=many?`<div class="grade-name">${escapeHtml(kid.name)}'s grade</div>`:'';
+    h+=`<div class="grade-row" data-grade-kid="${escapeHtml(kid.id)}">${who}<div class="grade-choices" role="radiogroup" aria-label="Grade for ${escapeHtml(kid.name)}">`;
     choices.forEach(c=>{
       const on=c.grade===cur;
-      const plain=gradePlain(c.grade);
-      const label=plain&&c.grade?(c.name+'. '+plain):c.name;
-      h+=`<button type="button" class="grade-choice${on?' sel':''}" data-grade="${c.grade?String(c.grade):'auto'}" data-for="${escapeHtml(kid.id)}" aria-pressed="${on?'true':'false'}" aria-label="${escapeHtml(label)}"><span class="grade-choice-name">${escapeHtml(c.name)}</span><span class="grade-choice-plain">${escapeHtml(plain)}</span></button>`;
+      h+=`<button type="button" class="grade-choice${on?' sel':''}" data-grade="${c.grade?String(c.grade):'auto'}" data-for="${escapeHtml(kid.id)}" aria-pressed="${on?'true':'false'}">${escapeHtml(c.name)}</button>`;
     });
-    h+=`</div></div>`;
+    h+=`</div><p class="grade-blurb">${escapeHtml(gradeBlurb(cur))}</p></div>`;
   });
   return h+`</div>`;
 }
@@ -3821,8 +3827,10 @@ function setKidGrade(kidId, raw){
   const next=gradeValue(raw);
   const stored=next>=1&&next<=4?next:'auto';
   if(kid.id===profiles.activeId){
+    const prev=st.grade|0;
     st.grade=next;
-    if(next){
+    let deal=false;
+    if(next&&prev!==next){
       const cap=Math.min(next,maxLevel('math'));
       if(st.stats.math.level!==cap){
         st.stats.math.level=cap;
@@ -3831,10 +3839,19 @@ function setKidGrade(kidId, raw){
       }
       const off=st.gymOffer.math;
       if(off&&(off.tier!==st.stats.math.level||hasBadge('math',off.tier)))st.gymOffer.math=null;
-      if(st.gym&&st.gym.sub==='math'&&st.gym.tier>cap){
+      // A battle for a different tier cannot stay on screen. The leader card
+      // is painted from the old DOM, so the game is marked stale until the
+      // next time that screen is shown.
+      if(st.gym&&st.gym.sub==='math'&&st.gym.tier!==cap){
+        if(gymTick){clearInterval(gymTick);gymTick=null;}
         st.gym=null;
         if(st.phase==='gym'||st.phase==='award')st.phase=st.team.length?'play':'starter';
+        deal=st.phase==='play';
       }
+      const open=st.phase==='play'&&st.q&&!st.cor&&!st.q.rematch&&st.q.subject==='math'&&st.q.tmpl&&st.q.tmpl.lv!==cap;
+      if(open)deal=true;
+      if(deal)loadQuestion();
+      if(view!=='game')gameStale=true;
     }
     save();
     return;
@@ -3933,6 +3950,11 @@ let parentQuiz=null;
 let parentMsg='';
 let parentDraft='';
 let viewBeforeParent='game';
+// The game DOM is hidden while Parents is open. A grade change can clear a
+// Gym or swap the question without painting that screen, so the next visit
+// has to draw it again. Otherwise the Gym Leader card stays up after phase
+// is already play.
+let gameStale=false;
 let st=mkState(loadSaved());
 // A grade chosen before the first starter lives on the trainer, not in a game.
 (function applyPendingGrade(){
@@ -5028,7 +5050,7 @@ function render(){
     // tier opened, because the questions stay where the parent set them.
     const held=a.sub==='math'&&mathLock()&&st.stats.math.level===a.tier;
     const waiting=held
-      ?'Same questions for now. The badge is yours.'
+      ?'You earned the badge!'
       :(multiSubject()?`New ${SNAME[a.sub]} questions are waiting.`:'New questions unlocked!');
     h+=`<div class="card award-card"><div class="award-scroll"><div class="award-kicker">Gym prize</div><div class="award-pop">${badgeHTML(a.sub,a.tier,true)}</div><div class="award-title">You earned the ${badgeName(a.sub,a.tier)}!</div><div class="award-sub">${waiting}</div>${prizeBit}${grew}</div><button class="award-go" id="award-go">Yay!</button></div>`;
   }
@@ -5165,7 +5187,8 @@ function switchView(v){
   if(v!=='game'){pauseGymTimer();hideMoments();}
   view=v;
   if(v==='game'){
-    showGameChrome();
+    if(gameStale){gameStale=false;render();}
+    else showGameChrome();
     dockMute();
     armGymTimer();
     return;
