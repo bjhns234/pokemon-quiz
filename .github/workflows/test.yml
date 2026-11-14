@@ -5,7 +5,9 @@ on:
     branches: [main]
 jobs:
   test:
-    runs-on: ubuntu-latest
+    # ubuntu-latest is 26.04. Playwright 1.56.1 has no Chromium build for it,
+    # so the install step fails before any test runs. 24.04 is the build it ships.
+    runs-on: ubuntu-24.04
     # The browser install also downloads fonts. A slow mirror has used the
     # whole 10 minutes and cancelled the job before any test ran.
     timeout-minutes: 20
