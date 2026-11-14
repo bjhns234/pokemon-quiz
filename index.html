@@ -303,6 +303,7 @@ button.mon-strip:focus{outline:3px solid #1D4ED8;outline-offset:2px}
 #catch-pkm img{display:block;object-fit:contain;width:180px;height:180px}
 #catch-ball{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);z-index:3;display:none}
 #catch-lbl{position:relative;z-index:2;color:white;font-size:18px;font-weight:700;margin-top:24px;text-align:center;padding:0 28px;text-shadow:0 0 20px rgba(255,255,255,0.4);animation:evo-label-in 0.3s ease}
+.catch-total{display:block;margin-top:8px;font-size:18px;font-weight:800;line-height:1.3}
 #evo-overlay{display:none;position:fixed;inset:0;background:#06061a;z-index:999;flex-direction:column;align-items:center;justify-content:center}
 #evo-overlay.active{display:flex}
 #evo-rays{position:absolute;width:160%;height:160%;top:-30%;left:-30%;background:repeating-conic-gradient(rgba(255,255,255,0.055) 0deg 5deg,transparent 5deg 10deg);animation:evo-spin 7s linear infinite;pointer-events:none}
@@ -422,6 +423,11 @@ button.mon-strip:focus{outline:3px solid #1D4ED8;outline-offset:2px}
 .candy-btn{display:inline-flex;margin-top:8px;background:#FEF3C7;color:#92400E;padding:8px 12px;font-size:13px}
 .great-note{font-size:13px;font-weight:700;color:#6D28D9;margin-top:6px}
 .pdx-badges{margin-bottom:16px}
+/* The count sits on the page grey, so the shiny line stays amber-800:
+   light gold would fall under 4.5:1 here. */
+.team-tally{text-align:center;margin:0 0 14px;padding:0 4px}
+.team-tally-n{font-size:26px;font-weight:800;line-height:1.25;color:#1A1A2E}
+.team-tally-shiny{margin-top:2px;font-size:18px;font-weight:700;line-height:1.3;color:#92400E}
 .pdx-badge-hd{font-size:14px;font-weight:800;color:#374151;margin-bottom:8px}
 .dex-tools{display:flex;flex-direction:column;align-items:stretch;gap:8px}
 .dex-tools .switch-btn{position:static;width:100%;justify-content:center;font-size:16px;padding:12px;min-height:44px}
@@ -4676,7 +4682,25 @@ function numpadHTML(q,resolved,arming,armLeft){
   const cls=`pad-read${showX?' bad':(draft?'':' empty')}`;
   return `<div class="pad-wrap" data-typed="1"><div class="${cls}" id="pad-read">${body}</div><div class="pad-note" id="pad-note" hidden></div><div${attrs}>${keys}</div></div>`;
 }
+// The catch label is drawn, not live, so a screen reader never hears it.
+// This sentence is the one announcement. It stays until the next answer:
+// the question that follows would otherwise clear the region while it is
+// still being spoken. The on-screen label is not a live region, so the
+// sentence is not spoken twice.
+let catchSpoken='';
+let catchSpokenQ=null;
+function speakCatch(pkIdx,shiny){
+  const got=`Gotcha! ${shiny?'SHINY ':''}${PKM[pkIdx].n} was caught!`;
+  catchSpoken=`${got} ${thatsTeamLine(st.team.length)}`;
+  catchSpokenQ=st.q;
+  syncAnswerLive();
+}
 function answerLiveText(){
+  if(catchSpoken){
+    if(st.q===catchSpokenQ||!st.tries)return catchSpoken;
+    catchSpoken='';
+    catchSpokenQ=null;
+  }
   if(!st.q||!st.tries)return '';
   if(st.wildEscape){
     const ans=st.q.answers[st.q.correctIndex];
@@ -4907,7 +4931,7 @@ function render(){
   if(st.phase==='switch'){
     h+=`<div class="starter-card">`+
        `<button class="switch-back" id="switch-cancel">&#8592; Never mind</button>`+
-       `<div style="font-size:22px;font-weight:700;color:#1A1A2E;margin-bottom:3px;text-align:center">Choose your Pok&eacute;mon!</div>`+
+       `<div id="switch-title" style="font-size:22px;font-weight:700;color:#1A1A2E;margin-bottom:3px;text-align:center">${yourTeamLine(st.team.length)}</div>`+
        `<div style="font-size:16px;color:#374151;margin-bottom:16px;text-align:center">Tap one to bring it out</div>`+
        `<div class="switch-grid">`;
     // Team order, which is the order he caught them, and deliberately not sorted
@@ -5108,9 +5132,27 @@ function pdxEntryHTML(pi,shiny){
   return`<div class="pdx-entry${u?'':' locked'}${shiny?' shiny':''}">${pkSprite(pi,52,shiny)}<div class="pdx-num">${pk.num}${shiny?` ${SHINY_STAR}`:''}</div><div class="pdx-name">${name}</div>${u?`<div class="pdx-fact">${pk.fact}</div>`:''}</div>`;
 }
 
+// One wording for the team size, so the Pokédex, the switch picker, and the
+// catch all agree. Pokémon stays the same word for one or many. One shiny
+// uses "is"; more than one uses "are".
+function youHaveLine(n){
+  return n===1?'You have 1 Pokémon!':`You have ${n} Pokémon!`;
+}
+function yourTeamLine(n){
+  return n===1?'Your 1 Pokémon':`Your ${n} Pokémon`;
+}
+function thatsTeamLine(n){
+  return n===1?"That's 1 Pokémon!":`That's ${n} Pokémon!`;
+}
+function shinyTallyText(s){
+  return s===1?'1 is shiny ✨':`${s} are shiny ✨`;
+}
 function renderPokedex(){
   shelterMute();
   let h=`<div class="hdr">${whoButtonHTML('who-btn-pdx')}<span class="app-name">Pokédex</span><button class="reset-btn" id="reset-btn"><span class="reset-fill" id="reset-fill"></span><span class="reset-lbl" id="reset-lbl"><span class="reset-long">Hold to reset this trainer</span><span class="reset-short">Hold to reset</span></span></button></div>`;
+  const shinyN=st.team.filter(t=>t.shiny).length;
+  const shinyBit=shinyN?`<div class="team-tally-shiny" id="team-tally-shiny">${shinyTallyText(shinyN)}</div>`:'';
+  h+=`<div class="team-tally" id="team-tally"><div class="team-tally-n" id="team-tally-n">${youHaveLine(st.team.length)}</div>${shinyBit}</div>`;
   const bits=[];
   enabledSubjects().forEach(sub=>(st.badges[sub]||[]).forEach(t=>bits.push(badgeHTML(sub,t,false))));
   h+=`<div class="card pdx-badges"><div class="pdx-badge-hd">Gym badges</div>${bits.length?`<div class="badge-row">${bits.join('')}</div>`:'<div class="gym-wait">Win a Gym battle to earn a badge!</div>'}</div>`;
@@ -5657,7 +5699,14 @@ function playCatch(pkIdx,shiny,onDone){
         later(()=>{
           ball.style.animation='ball-pop 0.45s ease forwards';
           playSfx('gotcha');
-          lbl.textContent=`Gotcha! ${shiny?'SHINY ':''}${PKM[pkIdx].n} was caught!`;
+          lbl.replaceChildren();
+          const got=document.createElement('div');
+          got.textContent=`Gotcha! ${shiny?'SHINY ':''}${PKM[pkIdx].n} was caught!`;
+          const total=document.createElement('div');
+          total.className='catch-total';
+          total.textContent=thatsTeamLine(st.team.length);
+          lbl.append(got,total);
+          speakCatch(pkIdx,shiny);
           // The shiny storm replaces the ordinary burst rather than joining it:
           // both would clear each other's sparkles anyway, since _spawnSparkles
           // wipes the host first.
