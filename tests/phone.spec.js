@@ -262,7 +262,7 @@ test('tapping the Pokémon on the Game tab opens the picker',async({page})=>{
   }
   await page.setViewportSize({width:375,height:667});
   await page.click('#mon-switch');
-  await expect(page.getByText('Choose your Pokémon!')).toBeVisible();
+  await expect(page.getByText('Your 2 Pokémon')).toBeVisible();
   await page.click('#switch-cancel');
   await answer(page,true);
   await expect(page.locator('#mon-switch')).toBeVisible();
@@ -284,7 +284,7 @@ test('one Pokémon does not turn the strip into a button',async({page})=>{
   }));
   expect(quiet).toEqual({tag:'DIV',role:null,tab:-1,cursor:'default'});
   await strip.click();
-  await expect(page.getByText('Choose your Pokémon!')).toHaveCount(0);
+  await expect(page.locator('#switch-title')).toHaveCount(0);
   expect(await state(page,()=>st.phase)).toBe('play');
   expect(await state(page,()=>canOfferSwitch())).toBe(false);
 
@@ -338,7 +338,7 @@ test('switching from the Game tab keeps the same question',async({page})=>{
   const [oldName,newName]=await state(page,()=>[PKM[st.team[0].pi].n,PKM[st.team[1].pi].n]);
   expect(before.text).toContain(oldName);
   await page.click('#mon-switch');
-  await expect(page.getByText('Choose your Pokémon!')).toBeVisible();
+  await expect(page.getByText('Your 2 Pokémon')).toBeVisible();
   await page.click('[data-switch-idx="1"]');
   const after=await state(page,()=>({text:st.q.question,key:reviewKey(st.q.tmpl),wrong:[...st.wrong],phase:st.phase}));
   expect(after.phase).toBe('play');
