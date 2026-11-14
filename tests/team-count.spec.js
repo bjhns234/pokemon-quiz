@@ -42,7 +42,16 @@ test('a catch says how many Pokémon he has now',async({page})=>{
   const singular=await pressCatch(page);
   expect(await state(page,()=>st.team.length)).toBe(1);
   await expect(singular).toContainText("That's 1 Pokémon!");
+  const caughtName=await state(page,()=>PKM[LINES[1][0]].n);
+  const singularSpoken=`Gotcha! ${caughtName} was caught! That's 1 Pokémon!`;
+  // One live region, the one already on the page. The on-screen label stays
+  // visual, so the sentence is not spoken twice.
+  await expect(page.locator('[aria-live]')).toHaveCount(1);
+  await expect(page.locator('#catch-lbl')).not.toHaveAttribute('aria-live');
+  await expect(page.locator('#answer-live')).toHaveText(singularSpoken);
   await expect(page.locator('#catch-overlay')).toBeHidden({timeout:15000});
+  await expect(page.locator('#answer-live')).toHaveText(singularSpoken);
+  await expect(page.locator('[aria-live]')).toHaveCount(1);
 
   await state(page,armCatch,true);
   const plural=await pressCatch(page);
@@ -50,6 +59,8 @@ test('a catch says how many Pokémon he has now',async({page})=>{
   expect(n).toBe(2);
   await expect(plural).toContainText(`That's ${n} Pokémon!`);
   await expect(plural).not.toContainText("That's 1 Pokémon!");
+  await expect(page.locator('#answer-live')).toHaveText(`Gotcha! SHINY ${caughtName} was caught! That's ${n} Pokémon!`);
+  await expect(page.locator('[aria-live]')).toHaveCount(1);
   const total=plural.locator('.catch-total');
   await expect(total).toHaveText(`That's ${n} Pokémon!`);
   const totalFont=await total.evaluate(el=>parseFloat(getComputedStyle(el).fontSize));

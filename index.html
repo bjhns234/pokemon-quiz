@@ -4682,7 +4682,25 @@ function numpadHTML(q,resolved,arming,armLeft){
   const cls=`pad-read${showX?' bad':(draft?'':' empty')}`;
   return `<div class="pad-wrap" data-typed="1"><div class="${cls}" id="pad-read">${body}</div><div class="pad-note" id="pad-note" hidden></div><div${attrs}>${keys}</div></div>`;
 }
+// The catch label is drawn, not live, so a screen reader never hears it.
+// This sentence is the one announcement. It stays until the next answer:
+// the question that follows would otherwise clear the region while it is
+// still being spoken. The on-screen label is not a live region, so the
+// sentence is not spoken twice.
+let catchSpoken='';
+let catchSpokenQ=null;
+function speakCatch(pkIdx,shiny){
+  const got=`Gotcha! ${shiny?'SHINY ':''}${PKM[pkIdx].n} was caught!`;
+  catchSpoken=`${got} ${thatsTeamLine(st.team.length)}`;
+  catchSpokenQ=st.q;
+  syncAnswerLive();
+}
 function answerLiveText(){
+  if(catchSpoken){
+    if(st.q===catchSpokenQ||!st.tries)return catchSpoken;
+    catchSpoken='';
+    catchSpokenQ=null;
+  }
   if(!st.q||!st.tries)return '';
   if(st.wildEscape){
     const ans=st.q.answers[st.q.correctIndex];
@@ -5688,6 +5706,7 @@ function playCatch(pkIdx,shiny,onDone){
           total.className='catch-total';
           total.textContent=thatsTeamLine(st.team.length);
           lbl.append(got,total);
+          speakCatch(pkIdx,shiny);
           // The shiny storm replaces the ordinary burst rather than joining it:
           // both would clear each other's sparkles anyway, since _spawnSparkles
           // wipes the host first.
