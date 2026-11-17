@@ -111,6 +111,8 @@ function layout(){
     short,
     small,
     readClip:read?read.scrollHeight-read.clientHeight:0,
+    cols:document.querySelector('#game .numpad')?getComputedStyle(document.querySelector('#game .numpad')).gridTemplateColumns.split(' ').filter(Boolean).length:0,
+    keyH:document.querySelector('#game .pad-key:not(.pad-check)')?document.querySelector('#game .pad-key:not(.pad-check)').getBoundingClientRect().height:0,
   };
 }
 
@@ -137,6 +139,13 @@ test('a tablet hero fits the streak, the pad, and the home indicator',async({pag
     expect(typed.helpBottom,`${where} Ask for help`).toBeLessThanOrEqual(typed.navTop+0.5);
     expect(typed.checkBottom,`${where} Check`).toBeLessThanOrEqual(typed.navTop+0.5);
     expect(typed.checkCol,`${where} Check spans the pad`).toContain('1');
+    if((size.width===768&&size.height===1024)||(size.width===820&&size.height===1180)){
+      expect(typed.cols,`${where} pad columns`).toBe(3);
+      expect(typed.keyH,`${where} key height`).toBeGreaterThanOrEqual(57);
+    }
+    if(size.width===1024&&size.height===768){
+      expect(typed.cols,`${where} pad columns`).toBe(4);
+    }
     expect(typed.src,where).toContain('/official-artwork/');
     expect(typed.attrW,where).toBe('96');
     expect(typed.rendering,where).not.toMatch(/pixelated|crisp-edges/);
