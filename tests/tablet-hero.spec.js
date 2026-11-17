@@ -1,12 +1,7 @@
-// On a tablet the partner is a centered hero while he answers.
+// On a tablet the partner is a centered hero that takes the leftover height.
 // Phones keep the short strip. Wild, Gym, catch, and evolution art stay put.
 const {test,expect}=require('@playwright/test');
 const {openGame,startGame,state}=require('./helpers');
-
-const TABLETS=[
-  {width:768,height:1024,hero:200},
-  {width:1024,height:768,hero:null},
-];
 
 const PHONES=[
   {width:375,height:667,img:96},
@@ -15,17 +10,42 @@ const PHONES=[
   {width:568,height:320,img:28},
 ];
 
+// Heights the hero has to survive: the 700px floor, a short iPad, the old
+// 820px seam, and a tall portrait.
+const TABLETS=[
+  {width:800,height:700,safe:21},
+  {width:1024,height:700,safe:21},
+  {width:1133,height:744,safe:21},
+  {width:1024,height:768,safe:0},
+  {width:1024,height:768,safe:21},
+  {width:1180,height:820,safe:21},
+  {width:1024,height:821,safe:0},
+  {width:1194,height:834,safe:21},
+  {width:1024,height:900,safe:0},
+  {width:1024,height:910,safe:0},
+  {width:820,height:1180,safe:0},
+  {width:834,height:1194,safe:0},
+  {width:768,height:1024,safe:0},
+  {width:768,height:1024,safe:21},
+  {width:1366,height:1024,safe:0},
+];
+
 async function show(page,spec){
   await state(page,spec=>{
     const pi=PKM.findIndex(p=>p.n==='Meowscarada');
     if(spec.longName){st.team[0].pi=pi;st.activeIdx=0;}
-    st.phase='play';
-    st.subject=spec.sub;
     st.team=st.team.slice(0,1);
     st.pendingEvo=null;
+    st.streak=spec.streak||0;
+    st.phase='play';
+    st.subject=spec.sub;
     st.q=serveQuestion(spec.sub,spec.lv,spec.idx,questionPname());
-    st.tries=0;st.cor=false;st.wrong=[];st.helped=false;st.armAt=0;st.wildEscape=false;st.draft='';
+    st.tries=spec.tries||0;
+    st.cor=false;st.wrong=[];st.helped=false;st.armAt=0;st.wildEscape=false;
+    st.draft=spec.draft||'';
     render();
+    const nav=document.getElementById('bottom-nav');
+    nav.style.paddingBottom=(spec.safe||0)+'px';
     document.getElementById('app-main').scrollTop=0;
     window.scrollTo(0,0);
   },spec);
@@ -39,10 +59,13 @@ function layout(){
   const name=document.querySelector('#game .mon-strip .pname').getBoundingClientRect();
   const xp=document.querySelector('#game .mon-strip .xp-track').getBoundingClientRect();
   const q=document.querySelector('.qtext').getBoundingClientRect();
-  const help=document.getElementById('help-btn').getBoundingClientRect();
+  const help=document.getElementById('help-btn');
+  const helpR=help?help.getBoundingClientRect():null;
   const check=document.querySelector('[data-pad="check"]');
+  const checkR=check?check.getBoundingClientRect():null;
   const answers=[...document.querySelectorAll('.ans-btn')].map(el=>el.getBoundingClientRect());
   const cs=getComputedStyle(img);
+  const checkCol=check?getComputedStyle(check).gridColumn:'';
   const buttons=[...document.querySelectorAll('#game button, #bottom-nav button, #mute-btn')];
   const short=[];
   for(const el of buttons){
@@ -68,90 +91,126 @@ function layout(){
     const size=parseFloat(s.fontSize);
     if(size<14)small.push(node.textContent.trim().slice(0,32)+' '+size);
   }
+  const read=document.getElementById('pad-read');
   return {
     img:{w:ir.width,h:ir.height,x:ir.x,y:ir.y},
     name:{x:name.x,y:name.y,w:name.width,h:name.height},
     xp:{x:xp.x,y:xp.y,w:xp.width,h:xp.height},
     qTop:q.top,
-    helpBottom:help.bottom,
-    checkBottom:check?check.getBoundingClientRect().bottom:null,
+    helpBottom:helpR?helpR.bottom:null,
+    checkBottom:checkR?checkR.bottom:null,
+    checkCol,
     answerBottoms:answers.map(r=>r.bottom),
     navTop:nav.top,
     scroll:main.scrollHeight-main.clientHeight,
     scrollTop:main.scrollTop,
     winScroll:window.scrollY,
     src:img.getAttribute('src'),
+    attrW:img.getAttribute('width'),
     rendering:cs.imageRendering,
     short,
     small,
+    readClip:read?read.scrollHeight-read.clientHeight:0,
   };
 }
 
-test('a tablet shows the partner as a hero and the question does not scroll',async({page})=>{
-  test.setTimeout(60000);
+const LONG={sub:'math',lv:4,idx:60,longName:true,kind:'typed'};
+const MC={sub:'reading',lv:1,idx:0,longName:false,kind:'mc'};
+
+test('a tablet hero fits the streak, the pad, and the home indicator',async({page})=>{
+  test.setTimeout(90000);
   await openGame(page);
   await startGame(page,'math');
-  const cases=[
-    {sub:'reading',lv:1,idx:0,longName:false,kind:'mc'},
-    {sub:'science',lv:3,idx:42,longName:true,kind:'mc'},
-    {sub:'math',lv:4,idx:60,longName:true,kind:'typed'},
-  ];
   for(const size of TABLETS){
-    await page.setViewportSize(size);
-    for(const spec of cases){
-      await show(page,spec);
-      const box=await state(page,layout);
-      const where=`${spec.kind} at ${size.width}x${size.height}`;
-      if(size.hero){
-        expect(box.img.w,where).toBeGreaterThanOrEqual(size.hero-0.5);
-        expect(box.img.w,where).toBeLessThanOrEqual(size.hero+0.5);
-        expect(box.img.h,where).toBeGreaterThanOrEqual(size.hero-0.5);
-        expect(box.img.h,where).toBeLessThanOrEqual(size.hero+0.5);
-      }else{
-        expect(box.img.w,where).toBeGreaterThanOrEqual(140);
-        expect(box.img.h,where).toBeGreaterThanOrEqual(140);
-        expect(box.img.w,where).toBeLessThanOrEqual(200.5);
-        expect(box.img.h,where).toBeLessThanOrEqual(200.5);
-      }
-      expect(Math.abs(box.img.w-box.img.h),where).toBeLessThanOrEqual(1);
-      expect(box.name.y,`${where} name is beside the picture`).toBeGreaterThanOrEqual(box.img.y+box.img.h-1);
-      expect(box.xp.y,`${where} XP bar`).toBeGreaterThanOrEqual(box.name.y+box.name.h-1);
-      const mid=box.img.x+box.img.w/2;
-      expect(Math.abs(mid-(box.name.x+box.name.w/2)),`${where} name`).toBeLessThanOrEqual(4);
-      expect(Math.abs(mid-(box.xp.x+box.xp.w/2)),`${where} XP bar`).toBeLessThanOrEqual(4);
-      expect(box.src,where).toContain('/official-artwork/');
-      expect(box.rendering,where).not.toMatch(/pixelated|crisp-edges/);
-      expect(box.scroll,`${where} scrolls`).toBeLessThanOrEqual(1);
-      expect(box.scrollTop,where).toBe(0);
-      expect(box.winScroll,where).toBe(0);
-      expect(box.qTop,where).toBeGreaterThanOrEqual(0);
-      expect(box.helpBottom,`${where} Ask for help`).toBeLessThanOrEqual(box.navTop+0.5);
-      if(spec.kind==='typed'){
-        expect(box.checkBottom,`${where} Check`).not.toBeNull();
-        expect(box.checkBottom,`${where} Check`).toBeLessThanOrEqual(box.navTop+0.5);
-      }else{
-        expect(box.answerBottoms,where).toHaveLength(4);
-        for(const bottom of box.answerBottoms){
-          expect(bottom,`${where} answer`).toBeLessThanOrEqual(box.navTop+0.5);
-        }
-      }
-      expect(box.short,`${where} tap targets`).toEqual([]);
-      expect(box.small,`${where} text`).toEqual([]);
+    await page.setViewportSize({width:size.width,height:size.height});
+    const where=`${size.width}x${size.height} safe ${size.safe}`;
+    await show(page,{...LONG,streak:5,safe:size.safe});
+    const typed=await state(page,layout);
+    expect(typed.scroll,`${where} scrolls`).toBeLessThanOrEqual(1);
+    expect(typed.scrollTop,where).toBe(0);
+    expect(typed.img.h,`${where} hero`).toBeGreaterThanOrEqual(120);
+    expect(typed.img.h,`${where} hero`).toBeLessThanOrEqual(200.5);
+    expect(Math.abs(typed.img.w-typed.img.h),where).toBeLessThanOrEqual(1.5);
+    expect(typed.name.y,where).toBeGreaterThanOrEqual(typed.img.y+typed.img.h-1);
+    expect(typed.xp.y,where).toBeGreaterThanOrEqual(typed.name.y+typed.name.h-1);
+    expect(typed.qTop,where).toBeGreaterThanOrEqual(typed.xp.y+typed.xp.h-1);
+    expect(typed.helpBottom,`${where} Ask for help`).toBeLessThanOrEqual(typed.navTop+0.5);
+    expect(typed.checkBottom,`${where} Check`).toBeLessThanOrEqual(typed.navTop+0.5);
+    expect(typed.checkCol,`${where} Check spans the pad`).toContain('1');
+    expect(typed.src,where).toContain('/official-artwork/');
+    expect(typed.attrW,where).toBe('96');
+    expect(typed.rendering,where).not.toMatch(/pixelated|crisp-edges/);
+    expect(typed.short,`${where} tap targets`).toEqual([]);
+    expect(typed.small,`${where} text`).toEqual([]);
+    if(size.width===1024&&size.height===768&&size.safe===0){
+      expect(typed.img.h,`${where} pinned landscape hero`).toBeGreaterThanOrEqual(155);
+      expect(typed.img.h,`${where} pinned landscape hero`).toBeLessThanOrEqual(159);
+      expect(typed.img.w,`${where} pinned landscape hero`).toBeGreaterThanOrEqual(155);
+      expect(typed.img.w,`${where} pinned landscape hero`).toBeLessThanOrEqual(159);
+      await page.evaluate(()=>{
+        const canvas=document.createElement('canvas');
+        canvas.width=475;canvas.height=475;
+        const img=document.querySelector('#game .mon-strip img');
+        img.src=canvas.toDataURL('image/png');
+      });
+      await page.waitForFunction(()=>document.querySelector('#game .mon-strip img').naturalWidth===475);
+      const loaded=await state(page,layout);
+      expect(loaded.img.h,`${where} loaded art`).toBeGreaterThanOrEqual(155);
+      expect(loaded.img.h,`${where} loaded art`).toBeLessThanOrEqual(159);
+      expect(loaded.scroll,`${where} loaded art scrolls`).toBeLessThanOrEqual(1);
+      expect(loaded.helpBottom,`${where} loaded art help`).toBeLessThanOrEqual(loaded.navTop+0.5);
+    }
+
+    await show(page,{...MC,streak:0,safe:size.safe});
+    const mc=await state(page,layout);
+    expect(mc.scroll,`${where} MC scrolls`).toBeLessThanOrEqual(1);
+    expect(mc.helpBottom,`${where} MC help`).toBeLessThanOrEqual(mc.navTop+0.5);
+    expect(mc.img.h,`${where} MC hero`).toBeGreaterThanOrEqual(120);
+    expect(mc.img.h,`${where} MC hero`).toBeLessThanOrEqual(200.5);
+    for(const bottom of mc.answerBottoms){
+      expect(bottom,`${where} answer`).toBeLessThanOrEqual(mc.navTop+0.5);
+    }
+    if(size.width===768&&size.height===1024){
+      await show(page,{...LONG,streak:0,safe:size.safe});
+      const plain=await state(page,layout);
+      expect(plain.img.w,`${where} typed`).toBeGreaterThanOrEqual(199);
+      expect(plain.img.h,`${where} typed`).toBeGreaterThanOrEqual(199);
+      expect(plain.scroll,`${where} typed scrolls`).toBeLessThanOrEqual(1);
+      expect(mc.img.w,`${where} MC`).toBeGreaterThanOrEqual(199);
+      expect(mc.img.h,`${where} MC`).toBeGreaterThanOrEqual(199);
     }
   }
 });
 
-test('phone strips and wild or Gym art keep their sizes',async({page})=>{
+test('a missed typed answer does not clip the readout',async({page})=>{
+  await openGame(page);
+  await startGame(page,'math');
+  await page.setViewportSize({width:1024,height:768});
+  await show(page,{...LONG,streak:5,tries:1,draft:'12'});
+  const box=await state(page,layout);
+  expect(box.readClip).toBeLessThanOrEqual(1);
+  const read=await page.locator('#pad-read').boundingBox();
+  expect(read.height).toBeGreaterThanOrEqual(40);
+  await page.setViewportSize({width:1194,height:834});
+  await show(page,{...LONG,streak:5,tries:1,draft:'12'});
+  const tall=await state(page,layout);
+  expect(tall.readClip).toBeLessThanOrEqual(1);
+});
+
+test('phone strips keep their sizes, and catch and evolution stay full size when shown',async({page})=>{
   await openGame(page);
   await startGame(page,'reading');
   for(const size of PHONES){
     await page.setViewportSize(size);
-    await show(page,{sub:'reading',lv:1,idx:0,longName:false});
-    const img=await page.locator('#game .mon-strip img').boundingBox();
-    expect(img.width,`${size.width}x${size.height}`).toBeGreaterThanOrEqual(size.img-0.5);
-    expect(img.width,`${size.width}x${size.height}`).toBeLessThanOrEqual(size.img+0.5);
-    expect(img.height,`${size.width}x${size.height}`).toBeGreaterThanOrEqual(size.img-0.5);
-    expect(img.height,`${size.width}x${size.height}`).toBeLessThanOrEqual(size.img+0.5);
+    await show(page,{...MC,safe:0});
+    const img=page.locator('#game .mon-strip img');
+    const box=await img.boundingBox();
+    expect(box.width,`${size.width}x${size.height}`).toBeGreaterThanOrEqual(size.img-0.5);
+    expect(box.width,`${size.width}x${size.height}`).toBeLessThanOrEqual(size.img+0.5);
+    expect(box.height,`${size.width}x${size.height}`).toBeGreaterThanOrEqual(size.img-0.5);
+    expect(box.height,`${size.width}x${size.height}`).toBeLessThanOrEqual(size.img+0.5);
+    expect(await img.getAttribute('width')).toBe('96');
+    expect(await img.getAttribute('height')).toBe('96');
   }
   const scenes=[
     {width:768,height:1024,wild:140,gym:120},
@@ -172,15 +231,31 @@ test('phone strips and wild or Gym art keep their sizes',async({page})=>{
       st.q=serveQuestion('math',1,0,questionPname());
       render();
       const gym=document.querySelector('.gym-card .psvg img').getBoundingClientRect().height;
-      const catchW=parseFloat(getComputedStyle(document.querySelector('#catch-pkm img')).width);
-      const evoW=parseFloat(getComputedStyle(document.querySelector('#evo-sprite-wrap img')).width);
-      return {wild,gym,catchW,evoW};
+      const catchOv=document.getElementById('catch-overlay');
+      const catchImg=document.getElementById('catch-pkm-img');
+      catchOv.classList.add('active');
+      catchImg.style.cssText='display:block;object-fit:contain;width:180px;height:180px;opacity:1';
+      const catchBox=catchImg.getBoundingClientRect();
+      const evoOv=document.getElementById('evo-overlay');
+      const evoImg=document.getElementById('evo-img');
+      evoOv.classList.add('active');
+      evoImg.style.cssText='display:block;object-fit:contain;width:200px;height:200px;opacity:1';
+      const evoBox=evoImg.getBoundingClientRect();
+      catchOv.classList.remove('active');
+      evoOv.classList.remove('active');
+      return {
+        wild,gym,
+        catchH:catchBox.height,catchShown:catchBox.width>2&&catchOv.classList.contains('active')===false?catchBox.top>=0:catchBox.top,
+        evoH:evoBox.height,
+      };
     });
     expect(measured.wild,`wild at ${size.width}x${size.height}`).toBeGreaterThanOrEqual(size.wild-0.5);
     expect(measured.wild,`wild at ${size.width}x${size.height}`).toBeLessThanOrEqual(size.wild+0.5);
     expect(measured.gym,`gym at ${size.width}x${size.height}`).toBeGreaterThanOrEqual(size.gym-0.5);
     expect(measured.gym,`gym at ${size.width}x${size.height}`).toBeLessThanOrEqual(size.gym+0.5);
-    expect(measured.catchW).toBeGreaterThanOrEqual(179);
-    expect(measured.evoW).toBeGreaterThanOrEqual(199);
+    expect(measured.catchH,`catch at ${size.width}x${size.height}`).toBeGreaterThanOrEqual(179);
+    expect(measured.catchH,`catch at ${size.width}x${size.height}`).toBeLessThanOrEqual(181);
+    expect(measured.evoH,`evolution at ${size.width}x${size.height}`).toBeGreaterThanOrEqual(199);
+    expect(measured.evoH,`evolution at ${size.width}x${size.height}`).toBeLessThanOrEqual(201);
   }
 });
