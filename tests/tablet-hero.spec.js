@@ -142,11 +142,19 @@ test('a tablet hero fits the streak, the pad, and the home indicator',async({pag
     expect(typed.rendering,where).not.toMatch(/pixelated|crisp-edges/);
     expect(typed.short,`${where} tap targets`).toEqual([]);
     expect(typed.small,`${where} text`).toEqual([]);
+
+    await show(page,{...LONG,streak:0,safe:size.safe});
+    const plain=await state(page,layout);
+    expect(Math.abs(plain.img.h-typed.img.h),`${where} streak changes the hero`).toBeLessThanOrEqual(1);
+    expect(Math.abs(plain.img.w-typed.img.w),`${where} streak changes the hero`).toBeLessThanOrEqual(1);
+    expect(plain.scroll,`${where} without a streak scrolls`).toBeLessThanOrEqual(1);
+    expect(plain.helpBottom,`${where} without a streak`).toBeLessThanOrEqual(plain.navTop+0.5);
+
     if(size.width===1024&&size.height===768&&size.safe===0){
-      expect(typed.img.h,`${where} pinned landscape hero`).toBeGreaterThanOrEqual(155);
-      expect(typed.img.h,`${where} pinned landscape hero`).toBeLessThanOrEqual(159);
-      expect(typed.img.w,`${where} pinned landscape hero`).toBeGreaterThanOrEqual(155);
-      expect(typed.img.w,`${where} pinned landscape hero`).toBeLessThanOrEqual(159);
+      expect(typed.img.h,`${where} pinned landscape hero`).toBeGreaterThanOrEqual(199);
+      expect(typed.img.h,`${where} pinned landscape hero`).toBeLessThanOrEqual(201);
+      expect(typed.img.w,`${where} pinned landscape hero`).toBeGreaterThanOrEqual(199);
+      expect(typed.img.w,`${where} pinned landscape hero`).toBeLessThanOrEqual(201);
       await page.evaluate(()=>{
         const canvas=document.createElement('canvas');
         canvas.width=475;canvas.height=475;
@@ -155,8 +163,8 @@ test('a tablet hero fits the streak, the pad, and the home indicator',async({pag
       });
       await page.waitForFunction(()=>document.querySelector('#game .mon-strip img').naturalWidth===475);
       const loaded=await state(page,layout);
-      expect(loaded.img.h,`${where} loaded art`).toBeGreaterThanOrEqual(155);
-      expect(loaded.img.h,`${where} loaded art`).toBeLessThanOrEqual(159);
+      expect(loaded.img.h,`${where} loaded art`).toBeGreaterThanOrEqual(199);
+      expect(loaded.img.h,`${where} loaded art`).toBeLessThanOrEqual(201);
       expect(loaded.scroll,`${where} loaded art scrolls`).toBeLessThanOrEqual(1);
       expect(loaded.helpBottom,`${where} loaded art help`).toBeLessThanOrEqual(loaded.navTop+0.5);
     }
@@ -170,15 +178,67 @@ test('a tablet hero fits the streak, the pad, and the home indicator',async({pag
     for(const bottom of mc.answerBottoms){
       expect(bottom,`${where} answer`).toBeLessThanOrEqual(mc.navTop+0.5);
     }
-    if(size.width===768&&size.height===1024){
-      await show(page,{...LONG,streak:0,safe:size.safe});
-      const plain=await state(page,layout);
-      expect(plain.img.w,`${where} typed`).toBeGreaterThanOrEqual(199);
-      expect(plain.img.h,`${where} typed`).toBeGreaterThanOrEqual(199);
-      expect(plain.scroll,`${where} typed scrolls`).toBeLessThanOrEqual(1);
-      expect(mc.img.w,`${where} MC`).toBeGreaterThanOrEqual(199);
-      expect(mc.img.h,`${where} MC`).toBeGreaterThanOrEqual(199);
+    if(size.width===768&&size.height===1024&&size.safe===0){
+      const hug=await page.evaluate(()=>{
+        const strip=document.querySelector('#game .mon-strip');
+        const xp=strip.querySelector('.xp-track').getBoundingClientRect();
+        const box=strip.getBoundingClientRect();
+        return {below:box.bottom-xp.bottom,pad:parseFloat(getComputedStyle(strip).paddingTop)};
+      });
+      expect(Math.abs(hug.below-hug.pad),`${where} card hugs the XP bar`).toBeLessThanOrEqual(2);
+      expect(plain.img.h,`${where} portrait hero`).toBeGreaterThanOrEqual(199);
+      expect(plain.img.h,`${where} portrait hero`).toBeLessThanOrEqual(201);
+      const mark=await state(page,()=>{
+        if(st.team.length<2)st.team.push({pi:LINES[1][0],level:5,xp:0,shiny:false});
+        st.pendingEvo=null;
+        render();
+        const box=document.querySelector('#game .switch-mark').getBoundingClientRect();
+        return {w:box.width,h:box.height};
+      });
+      expect(mark.w,`${where} switch badge`).toBeGreaterThanOrEqual(27);
+      expect(mark.h,`${where} switch badge`).toBeGreaterThanOrEqual(27);
     }
+  }
+});
+
+test('a missed answer keeps its hint above the bar',async({page})=>{
+  await openGame(page);
+  await startGame(page,'math');
+  const sizes=[
+    {width:1024,height:768,safe:0},
+    {width:1024,height:768,safe:21},
+    {width:768,height:1024,safe:0},
+    {width:1133,height:744,safe:21},
+    {width:1194,height:834,safe:0},
+    {width:800,height:700,safe:21},
+  ];
+  for(const size of sizes){
+    await page.setViewportSize({width:size.width,height:size.height});
+    const fit=await state(page,size=>{
+      document.getElementById('bottom-nav').style.paddingBottom=size.safe+'px';
+      let hit=null;
+      for(const lv of Object.keys(QB.math)){
+        for(let i=0;i<QB.math[lv].length&&!hit;i++){
+          const q=serveQuestion('math',+lv,i,questionPname());
+          if(mathVisualSpec(q))hit={lv:+lv,idx:i};
+        }
+      }
+      st.streak=5;
+      st.phase='play';st.subject='math';
+      st.q=serveQuestion('math',hit.lv,hit.idx,questionPname());
+      st.tries=1;st.cor=false;st.wrong=[];st.helped=false;st.armAt=0;st.draft='1';st.wildEscape=false;
+      render();
+      const main=document.getElementById('app-main');
+      const nav=document.getElementById('bottom-nav').getBoundingClientRect();
+      const hint=document.querySelector('.hint-visual');
+      const msg=document.querySelector('.result-msg');
+      const bottom=Math.max(hint?hint.getBoundingClientRect().bottom:0,msg?msg.getBoundingClientRect().bottom:0);
+      return {scroll:main.scrollHeight-main.clientHeight,under:bottom-nav.top,hasHint:!!hint};
+    },size);
+    const where=`${size.width}x${size.height} safe ${size.safe}`;
+    expect(fit.hasHint,where).toBe(true);
+    expect(fit.scroll,`${where} scrolls`).toBeLessThanOrEqual(1);
+    expect(fit.under,`${where} hint`).toBeLessThanOrEqual(0.5);
   }
 });
 
@@ -233,13 +293,13 @@ test('phone strips keep their sizes, and catch and evolution stay full size when
       const gym=document.querySelector('.gym-card .psvg img').getBoundingClientRect().height;
       const catchOv=document.getElementById('catch-overlay');
       const catchImg=document.getElementById('catch-pkm-img');
+      catchImg.style.cssText='';
       catchOv.classList.add('active');
-      catchImg.style.cssText='display:block;object-fit:contain;width:180px;height:180px;opacity:1';
       const catchBox=catchImg.getBoundingClientRect();
       const evoOv=document.getElementById('evo-overlay');
       const evoImg=document.getElementById('evo-img');
+      evoImg.style.cssText='';
       evoOv.classList.add('active');
-      evoImg.style.cssText='display:block;object-fit:contain;width:200px;height:200px;opacity:1';
       const evoBox=evoImg.getBoundingClientRect();
       catchOv.classList.remove('active');
       evoOv.classList.remove('active');
