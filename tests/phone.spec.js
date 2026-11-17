@@ -9,6 +9,7 @@ const SIZES=[
   {width:320,height:568},
   {width:375,height:667},
   {width:768,height:1024}, // iPad Mini
+  {width:1024,height:768}, // iPad Mini landscape
 ];
 
 async function toTop(page){
