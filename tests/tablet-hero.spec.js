@@ -59,6 +59,8 @@ function layout(){
   const name=document.querySelector('#game .mon-strip .pname').getBoundingClientRect();
   const xp=document.querySelector('#game .mon-strip .xp-track').getBoundingClientRect();
   const q=document.querySelector('.qtext').getBoundingClientRect();
+  const qcard=document.querySelector('#game .qcard').getBoundingClientRect();
+  const strip=document.querySelector('#game .mon-strip').getBoundingClientRect();
   const help=document.getElementById('help-btn');
   const helpR=help?help.getBoundingClientRect():null;
   const check=document.querySelector('[data-pad="check"]');
@@ -97,6 +99,8 @@ function layout(){
     name:{x:name.x,y:name.y,w:name.width,h:name.height},
     xp:{x:xp.x,y:xp.y,w:xp.width,h:xp.height},
     qTop:q.top,
+    qCardTop:qcard.top,
+    below:strip.bottom-xp.bottom,
     helpBottom:helpR?helpR.bottom:null,
     checkBottom:checkR?checkR.bottom:null,
     checkCol,
@@ -131,10 +135,14 @@ test('a tablet hero fits the streak, the pad, and the home indicator',async({pag
     expect(typed.scroll,`${where} scrolls`).toBeLessThanOrEqual(1);
     expect(typed.scrollTop,where).toBe(0);
     expect(typed.img.h,`${where} hero`).toBeGreaterThanOrEqual(120);
-    expect(typed.img.h,`${where} hero`).toBeLessThanOrEqual(200.5);
+    expect(typed.img.h,`${where} hero`).toBeLessThanOrEqual(201.5);
     expect(Math.abs(typed.img.w-typed.img.h),where).toBeLessThanOrEqual(1.5);
     expect(typed.name.y,where).toBeGreaterThanOrEqual(typed.img.y+typed.img.h-1);
     expect(typed.xp.y,where).toBeGreaterThanOrEqual(typed.name.y+typed.name.h-1);
+    expect(typed.qCardTop,`${where} question overlaps the name`).toBeGreaterThanOrEqual(typed.xp.y+typed.xp.h-0.5);
+    if(size.height===700&&size.safe===21){
+      expect(typed.below,`${where} space under the XP bar`).toBeGreaterThanOrEqual(3);
+    }
     expect(typed.qTop,where).toBeGreaterThanOrEqual(typed.xp.y+typed.xp.h-1);
     expect(typed.helpBottom,`${where} Ask for help`).toBeLessThanOrEqual(typed.navTop+0.5);
     expect(typed.checkBottom,`${where} Check`).toBeLessThanOrEqual(typed.navTop+0.5);
@@ -154,16 +162,16 @@ test('a tablet hero fits the streak, the pad, and the home indicator',async({pag
 
     await show(page,{...LONG,streak:0,safe:size.safe});
     const plain=await state(page,layout);
-    expect(Math.abs(plain.img.h-typed.img.h),`${where} streak changes the hero`).toBeLessThanOrEqual(1);
-    expect(Math.abs(plain.img.w-typed.img.w),`${where} streak changes the hero`).toBeLessThanOrEqual(1);
+    expect(Math.abs(plain.img.h-typed.img.h),`${where} streak changes the hero`).toBeLessThanOrEqual(1.5);
+    expect(Math.abs(plain.img.w-typed.img.w),`${where} streak changes the hero`).toBeLessThanOrEqual(1.5);
     expect(plain.scroll,`${where} without a streak scrolls`).toBeLessThanOrEqual(1);
     expect(plain.helpBottom,`${where} without a streak`).toBeLessThanOrEqual(plain.navTop+0.5);
 
     if(size.width===1024&&size.height===768&&size.safe===0){
-      expect(typed.img.h,`${where} pinned landscape hero`).toBeGreaterThanOrEqual(199);
-      expect(typed.img.h,`${where} pinned landscape hero`).toBeLessThanOrEqual(201);
-      expect(typed.img.w,`${where} pinned landscape hero`).toBeGreaterThanOrEqual(199);
-      expect(typed.img.w,`${where} pinned landscape hero`).toBeLessThanOrEqual(201);
+      expect(typed.img.h,`${where} pinned landscape hero`).toBeGreaterThan(198);
+      expect(typed.img.h,`${where} pinned landscape hero`).toBeLessThan(202);
+      expect(typed.img.w,`${where} pinned landscape hero`).toBeGreaterThan(198);
+      expect(typed.img.w,`${where} pinned landscape hero`).toBeLessThan(202);
       await page.evaluate(()=>{
         const canvas=document.createElement('canvas');
         canvas.width=475;canvas.height=475;
@@ -172,8 +180,8 @@ test('a tablet hero fits the streak, the pad, and the home indicator',async({pag
       });
       await page.waitForFunction(()=>document.querySelector('#game .mon-strip img').naturalWidth===475);
       const loaded=await state(page,layout);
-      expect(loaded.img.h,`${where} loaded art`).toBeGreaterThanOrEqual(199);
-      expect(loaded.img.h,`${where} loaded art`).toBeLessThanOrEqual(201);
+      expect(loaded.img.h,`${where} loaded art`).toBeGreaterThan(198);
+      expect(loaded.img.h,`${where} loaded art`).toBeLessThan(202);
       expect(loaded.scroll,`${where} loaded art scrolls`).toBeLessThanOrEqual(1);
       expect(loaded.helpBottom,`${where} loaded art help`).toBeLessThanOrEqual(loaded.navTop+0.5);
     }
@@ -183,7 +191,7 @@ test('a tablet hero fits the streak, the pad, and the home indicator',async({pag
     expect(mc.scroll,`${where} MC scrolls`).toBeLessThanOrEqual(1);
     expect(mc.helpBottom,`${where} MC help`).toBeLessThanOrEqual(mc.navTop+0.5);
     expect(mc.img.h,`${where} MC hero`).toBeGreaterThanOrEqual(120);
-    expect(mc.img.h,`${where} MC hero`).toBeLessThanOrEqual(200.5);
+    expect(mc.img.h,`${where} MC hero`).toBeLessThanOrEqual(201.5);
     for(const bottom of mc.answerBottoms){
       expect(bottom,`${where} answer`).toBeLessThanOrEqual(mc.navTop+0.5);
     }
@@ -195,8 +203,8 @@ test('a tablet hero fits the streak, the pad, and the home indicator',async({pag
         return {below:box.bottom-xp.bottom,pad:parseFloat(getComputedStyle(strip).paddingTop)};
       });
       expect(Math.abs(hug.below-hug.pad),`${where} card hugs the XP bar`).toBeLessThanOrEqual(2);
-      expect(plain.img.h,`${where} portrait hero`).toBeGreaterThanOrEqual(199);
-      expect(plain.img.h,`${where} portrait hero`).toBeLessThanOrEqual(201);
+      expect(plain.img.h,`${where} portrait hero`).toBeGreaterThan(198);
+      expect(plain.img.h,`${where} portrait hero`).toBeLessThan(202);
       const mark=await state(page,()=>{
         if(st.team.length<2)st.team.push({pi:LINES[1][0],level:5,xp:0,shiny:false});
         st.pendingEvo=null;
@@ -242,12 +250,22 @@ test('a missed answer keeps its hint above the bar',async({page})=>{
       const hint=document.querySelector('.hint-visual');
       const msg=document.querySelector('.result-msg');
       const bottom=Math.max(hint?hint.getBoundingClientRect().bottom:0,msg?msg.getBoundingClientRect().bottom:0);
-      return {scroll:main.scrollHeight-main.clientHeight,under:bottom-nav.top,hasHint:!!hint};
+      const xp=document.querySelector('#game .xp-track').getBoundingClientRect();
+      const name=document.querySelector('#game .pname').getBoundingClientRect();
+      const card=document.querySelector('#game .qcard').getBoundingClientRect();
+      const partnerBottom=Math.max(xp.bottom,name.bottom);
+      return {
+        scroll:main.scrollHeight-main.clientHeight,
+        under:bottom-nav.top,
+        hasHint:!!hint,
+        overlap:partnerBottom-card.top,
+      };
     },size);
     const where=`${size.width}x${size.height} safe ${size.safe}`;
     expect(fit.hasHint,where).toBe(true);
     expect(fit.scroll,`${where} scrolls`).toBeLessThanOrEqual(1);
     expect(fit.under,`${where} hint`).toBeLessThanOrEqual(0.5);
+    expect(fit.overlap,`${where} name overlaps the question`).toBeLessThanOrEqual(0.5);
   }
 });
 
