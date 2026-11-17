@@ -247,8 +247,10 @@ test('on a tablet the question, the answers, and the other words stay readable',
 
   await state(page,()=>{st.anim='';render();});
   const pic=await page.locator('#game .mon-strip img').boundingBox();
-  expect(pic.height).toBeGreaterThanOrEqual(90);
-  expect(pic.height).toBeLessThanOrEqual(100);
+  expect(pic.width).toBeGreaterThanOrEqual(199);
+  expect(pic.width).toBeLessThanOrEqual(201);
+  expect(pic.height).toBeGreaterThanOrEqual(199);
+  expect(pic.height).toBeLessThanOrEqual(201);
 });
 
 test('badges, candy, Switch, and the Great Ball note live on the Pokédex',async({page})=>{

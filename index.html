@@ -821,12 +821,76 @@ button.mon-strip:focus{outline:3px solid #1D4ED8;outline-offset:2px}
 @media (min-width:768px) and (min-height:700px){
   .qtext{font-size:22px;line-height:1.45}
   .ans-btn{font-size:20px}
-  .verdict{font-size:28px;padding:12px 14px;margin:8px 0}
+  /* A miss adds this banner, the hint, and the counting picture. They stay
+     short so the partner can keep a 120px picture and the name still sits
+     above the question. */
+  .verdict{font-size:18px;line-height:1.2;padding:4px 10px;margin:2px 0}
+  #game .result-msg{padding:4px 8px;margin:0;line-height:1.2}
+  #game .hint-visual{margin-top:4px;padding:4px 4px 2px}
   .help-btn,.help-box,.help-keep,.result-msg,.gym-hint,.prize-line,.nxt-btn{font-size:16px}
   .nxt-btn{font-size:20px}
   .lvl-badge,.streak-pill,.shiny-badge,.subj-btn,.who-btn,.subj-btn-car,.gym-time-lbl,.hv-cap,.pad-note,.badge,.reset-btn,.gym-role,.wild-badge,.catch-counter,.flee-btn,.catch-balls-lbl,.starter-opt-name,.subj-opt-sub,.who-sub,.parent-kicker,.hang-on,.award-kicker,.switch-opt-out,.pdx-num,.pdx-name,.pdx-fact,.gen-label,.pdx-gen-label{font-size:14px}
   .pname,.mon-strip .pname{font-size:22px}
-  .mon-strip .psvg img{width:96px;height:96px}
+  /* The picture takes the height left after the name, the streak, the
+     question, and the pad, from 120px up to 200px. The card stops at the
+     XP bar. #game beats the 96px .mon-strip rule. */
+  body:has(#game[style*="flex"]) #app-main:has(#game .mon-strip){display:flex;flex-direction:column}
+  body:has(#game[style*="flex"]) #game{flex:1 1 auto;min-height:0}
+  #game>.hdr,#game>.qcard{flex:0 0 auto}
+  #game>.mon-strip{
+    flex:1 1 auto;
+    /* 120px picture, the 4px gap, 8px of card padding, a 28px name line,
+       and the 8px XP bar with its 4px gap. The picture row will not go
+       under 120, so the card must not go under this or the name paints
+       on top of the question. */
+    min-height:calc(120px + 4px + 8px + 28px + 4px + 8px);
+    max-height:max-content;
+    display:grid;
+    grid-template-rows:minmax(120px,200px) auto;
+    align-content:stretch;
+    justify-items:center;
+    text-align:center;
+    gap:4px;
+    padding:4px 12px;
+    margin-bottom:4px;
+  }
+  /* The sprite is taken out of the flow. A 475px file would otherwise
+     refuse to shrink and push Ask for help under the bar. */
+  #game .mon-strip .psvg{position:relative;grid-row:1;height:100%;width:auto;min-height:0;max-height:none;aspect-ratio:1;margin:0;align-self:stretch;justify-self:center}
+  #game .mon-strip .mon-meta{grid-row:2;width:100%;display:flex;flex-direction:column;align-items:center}
+  #game .mon-strip .pname{text-align:center;line-height:28px}
+  #game .mon-strip .lvl-badge,#game .mon-strip .shiny-badge{line-height:18px;padding-top:1px;padding-bottom:1px}
+  #game .mon-strip .xp-track{width:min(220px,70%);height:8px;margin:4px auto 0}
+  #game .mon-strip .psvg img{position:absolute;inset:0;width:100%;height:100%;max-width:none;object-fit:contain;image-rendering:auto}
+  #game .pad-check{grid-column:1 / -1}
+  /* The streak row is always reserved, and the stand-in is the same 24px
+     box as the real pill. A font that runs taller cannot change either one. */
+  #game .streak-pill,#game .q-head,#game .qcard::before{box-sizing:border-box;height:24px;min-height:24px;line-height:24px;padding:0 10px}
+  #game .qcard::before{content:"\1F525  5 in a row";visibility:hidden;display:flex;width:max-content;align-items:center;font-size:14px;font-weight:700;letter-spacing:0.03em;margin:0 0 4px;white-space:nowrap}
+  #game .q-head{margin:0 0 4px;padding:0}
+  #game .qcard:has(.q-head)::before{content:none;height:0;min-height:0;padding:0;margin:0}
+  /* One spacing for every tablet height, so the picture grows smoothly
+     instead of jumping at 750px or 960px. Four key columns and 44px keys
+     keep a typed question on screen down at 700px tall. */
+  body:has(#game[style*="flex"]) .wrap{max-width:640px}
+  body:has(#game[style*="flex"]) #app-main{padding:4px 12px 16px;padding-top:max(4px,env(safe-area-inset-top,0px))}
+  #game .hdr{margin-bottom:4px}
+  #game .qcard{padding:8px 12px 6px;margin-bottom:0}
+  #game .q-head{margin-bottom:4px}
+  #game .qtext{margin-bottom:4px}
+  #game .pad-wrap{margin-bottom:4px}
+  #game .pad-read{min-height:44px;margin-bottom:4px;font-size:28px;line-height:1.15}
+  #game .numpad{gap:4px;grid-template-columns:repeat(4,1fr)}
+  #game .pad-key,#game .pad-check{min-height:44px}
+  #game .help-btn{padding-top:4px;padding-bottom:4px}
+}
+/* Upright tablets have the room for the original pad: three columns of
+   tall keys, erase and zero on the fourth row, Check on its own row.
+   Landscape and short tablets keep four columns. */
+@media (min-width:768px) and (min-height:700px) and (orientation:portrait){
+  #game .numpad{grid-template-columns:repeat(3,1fr);gap:8px}
+  #game .pad-key{min-height:58px;font-size:26px}
+  #game .pad-check{min-height:54px;font-size:20px}
 }
 /* A narrow phone shares one row between the name, the subject, and sound.
    GitHub's fonts run wider than a laptop's, and "Your name?" was clipped by
