@@ -699,7 +699,11 @@ test('Back to it fits the tablet',async({page})=>{
     const head=document.querySelector('#game .q-head');
     return {h:parseFloat(before.height),head:!!head};
   });
-  expect(reserved.head).toBe(false);
-  expect(reserved.h).toBe(24);
+  // The round dots are the reserved row now, still 24px, so a later streak does not jump the card.
+  expect(reserved.head).toBe(true);
+  const headH=await page.locator('#game .q-head').evaluate(el=>el.getBoundingClientRect().height);
+  expect(headH).toBeGreaterThanOrEqual(23);
+  expect(headH).toBeLessThanOrEqual(25);
+  expect(reserved.h).toBe(0);
   expect(errors).toEqual([]);
 });
