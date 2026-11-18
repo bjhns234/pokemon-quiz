@@ -705,6 +705,10 @@ test('a held Gym invite returns on the next question and the offer survives a re
     st.stats.math.level=1;
     st.badges.math=[];
     st.gymOffer.math={tier:1,cool:0};
+    st.log={
+      '2026-11-16':{'math|@|1':'1'.repeat(20)},
+      '2026-11-17':{'math|@|1':'1'.repeat(20)},
+    };
     st.cor=true;
     st.tries=1;
     const tm=activeTM();
@@ -717,6 +721,7 @@ test('a held Gym invite returns on the next question and the offer survives a re
   await page.reload();
   expect(await state(page,()=>st.gymOffer)).toEqual(before);
   expect(await state(page,()=>Object.keys(st.gymOffer).filter(k=>st.gymOffer[k]).length)).toBe(1);
+  await expect(page.locator('.gym-ring')).toHaveAttribute('data-state','full');
 
   await state(page,()=>{
     st.cor=true;
@@ -728,6 +733,8 @@ test('a held Gym invite returns on the next question and the offer survives a re
   });
   await expect(page.locator('.gym-invite')).toHaveCount(0);
   await expect(page.locator('#nxt')).toContainText("What's happening");
+  await expect(page.locator('.gym-ring')).toHaveAttribute('data-state','full');
+  await expect(page.locator('.gym-ring-solid')).toBeVisible();
   fs.mkdirSync(ART,{recursive:true});
   await page.screenshot({path:ART+'/invite_evolution_pending_768x1024.png'});
   await state(page,()=>{Math.random=()=>0.99;});
@@ -735,6 +742,8 @@ test('a held Gym invite returns on the next question and the offer survives a re
   await page.locator('#evo-overlay.active').waitFor({state:'visible',timeout:5000});
   await page.locator('#evo-overlay.active').waitFor({state:'hidden',timeout:25000});
   await expect(page.locator('.gym-invite')).toBeVisible();
+  await expect(page.locator('.gym-ring')).toHaveAttribute('data-state','full');
+  await expect(page.locator('.gym-ring-solid')).toBeVisible();
   await expect(page.getByRole('button',{name:/What's happening/})).toHaveCount(0);
   await page.screenshot({path:ART+'/invite_after_evolution_768x1024.png'});
   expect(await state(page,()=>st.gymOffer.math)).toEqual({tier:1,cool:0});
