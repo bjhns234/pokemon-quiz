@@ -3955,20 +3955,59 @@ function gymWindow(log,sub,tier){
   const att=window.length;
   return {pct:att?Math.floor(100*right/att):0,att,days:dayCount};
 }
+// The Gym sentence uses the mastery rule. It stays off until that rule
+// is what opens a Gym. Flip this in the mastery change.
+const MASTERY_GYM=false;
+function gymLineText(sub,tier,log){
+  if((tier|0)>=maxLevel(sub))return 'Top level reached.';
+  const sum=gymWindow(log,sub,tier|0);
+  const tries=sum.att===1?'try':'tries';
+  const days=sum.days===1?'1 day':sum.days+' days';
+  return `${gymGradeLabel(tier)} Gym: ${sum.pct}% right over ${sum.att} ${tries} on ${days}. Opens at 85% (needs 30+ tries on 2+ days).`;
+}
 function gymLineHTML(kid){
+  if(!MASTERY_GYM)return '';
   let h='';
   enabledSubjects().forEach(sub=>{
     const tier=sub==='math'?kidMathLevel(kid):((kid.data&&kid.data.stats&&kid.data.stats[sub]&&kid.data.stats[sub].level)|0)||1;
-    if(tier>=maxLevel(sub)){
-      h+=`<div class="prog-gym"><span class="prog-medal" aria-hidden="true">&#127941;</span><div>Top level reached.</div></div>`;
-      return;
-    }
-    const sum=gymWindow(kid.data&&kid.data.log,sub,tier);
-    const tries=sum.att===1?'try':'tries';
-    const days=sum.days===1?'1 day':sum.days+' days';
-    h+=`<div class="prog-gym"><span class="prog-medal" aria-hidden="true">&#127941;</span><div><b>${escapeHtml(gymGradeLabel(tier))} Gym:</b> ${sum.pct}% right over ${sum.att} ${tries} on ${days}. Opens at 85% (needs 30+ tries on 2+ days).</div></div>`;
+    const text=gymLineText(sub,tier,kid.data&&kid.data.log);
+    const body=text==='Top level reached.'?text:text.replace(/^([^:]+):/,'<b>$1:</b>');
+    h+=`<div class="prog-gym"><span class="prog-medal" aria-hidden="true">&#127941;</span><div>${body}</div></div>`;
   });
   return h;
+}
+// Report names only. questionTopic() stays the short label the log uses.
+// Ranges are what that tier's math bank actually asks.
+function skillDisplayName(topic,tier){
+  const t=tier|0;
+  if(topic==='Adding'){
+    if(t<=1)return 'Adding within 5';
+    if(t===2)return 'Adding within 20';
+    if(t===3)return 'Adding within 100';
+    return 'Adding 3-digit numbers';
+  }
+  if(topic==='Subtracting'){
+    if(t<=1)return 'Subtracting within 5';
+    if(t===2)return 'Subtracting within 20';
+    if(t===3)return 'Subtracting within 100';
+    return 'Subtracting 3-digit numbers';
+  }
+  if(topic==='Counting'){
+    if(t<=1)return 'Counting to 20';
+    if(t===2)return 'Counting by 2s and 5s';
+    if(t===3)return 'Counting by 2s, 5s, and 10s';
+    return 'Counting by 3s, 4s, and 25s';
+  }
+  if(topic==='Shapes')return t<=1?'Naming shapes':'Sides and corners';
+  if(topic==='Comparing')return t<=1?'Comparing numbers to 10':'Comparing numbers to 20';
+  if(topic==='Place value')return t>=4?'Hundreds, tens, and ones':'Tens and ones';
+  if(topic==='Word problems with more than one step'){
+    if(t<=1)return 'Stories within 5';
+    if(t===2)return 'Stories within 20';
+    if(t===3)return 'Stories within 100';
+    return 'Stories with bigger numbers';
+  }
+  return topic;
 }
 function skillStatus(att,right,days){
   if(att<10)return 'New';
@@ -4040,8 +4079,9 @@ function progressCardHTML(kid){
   const name=escapeHtml(kid.name);
   const started=!!(kid.data&&Array.isArray(kid.data.team)&&kid.data.team.length);
   let h=`<div class="card progress-card" data-progress-for="${escapeHtml(kid.id)}"><h2 class="prog-title">${name}'s progress</h2>`;
+  h+=`<p class="parent-practice">${escapeHtml(practiceLine(kid))}</p>`;
   h+=`<p class="prog-sub">${escapeHtml(progressSubtitle(kid))}</p>`;
-  if(!started)return h+`<p class="prog-empty">Hasn't started playing yet.</p></div>`;
+  if(!started)return h+`</div>`;
   h+=gymLineHTML(kid);
   const all=progressRows(kid);
   const open=!!progressOpen[kid.id];
@@ -4051,14 +4091,14 @@ function progressCardHTML(kid){
     const nums=r.att7?`${r.right7} / ${r.att7}`:'\u2014';
     const grade=gradeShort(r.tier)+(r.review?' · review':'');
     h+=`<div class="prog-row" role="row" data-skill="${escapeHtml(r.topic)}" data-tier="${r.tier}" data-review="${r.review?'1':'0'}">`;
-    h+=`<div class="prog-skill" role="cell">${escapeHtml(r.topic)}<div class="prog-grade">${escapeHtml(grade)}</div></div>`;
+    h+=`<div class="prog-skill" role="cell">${escapeHtml(skillDisplayName(r.topic,r.tier))}<div class="prog-grade">${escapeHtml(grade)}</div></div>`;
     h+=`<div class="prog-num" role="cell"><span class="prog-sr">7 days</span>${nums}</div>`;
     h+=`<div class="prog-status" role="cell"><span class="prog-chip prog-${r.status.toLowerCase()}">${r.status}</span></div>`;
     h+=`<div class="prog-when" role="cell"><span class="prog-sr">Last played</span>${escapeHtml(lastPlayedLabel(r.last))}</div></div>`;
   });
   h+=`</div>`;
   if(all.length>8)h+=`<button type="button" class="prog-more" data-progress-more="${escapeHtml(kid.id)}">${open?'Show less':'Show all'}</button>`;
-  h+=`<p class="prog-foot"><b>Solid</b> = 85%+ right, 10+ tries on 2+ days (last 14 days) · <b>Practicing</b> = 10+ tries, not solid yet · <b>New</b> = fewer than 10 tries</p>`;
+  h+=`<p class="prog-foot">Numbers show the last 7 days. Solid looks at the last 14. <b>Solid</b> = 85%+ right, 10+ tries, 2+ days. <b>Practicing</b> = 10+ tries, not solid yet. <b>New</b> = fewer than 10 tries.</p>`;
   return h+`</div>`;
 }
 function parentKidHTML(kid){
@@ -4067,10 +4107,12 @@ function parentKidHTML(kid){
   const face=faceForKid(kid);
   const score=scoreLine(kid);
   let h=`<div class="card" data-kid-name="${name}"><div class="parent-kid">${pkSprite(face.pi,64,face.shiny)}<div><h2>${name}</h2>`;
-  h+=`<p class="parent-practice">${escapeHtml(practiceLine(kid))}</p>`;
   if(score)h+=`<p class="parent-score">${escapeHtml(score)}</p>`;
+  if(!data||!Array.isArray(data.team)||!data.team.length){
+    h+=`<p class="parent-practice">${escapeHtml(practiceLine(kid))}</p></div></div></div>`;
+    return h;
+  }
   h+=`</div></div>`;
-  if(!data||!Array.isArray(data.team)||!data.team.length)return h+`</div>`;
   const badges=[];
   enabledSubjects().forEach(sub=>{
     subjectSnap(data,sub).badges.forEach(t=>badges.push(badgeName(sub,t)));
@@ -4091,6 +4133,13 @@ function parentKidHTML(kid){
     h+=`</div>`;
   }
   return h+`</div>`;
+}
+function parentIntroLine(){
+  const names=profiles.kids.map(k=>String(k&&k.name||'').trim()).filter(Boolean);
+  if(names.length===1)return `See what ${names[0]} is solid on and what to practice.`;
+  if(names.length===2)return `See what ${names[0]} and ${names[1]} are solid on and what to practice.`;
+  if(!names.length)return '';
+  return `See what ${names.slice(0,-1).join(', ')}, and ${names[names.length-1]} are solid on and what to practice.`;
 }
 function parentBackLabel(){
   if(viewBeforeParent==='who')return "Back to who's playing";
@@ -4333,7 +4382,8 @@ function renderParent(){
     return;
   }
   const timerOn=gymTimerEnabled();
-  h+=`<div id="parent-report"><div class="parent-kicker">For parents</div><div class="parent-title">How they're doing</div><p class="parent-lead">Each child has their own game. One line says what to practice together.</p>`;
+  const intro=parentIntroLine();
+  h+=`<div id="parent-report">${intro?`<p class="parent-lead" id="parent-intro">${escapeHtml(intro)}</p>`:''}`;
   profiles.kids.forEach(kid=>{h+=progressCardHTML(kid);});
   h+=`<div class="card" id="timer-setting"><div class="parent-title" style="font-size:20px">Thinking time</div><p class="parent-lead">On harder Gym battles, a bar counts down while they think. It stays off unless you turn it on.</p><div class="timer-row"><span>Thinking time</span><button type="button" id="gym-timer-toggle" class="timer-toggle${timerOn?' on':''}" aria-pressed="${timerOn?'true':'false'}">${timerOn?'On':'Off'}</button></div></div>`;
   h+=gradeSettingHTML();
