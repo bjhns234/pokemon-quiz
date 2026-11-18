@@ -58,7 +58,8 @@ test.describe('scoring',()=>{
     expect(r.past).toBe(r.cap);
   });
 
-  test('five clean first-tries in a row unlock a Gym instead of stepping the tier up',async({page})=>{
+  test('five clean first-tries celebrate the streak and do not open a Gym',async({page})=>{
+    await pinXp(page);
     await state(page,()=>{st.stats.math.level=1;st.stats.math.cs=0;st.badges.math=[];});
     expect(await state(page,()=>LEVEL_UP_STREAK)).toBe(5);
     for(let i=0;i<4;i++){await serve(page,{sub:'math',lv:1,idx:i});await answer(page,true);}
@@ -69,7 +70,11 @@ test.describe('scoring',()=>{
     expect(await state(page,()=>st.gymOffer.math)).toBeNull();
     await serve(page,{sub:'math',lv:1,idx:9});
     await answer(page,true);
-    expect(await state(page,()=>({level:st.stats.math.level,offer:st.gymOffer.math}))).toEqual({level:1,offer:{tier:1,cool:0}});
+    const got=await state(page,()=>({level:st.stats.math.level,offer:st.gymOffer.math,msg:st.streakMsg,xp:st.lastXp}));
+    expect(got.level).toBe(1);
+    expect(got.offer).toBeNull();
+    expect(got.msg).toContain('5 in a row');
+    expect(got.xp).toBeGreaterThan(await state(page,()=>xpForStreak(5)));
   });
 });
 

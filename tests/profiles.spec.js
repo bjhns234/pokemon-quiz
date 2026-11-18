@@ -46,7 +46,7 @@ test('an old single save becomes the first trainer and is not mixed with a new o
   // profile before they can see the game they already had.
   expect(await state(page,()=>st.phase)).toBe('play');
   expect(await state(page,()=>st.team.map(t=>[PKM[t.pi].num,t.level]))).toEqual([['#001',7]]);
-  expect(await state(page,()=>({level:st.stats.math.level,badges:[...st.badges.math],cor:st.stats.math.cor}))).toEqual({level:2,badges:[1],cor:5});
+  expect(await state(page,()=>({level:st.stats.math.level,badges:[...st.badges.math],cor:st.stats.math.cor}))).toEqual({level:1,badges:[1],cor:5});
   expect(await state(page,()=>st.review.map(r=>reviewKey(r)))).toEqual(['math/1/0']);
   await expect(page.locator('#who-screen')).toHaveCount(0);
 

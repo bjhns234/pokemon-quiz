@@ -7,24 +7,40 @@ const {openGame,startGame,state,answer,serve}=require('./helpers');
 const TODAY=new Date(2026,10,18,12,0,0);
 
 function kidSave(name,id,data){
+  const row=Object.assign({
+    v:1,starter:0,activeIdx:0,
+    team:[{num:'#025',level:8,xp:10}],
+    dex:['#025'],
+    subject:'math',
+    stats:{
+      math:{cor:20,att:24,level:3,cs:0,ws:0},
+      reading:{cor:0,att:0,level:1,cs:0,ws:0},
+      science:{cor:0,att:0,level:1,cs:0,ws:0},
+    },
+    badges:{math:[1,2],reading:[],science:[]},
+    settings:{grade:'auto'},
+  },data);
+  // A report fixture that already has a skill log is a child who reached
+  // this tier. Prove the tiers below it so the new placement rule leaves
+  // him there. A save with no log is the no-tape case and is not proved.
+  const level=row.stats&&row.stats.math?row.stats.math.level|0:1;
+  if(row.log&&level>1){
+    const key='math|@|'+(level-1);
+    const has=Object.keys(row.log).some(d=>row.log[d]&&typeof row.log[d][key]==='string');
+    if(!has){
+      row.log=Object.assign({},row.log);
+      ['2026-11-17','2026-11-18'].forEach(d=>{
+        row.log[d]=Object.assign({},row.log[d]);
+        for(let t=1;t<level;t++){
+          const tape='math|@|'+t;
+          if(typeof row.log[d][tape]!=='string')row.log[d][tape]='1'.repeat(20);
+        }
+      });
+    }
+  }
   return {
     v:1,roster:1,activeId:id,
-    kids:[{
-      id,name,avatar:'#025',
-      data:Object.assign({
-        v:1,starter:0,activeIdx:0,
-        team:[{num:'#025',level:8,xp:10}],
-        dex:['#025'],
-        subject:'math',
-        stats:{
-          math:{cor:20,att:24,level:3,cs:0,ws:0},
-          reading:{cor:0,att:0,level:1,cs:0,ws:0},
-          science:{cor:0,att:0,level:1,cs:0,ws:0},
-        },
-        badges:{math:[1,2],reading:[],science:[]},
-        settings:{grade:'auto'},
-      },data),
-    }],
+    kids:[{id,name,avatar:'#025',data:row}],
   };
 }
 
@@ -100,6 +116,7 @@ test('review mix is marked review and a rematch does not change the numbers',asy
     return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
   });
   expect(afterReview[today]['math|Subtracting|2|review']).toEqual([1,1,0]);
+  expect(afterReview[today]['math|@|1']).toBeUndefined();
   expect(afterReview[today]['math|@|2']).toBeUndefined();
   expect(afterReview[today]['math|@|3']).toBeUndefined();
 
@@ -216,6 +233,29 @@ test('only the last 7 days fill the column and the last 14 decide the status',as
   expect(errors).toEqual([]);
 });
 
+test('an Auto save at tier 3 with no tape starts at Kindergarten and keeps the team',async({page})=>{
+  await page.clock.install({time:TODAY});
+  const errors=await openGame(page,{save:kidSave('Simon','simon',{})});
+  expect(await state(page,()=>({
+    level:st.stats.math.level,
+    grade:st.grade,
+    badges:[...st.badges.math].sort(),
+    team:st.team.map(t=>({num:PKM[t.pi].num,level:t.level,xp:t.xp})),
+    caught:st.pdx.some(Boolean),
+  }))).toEqual({
+    level:1,grade:0,badges:[1,2],
+    team:[{num:'#025',level:8,xp:10}],
+    caught:true,
+  });
+  await openParents(page);
+  const card=page.locator('[data-progress-for="simon"]');
+  await expect(card.locator('.prog-gym')).toContainText('Kindergarten Gym');
+  await expect(card.locator('.prog-gym')).toContainText('0 tries');
+  await expect(card.locator('.prog-gym')).not.toContainText('2nd-grade');
+  await expect(card.locator('.prog-chip').first()).toHaveText('New');
+  expect(errors).toEqual([]);
+});
+
 test('an old save with no log shows every skill as New and says tracking started',async({page})=>{
   const errors=await openSeeded(page,{});
   const card=page.locator('[data-progress-for="simon"]');
@@ -288,7 +328,6 @@ test('the gym line reads the last 40 eligible tries, and the top tier says so',a
       '2026-11-18':{'math|@|3':ones,'math|Adding|3':[30,30,0]},
     },
   });
-  await expect(page.locator('.prog-gym')).toHaveCount(0);
   const line=await state(page,log=>gymLineText('math',3,log),{
     '2026-11-17':{'math|@|3':zeros,'math|Adding|3':[0,20,0]},
     '2026-11-18':{'math|@|3':ones,'math|Adding|3':[30,30,0]},
@@ -307,7 +346,6 @@ test('the top math tier says top level reached',async({page})=>{
     },
     log:{'2026-11-18':{'math|@|4':'11111','math|Adding|4':[5,5,0]}},
   });
-  await expect(page.locator('.prog-gym')).toHaveCount(0);
   const line=await state(page,()=>gymLineText('math',4,{'2026-11-18':{'math|@|4':'11111'}}));
   expect(line).toBe('Top level reached.');
   expect(line).not.toContain('Opens at 85%');
@@ -566,7 +604,6 @@ test('a sibling card folds a future day and drops a day older than 30 without a 
   const adding=sam.locator('[data-skill="Adding"][data-tier="3"][data-review="0"]');
   await expect(adding).toContainText('5 / 15');
   await expect(adding.locator('.prog-chip')).toHaveText('Practicing');
-  await expect(page.locator('.prog-gym')).toHaveCount(0);
   const samLine=await state(page,log=>gymLineText('math',3,log),{
     '2026-10-18':{'math|Adding|3':[40,40,0],'math|@|3':'1'.repeat(40)},
     '2026-11-18':{'math|Adding|3':[5,5,0],'math|@|3':'11111'},
@@ -588,7 +625,6 @@ test('the gym line floors the percent so 85 shows only at 85 percent or more',as
   const errors=await openSeeded(page,{
     log:{'2026-11-18':{'math|@|3':'1'.repeat(33)+'0'.repeat(6),'math|Adding|3':[10,10,0]}},
   });
-  await expect(page.locator('.prog-gym')).toHaveCount(0);
   const line=await state(page,log=>gymLineText('math',3,log),{'2026-11-18':{'math|@|3':'1'.repeat(33)+'0'.repeat(6),'math|Adding|3':[10,10,0]}});
   expect(line).toContain('84% right over 39 tries on 1 day');
   expect(line).not.toContain('85% right');
@@ -651,7 +687,6 @@ test('the gym line follows the tape when the skill totals disagree',async({page}
   const errors=await openSeeded(page,{
     log:{'2026-11-18':{'math|Adding|3':[10,10,0],'math|@|3':'1111100000'}},
   });
-  await expect(page.locator('.prog-gym')).toHaveCount(0);
   const line=await state(page,log=>gymLineText('math',3,log),{'2026-11-18':{'math|Adding|3':[10,10,0],'math|@|3':'1111100000'}});
   expect(line).toContain('50% right over 10 tries on 1 day');
   expect(line).not.toContain('100% right');
@@ -719,6 +754,10 @@ test('the same skill at two grades gets a name from that grade\'s questions',asy
   expect(new Set(names).size).toBe(names.length);
   await expect(card.locator('[data-skill="Adding"][data-tier="1"] .prog-skill')).toContainText('Adding within 5');
   await expect(card.locator('[data-skill="Adding"][data-tier="3"] .prog-skill')).toContainText('Adding within 100');
+  expect(await state(page,()=>skillDisplayName('Shapes',1))).toBe('Shapes, sides, and corners');
+  expect(await state(page,()=>skillDisplayName('Comparing',1))).toBe('Comparing numbers and sizes');
+  expect(await state(page,()=>skillDisplayName('Shapes',3))).toBe('Sides and corners');
+  expect(await state(page,()=>skillDisplayName('Comparing',2))).toBe('Comparing numbers to 20');
   const gradeSize=await card.locator('.prog-grade').first().evaluate(el=>parseFloat(getComputedStyle(el).fontSize));
   const chipSize=await card.locator('.prog-chip').first().evaluate(el=>parseFloat(getComputedStyle(el).fontSize));
   expect(gradeSize).toBe(14);
@@ -732,7 +771,7 @@ test('the footer says the 7-day numbers and the 14-day Solid check apart',async(
   expect(errors).toEqual([]);
 });
 
-test('the Gym banner stays hidden until mastery is on, and the line is still computed',async({page})=>{
+test('the Gym banner is on and uses the same numbers as the gate',async({page})=>{
   const zeros='0'.repeat(20);
   const ones='1'.repeat(30);
   const log={
@@ -740,11 +779,18 @@ test('the Gym banner stays hidden until mastery is on, and the line is still com
     '2026-11-18':{'math|@|3':ones,'math|Adding|3':[30,30,0]},
   };
   const errors=await openSeeded(page,{log});
-  expect(await state(page,()=>MASTERY_GYM)).toBe(false);
-  await expect(page.locator('.prog-gym')).toHaveCount(0);
-  const line=await state(page,saved=>gymLineText('math',3,saved),log);
-  expect(line).toContain('2nd-grade Gym: 75% right over 40 tries on 2 days.');
-  expect(line).toContain('Opens at 85% (needs 30+ tries on 2+ days).');
+  expect(await state(page,()=>MASTERY_GYM)).toBe(true);
+  const shown=await state(page,()=>{
+    const tier=st.stats.math.level;
+    const snap=masterySnapshot(activeKid().data.log,'math',tier);
+    return {tier,text:gymLineText('math',tier,activeKid().data.log),pct:snap.pct,att:snap.att,days:snap.days,open:snap.open};
+  });
+  const tries=shown.att===1?'try':'tries';
+  const days=shown.days===1?'1 day':shown.days+' days';
+  expect(shown.text).toContain(`${shown.pct}% right over ${shown.att} ${tries} on ${days}`);
+  await expect(page.locator('.prog-gym')).toContainText(`${shown.pct}% right over ${shown.att} ${tries} on ${days}`);
+  const sample=await state(page,saved=>masterySnapshot(saved,'math',3),log);
+  expect(sample).toMatchObject({pct:75,att:40,days:2,open:false});
   const top=await state(page,()=>gymLineText('math',4,{'2026-11-18':{'math|@|4':'11111'}}));
   expect(top).toBe('Top level reached.');
   expect(errors).toEqual([]);

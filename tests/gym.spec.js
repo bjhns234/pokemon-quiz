@@ -90,7 +90,7 @@ test('a win opens the next tier, awards the badge, and pays the prizes',async({p
     phase:st.phase,level:st.stats.math.level,badges:[...st.badges.math],
     candy:st.items.candy,great:st.items.great,award:st.award,
     hasPika:st.team.some(t=>PKM[t.pi].num==='#025'),
-  }))).toEqual({phase:'play',level:2,badges:[1],candy:1,great:1,award:null,hasPika:true});
+  }))).toEqual({phase:'play',level:1,badges:[1],candy:1,great:1,award:null,hasPika:true});
 });
 
 test('a Gym the family already fills sends a shiny, and both colours send an extra candy',async({page})=>{
@@ -135,6 +135,7 @@ test('a loss is gentle, keeps the tier, and unlocks a rematch after practice',as
   await page.click('#gym-back');
   expect(await state(page,()=>st.phase)).toBe('play');
   await expect(page.locator('[data-gym-start="math"]')).toHaveCount(0);
+  await pinXp(page);
 
   const need=await state(page,()=>GYM_COOLDOWN); // practice answers before the Gym will try again
   for(let i=0;i<need;i++){
@@ -239,7 +240,8 @@ test('the timer is only on harder tiers, and running it out is a miss',async({pa
 test('a save that turned the timer off still loads, and tier 3 stays quiet',async({page})=>{
   const save={v:1,starter:0,activeIdx:0,team:[{num:'#001',level:7,xp:3}],dex:['#001'],
     timerOff:true,gateMisses:2,gateLock:Date.now()+120000,
-    stats:{math:{cor:5,att:6,level:3,cs:0,ws:0},reading:{cor:0,att:0,level:1,cs:0,ws:0},science:{cor:0,att:0,level:1,cs:0,ws:0}}};
+    stats:{math:{cor:5,att:6,level:3,cs:0,ws:0},reading:{cor:0,att:0,level:1,cs:0,ws:0},science:{cor:0,att:0,level:1,cs:0,ws:0}},
+    log:{'2026-11-17':{'math|@|1':'1'.repeat(20),'math|@|2':'1'.repeat(20)},'2026-11-18':{'math|@|1':'1'.repeat(20),'math|@|2':'1'.repeat(20)}}};
   const p2=await page.context().newPage();
   const err=await openGame(p2,{save});
   expect(err).toEqual([]);
@@ -290,13 +292,39 @@ test('answering inside a Gym still grows a streak',async({page})=>{
   expect(await state(page,()=>st.gym.lead)).toBe(await state(page,()=>GYM_LEAD_HP-1));
 });
 
-test('an old save at a higher tier keeps that tier and its badges',async({page})=>{
+test('a 3-miss drop on Auto stays down after a reload and keeps the badges',async({page})=>{
+  await state(page,()=>{
+    st.grade=0;
+    st.stats.math.level=2;
+    st.stats.math.ws=0;
+    st.stats.math.cs=0;
+    st.badges.math=[1,2];
+    st.gymOffer.math=null;
+    st.log={};
+  });
+  await serveMathMiss(page);
+  await serveMathMiss(page);
+  await serveMathMiss(page);
+  expect(await state(page,()=>({level:st.stats.math.level,badges:[...st.badges.math].sort(),grade:st.grade}))).toEqual({
+    level:1,badges:[1,2],grade:0,
+  });
+  await page.reload();
+  expect(await state(page,()=>({level:st.stats.math.level,badges:[...st.badges.math].sort(),grade:st.grade}))).toEqual({
+    level:1,badges:[1,2],grade:0,
+  });
+});
+
+test('an old save with no tape starts at Kindergarten and keeps its badges and team',async({page})=>{
   const save={v:1,starter:0,activeIdx:0,team:[{num:'#001',level:7,xp:3}],dex:['#001'],
     stats:{math:{cor:5,att:6,level:3,cs:1,ws:0},reading:{cor:0,att:0,level:1,cs:0,ws:0},science:{cor:0,att:0,level:1,cs:0,ws:0}}};
   const p2=await page.context().newPage();
   const err=await openGame(p2,{save});
-  expect(await state(p2,()=>({level:st.stats.math.level,badges:[...st.badges.math].sort(),phase:st.phase,offer:st.gymOffer.math}))).toEqual({
-    level:3,badges:[1,2],phase:'play',offer:null,
+  expect(await state(p2,()=>({
+    level:st.stats.math.level,badges:[...st.badges.math].sort(),phase:st.phase,offer:st.gymOffer.math,
+    team:st.team.map(t=>({num:PKM[t.pi].num,level:t.level,xp:t.xp})),
+  }))).toEqual({
+    level:1,badges:[1,2],phase:'play',offer:null,
+    team:[{num:'#001',level:7,xp:3}],
   });
   expect(err).toEqual([]);
 });
@@ -331,7 +359,7 @@ test('a Rare Candy levels the active Pokémon, and a Great Ball starts the next 
   await expect(page.locator('.catch-pip.filled')).toHaveCount(1);
 });
 
-test('dropping a tier gives back the badge for that tier',async({page})=>{
+test('dropping a tier keeps the badge and clears the old invite',async({page})=>{
   await state(page,()=>{
     st.stats.math.level=2;
     st.stats.math.ws=LEVEL_DOWN_STREAK-1;
@@ -340,7 +368,7 @@ test('dropping a tier gives back the badge for that tier',async({page})=>{
   });
   await serveMathMiss(page);
   expect(await state(page,()=>({level:st.stats.math.level,badges:[...st.badges.math],offer:st.gymOffer.math}))).toEqual({
-    level:1,badges:[],offer:null,
+    level:1,badges:[1],offer:null,
   });
 });
 
@@ -372,7 +400,7 @@ test('three gym misses do not drop the tier or its badge',async({page})=>{
   });
   await expect(page.locator('[data-badge="math-2"]')).toContainText('Charge Badge');
   await page.reload();
-  expect(await state(page,()=>({level:st.stats.math.level,badges:[...st.badges.math].sort()}))).toEqual({level:3,badges:[1,2]});
+  expect(await state(page,()=>({level:st.stats.math.level,badges:[...st.badges.math].sort()}))).toEqual({level:1,badges:[1,2]});
 });
 
 test('a gym miss does not finish a practice losing streak',async({page})=>{
@@ -561,6 +589,7 @@ test('a Great Ball waits until the encounter ends',async({page})=>{
 });
 
 test('Not now stays dismissed across a reload',async({page})=>{
+  await pinXp(page);
   await offerGym(page,'math',1);
   await page.click('[data-gym-later="math"]');
   await page.reload();
@@ -622,7 +651,7 @@ test('winning a tier again does not pay the prize a second time',async({page})=>
   });
   await serveMathMiss(page);
   expect(await state(page,()=>({level:st.stats.math.level,badges:[...st.badges.math],prizes:[...st.prizes.math]}))).toEqual({
-    level:1,badges:[],prizes:[1],
+    level:1,badges:[1],prizes:[1],
   });
   await offerGym(page,'math',1);
   await page.click('[data-gym-start="math"]');

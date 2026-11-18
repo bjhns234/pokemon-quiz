@@ -197,6 +197,7 @@ test.describe('phone and gym',()=>{
       st.gymOffer.math={tier:1,cool:0};
       st.cor=true;
       st.phase='play';
+      const tm=activeTM();tm.level=60;tm.xp=0;
       render();
     });
     await page.click('[data-gym-start="math"]');

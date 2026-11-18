@@ -147,7 +147,9 @@ test('a reading or science save loads into math with the same progress',async({p
     expect(got.xp).toBe(40);
     expect(got.num).toBe('#001');
     expect(got.best).toBe(9);
-    expect(got.stats).toEqual(progressSave(subject).kids[0].data.stats);
+    const placed=JSON.parse(JSON.stringify(progressSave(subject).kids[0].data.stats));
+    placed.math.level=1;placed.reading.level=1;placed.science.level=1;
+    expect(got.stats).toEqual(placed);
     expect(got.badges).toEqual(progressSave(subject).kids[0].data.badges);
     expect(got.gym).toBeNull();
     const disk=await page.evaluate(()=>JSON.parse(localStorage.getItem('pkq-save')).kids[0].data.subject);
@@ -235,7 +237,7 @@ test('putting every subject back in the flag restores the old game',async({page}
   expect(loaded.subject).toBe('science');
   expect(loaded.team[0].level).toBe(8);
   expect(loaded.team[0].xp).toBe(15);
-  expect(loaded.stats.reading.level).toBe(2);
+  expect(loaded.stats.reading.level).toBe(1);
   expect(loaded.badges.science).toEqual([1]);
 
   await state(page,()=>{
