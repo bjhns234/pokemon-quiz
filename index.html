@@ -552,6 +552,43 @@ button.mon-strip:focus{outline:3px solid #1D4ED8;outline-offset:2px}
 .parent-again{margin-top:10px}
 .parent-again h3{font-size:14px;font-weight:800;color:#5B21B6;margin-bottom:4px}
 .parent-again p{font-size:14px;color:#1A1A2E;margin:3px 0}
+/* Parent progress. One card per child, above Grade. The table body is 16px.
+   Chips, the grade line, and the footer stay at least 14px. On a phone the
+   four columns become skill/status over the numbers and the date. */
+.progress-card{margin-bottom:12px}
+.prog-title{font-size:24px;font-weight:800;color:#1A1A2E;margin:0 0 2px;line-height:1.2}
+.prog-sub{font-size:15px;font-weight:600;color:#374151;line-height:1.4;margin:0 0 12px}
+.prog-gym{display:flex;gap:10px;align-items:flex-start;background:#F5F3FF;border-radius:12px;padding:10px 12px;margin:0 0 12px;font-size:16px;font-weight:600;line-height:1.4;color:#1A1A2E}
+.prog-gym div{min-width:0}
+.prog-gym b{color:#5B21B6}
+.prog-medal{flex:0 0 auto;font-size:16px;line-height:1.4}
+.prog-table{width:100%}
+.prog-head,.prog-row{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,.7fr) minmax(0,.95fr) minmax(0,.9fr);column-gap:8px;align-items:center}
+.prog-head{font-size:14px;font-weight:800;color:#374151;padding:6px 2px;border-bottom:2px solid #E5E7EB}
+.prog-row{padding:8px 2px;border-bottom:1px solid #EEF0F3;font-size:16px;color:#1A1A2E}
+.prog-skill{font-size:16px;font-weight:700;line-height:1.3;min-width:0;overflow-wrap:anywhere}
+.prog-grade{font-size:14px;font-weight:600;color:#4B5563;line-height:1.3}
+.prog-num{font-size:16px;font-weight:800;font-variant-numeric:tabular-nums;min-width:0}
+.prog-when{font-size:16px;font-weight:600;min-width:0}
+.prog-status{min-width:0}
+.prog-chip{display:inline-block;font-size:14px;font-weight:800;line-height:1.3;padding:3px 10px;border-radius:999px}
+.prog-practicing{background:#FFEDD5;color:#7C2D12}
+.prog-solid{background:#DCFCE7;color:#14532D}
+.prog-new{background:#E0F2FE;color:#0C4A6E}
+.prog-foot{font-size:14px;font-weight:600;color:#4B5563;line-height:1.4;margin:10px 0 0}
+.prog-foot b{font-weight:800}
+.prog-empty{font-size:16px;font-weight:800;color:#1A1A2E;margin:0}
+.prog-more{display:inline-flex;align-items:center;justify-content:center;min-height:44px;min-width:44px;margin-top:10px;padding:10px 16px;border-radius:12px;border:2px solid #1A1A2E;background:#fff;color:#1A1A2E;font-family:inherit;font-weight:800;font-size:16px;cursor:pointer}
+/* Off screen, still read. Used for the phone column names. */
+.prog-sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;font-size:16px}
+@media (max-width:640px){
+  .prog-head{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+  .prog-row{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"skill status" "num when";row-gap:2px;padding:8px 2px}
+  .prog-skill{grid-area:skill}
+  .prog-status{grid-area:status;justify-self:end}
+  .prog-num{grid-area:num}
+  .prog-when{grid-area:when;justify-self:end;text-align:right}
+}
 /* Short screens. These come last so they win over the base sizes.
    The bar is already in the flow; this only keeps the picture, the
    question, and the buttons on screen together. */
@@ -2659,6 +2696,11 @@ function mkState(saved){
     // Miss topics and the last few answers, for the parent page. Empty on old
     // saves: those answers still live in stats, they just were not tagged.
     practice:freshPractice(),
+    // Per-day skill totals for the parent report, and the eligible tape the
+    // Gym line (and a later mastery check) reads. Missing on old saves.
+    log:{},
+    // Day tracking began for this child. Optional on old saves.
+    logSince:'',
   };
   if(saved){
     s.starter=saved.starter;
@@ -2679,6 +2721,8 @@ function mkState(saved){
     s.review=saved.review;
     s.seen=saved.seen||[];
     s.practice=saved.practice||freshPractice();
+    s.log=saved.log||{};
+    s.logSince=saved.logSince||'';
     s.grade=saved.grade|0;
     if(saved.reviewCount){
       SUBS.forEach(sub=>{s.reviewCount[sub]=Math.max(0,saved.reviewCount[sub]|0);});
@@ -2762,6 +2806,9 @@ function gamePayload(){
     gym:gymPayload(),
     award:st.award||undefined,
     practice:parsePractice(st.practice),
+    // Optional. Old saves have none; an empty log is the same as missing.
+    log:pruneLog(st.log),
+    logSince:/^\d{4}-\d{2}-\d{2}$/.test(st.logSince)?st.logSince:LOG_EPOCH,
     // Auto when missing. A number 1–4 keeps math at that tier.
     settings:{grade:st.grade>=1&&st.grade<=4?st.grade:'auto'},
     reviewCount:{
@@ -2959,6 +3006,8 @@ function parseGameSave(data){
       practice:parsePractice(data.practice),
       grade:mathLock,
       reviewCount,
+      log:parseLog(data.log),
+      logSince:/^\d{4}-\d{2}-\d{2}$/.test(data.logSince)?data.logSince:LOG_EPOCH,
     };
   }catch(e){
     // corrupt or half-written save: start fresh rather than fail to a blank screen
@@ -3039,6 +3088,87 @@ function parsePractice(raw){
       out.topics[parts[0]+'|'+parts[1]]={n:recent.filter(x=>x===0).length,ex,recent};
     });
   }
+  return out;
+}
+// Parent progress log. Optional, so SAVE_V stays 1 and an old Pokédex is kept.
+// Shape, per local calendar day:
+//   "math|Adding|3": [right, attempts, hinted]
+//   "math|Adding|2|review" and "math|Adding|3|gym" use the same triple.
+//   "math|@|3": "10110" eligible tape (regular and wild only), oldest first.
+// right = unaided first try. A right answer after a hint increments attempts
+// and hinted, never right. Rematches are not stored. Days older than 30 drop
+// on save. The tape is what the Gym line and a later mastery check both read.
+const LOG_EPOCH='2026-11-17';
+function localISO(d){
+  const y=d.getFullYear();
+  const m=String(d.getMonth()+1).padStart(2,'0');
+  const day=String(d.getDate()).padStart(2,'0');
+  return y+'-'+m+'-'+day;
+}
+function dayOffset(iso,today){
+  const [y,m,d]=String(iso).split('-').map(Number);
+  const [ty,tm,td]=String(today).split('-').map(Number);
+  if(!y||!ty)return 9999;
+  return Math.round((Date.UTC(ty,tm-1,td)-Date.UTC(y,m-1,d))/86400000);
+}
+function logKeyOk(key){
+  const p=String(key).split('|');
+  if(p.length<3||p.length>4)return false;
+  if(!SUBS.includes(p[0]))return false;
+  if(!p[1]||p[1].length>80)return false;
+  const tier=Number(p[2]);
+  if(!Number.isInteger(tier)||tier<1||tier>8)return false;
+  if(p.length===4&&p[3]!=='review'&&p[3]!=='gym')return false;
+  return true;
+}
+function parseLog(raw){
+  const out={};
+  if(!raw||typeof raw!=='object')return out;
+  Object.keys(raw).forEach(day=>{
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(day))return;
+    const bucket=raw[day];
+    if(!bucket||typeof bucket!=='object')return;
+    const next={};
+    Object.keys(bucket).forEach(key=>{
+      if(!logKeyOk(key))return;
+      const v=bucket[key];
+      if(key.split('|')[1]==='@'){
+        if(typeof v==='string'&&/^[01]{0,80}$/.test(v)&&v)next[key]=v.slice(-80);
+        return;
+      }
+      if(!Array.isArray(v))return;
+      const att=Math.max(0,v[1]|0);
+      if(!att)return;
+      const right=Math.min(att,Math.max(0,v[0]|0));
+      const hinted=Math.min(att,Math.max(0,v[2]|0));
+      next[key]=[right,att,hinted];
+    });
+    if(Object.keys(next).length)out[day]=next;
+  });
+  return out;
+}
+function mergeLogBucket(into,extra){
+  const out=Object.assign({},into||{});
+  Object.keys(extra||{}).forEach(key=>{
+    const add=extra[key];
+    if(typeof add==='string'){out[key]=(out[key]||'')+add;return;}
+    const cur=Array.isArray(out[key])?out[key]:[0,0,0];
+    out[key]=[(cur[0]|0)+(add[0]|0),(cur[1]|0)+(add[1]|0),(cur[2]|0)+(add[2]|0)];
+  });
+  return out;
+}
+// Last 30 days stay. A future day is filed under today so a wrong clock
+// cannot hide a try past the window the report and the Gym line read.
+function pruneLog(raw){
+  const src=parseLog(raw);
+  const today=localISO(new Date());
+  const out={};
+  Object.keys(src).sort().forEach(day=>{
+    const age=dayOffset(day,today);
+    if(age>30)return;
+    const dest=age<0?today:day;
+    out[dest]=mergeLogBucket(out[dest],src[day]);
+  });
   return out;
 }
 function escapeHtml(s){
@@ -3208,9 +3338,35 @@ function questionTopic(sub,stem){
 }
 // `outcome` is how the game itself scored the first try: 'right', 'help'
 // (right after asking for help — a success, streak paused), or 'miss'.
+// Written beside notePractice. Rematches are skipped so a repeated item is
+// not counted twice. Review and Gym get their own keys; both still show on
+// the skill row (review on its own line). The @ tape is eligible tries only:
+// regular deals and wild encounters, first try, hint-right as 0.
+function noteProgress(tmpl,outcome){
+  if(st.q&&st.q.rematch)return;
+  const sub=tmpl.sub;
+  const topic=questionTopic(sub,tmpl.raw[0]);
+  const tier=tmpl.lv|0;
+  if(!SUBS.includes(sub)||tier<1)return;
+  const gym=st.phase==='gym';
+  const review=!gym&&!!(st.q&&st.q.bankReview);
+  const kind=gym?'gym':review?'review':'';
+  const key=sub+'|'+topic+'|'+tier+(kind?'|'+kind:'');
+  if(!st.log||typeof st.log!=='object')st.log={};
+  const today=localISO(new Date());
+  const day=st.log[today]||(st.log[today]={});
+  const cur=Array.isArray(day[key])?day[key]:[0,0,0];
+  day[key]=[(cur[0]|0)+(outcome==='right'?1:0),(cur[1]|0)+1,(cur[2]|0)+(outcome==='help'?1:0)];
+  if(!gym&&!review){
+    const tape=sub+'|@|'+tier;
+    const prev=typeof day[tape]==='string'?day[tape]:'';
+    day[tape]=(prev+(outcome==='right'?'1':'0')).slice(-200);
+  }
+}
 function notePractice(tmpl,outcome){
   if(!tmpl||!SUBS.includes(tmpl.sub)||!tmpl.raw)return;
   if(outcome!=='right'&&outcome!=='help'&&outcome!=='miss')return;
+  noteProgress(tmpl,outcome);
   if(!st.practice)st.practice=freshPractice();
   const sub=tmpl.sub;
   const topic=questionTopic(sub,tmpl.raw[0]);
@@ -3704,39 +3860,266 @@ function rematchReportLine(r){
   const name=multiSubject()?(SNAME[r.sub]+': '):'';
   return `<p>${escapeHtml(name+r.q)}</p>`;
 }
+let progressOpen={};
+function kidMathLevel(kid){
+  if(kid&&kid.id===profiles.activeId&&st.stats&&st.stats.math)return st.stats.math.level|0;
+  const s=kid&&kid.data&&kid.data.stats&&kid.data.stats.math;
+  const n=s?s.level|0:1;
+  return n>=1?n:1;
+}
+function gradeShort(tier){
+  if((tier|0)<=1)return 'K';
+  if((tier|0)===2)return '1st grade';
+  if((tier|0)===3)return '2nd grade';
+  if((tier|0)===4)return '3rd grade';
+  return 'Grade '+(tier|0);
+}
+function gymGradeLabel(tier){
+  if((tier|0)<=1)return 'Kindergarten';
+  if((tier|0)===2)return '1st-grade';
+  if((tier|0)===3)return '2nd-grade';
+  if((tier|0)===4)return '3rd-grade';
+  return 'Grade '+(tier|0);
+}
+function lastPlayedLabel(iso){
+  if(!iso)return 'Not yet';
+  const today=localISO(new Date());
+  if(iso===today)return 'Today';
+  const prev=new Date();
+  prev.setDate(prev.getDate()-1);
+  if(iso===localISO(prev))return 'Yesterday';
+  const [y,m,d]=iso.split('-').map(Number);
+  const dt=new Date(y,m-1,d);
+  const WD=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const MO=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return WD[dt.getDay()]+', '+MO[m-1]+' '+d;
+}
+function trackingStart(kid){
+  const raw=kid&&kid.data&&kid.data.logSince;
+  if(typeof raw==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(raw))return raw;
+  return LOG_EPOCH;
+}
+function monthDayLabel(iso){
+  const parts=String(iso).split('-');
+  const m=Number(parts[1]);
+  const d=Number(parts[2]);
+  const MO=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return (MO[m-1]||'')+' '+d;
+}
+function trackingNote(kid){
+  const start=trackingStart(kid);
+  if(dayOffset(start,localISO(new Date()))>=7)return '';
+  return 'Tracking started '+monthDayLabel(start);
+}
+function progressSubtitle(kid){
+  const note=trackingNote(kid);
+  const base='Last 7 days · first tries without a hint · saved on this iPad only';
+  return note?base+' · '+note:base;
+}
+// Eligible tries for the Gym line: the tape when a day has one, otherwise the
+// skill totals for that tier (no review, no gym, no rematch). Last 40.
+function gymWindow(log,sub,tier){
+  log=pruneLog(log);
+  const days=Object.keys(log||{}).filter(d=>/^\d{4}-\d{2}-\d{2}$/.test(d)).sort();
+  const tapeKey=sub+'|@|'+tier;
+  const anyTape=days.some(d=>log[d]&&typeof log[d][tapeKey]==='string');
+  const parts=[];
+  days.forEach(d=>{
+    const bucket=log[d]||{};
+    if(anyTape){
+      const seq=bucket[tapeKey];
+      if(typeof seq==='string'&&seq)parts.push({d,seq});
+      return;
+    }
+    let seq='';
+    Object.keys(bucket).forEach(key=>{
+      const p=key.split('|');
+      if(p[0]!==sub||p[1]==='@'||(p[2]|0)!==tier||p[3])return;
+      const cell=bucket[key];
+      if(!Array.isArray(cell))return;
+      const att=Math.max(0,cell[1]|0);
+      const right=Math.min(att,Math.max(0,cell[0]|0));
+      seq+='1'.repeat(right)+'0'.repeat(att-right);
+    });
+    if(seq)parts.push({d,seq});
+  });
+  const full=parts.map(p=>p.seq).join('');
+  const window=full.slice(-40);
+  let need=window.length;
+  let dayCount=0;
+  for(let i=parts.length-1;i>=0&&need>0;i--){
+    dayCount++;
+    need-=parts[i].seq.length;
+  }
+  const right=(window.match(/1/g)||[]).length;
+  const att=window.length;
+  return {pct:att?Math.floor(100*right/att):0,att,days:dayCount};
+}
+// The Gym sentence uses the mastery rule. It stays off until that rule
+// is what opens a Gym. Flip this in the mastery change.
+const MASTERY_GYM=false;
+function gymLineText(sub,tier,log){
+  if((tier|0)>=maxLevel(sub))return 'Top level reached.';
+  const sum=gymWindow(log,sub,tier|0);
+  const tries=sum.att===1?'try':'tries';
+  const days=sum.days===1?'1 day':sum.days+' days';
+  return `${gymGradeLabel(tier)} Gym: ${sum.pct}% right over ${sum.att} ${tries} on ${days}. Opens at 85% (needs 30+ tries on 2+ days).`;
+}
+function gymLineHTML(kid){
+  if(!MASTERY_GYM)return '';
+  let h='';
+  enabledSubjects().forEach(sub=>{
+    const tier=sub==='math'?kidMathLevel(kid):((kid.data&&kid.data.stats&&kid.data.stats[sub]&&kid.data.stats[sub].level)|0)||1;
+    const text=gymLineText(sub,tier,kid.data&&kid.data.log);
+    const body=text==='Top level reached.'?text:text.replace(/^([^:]+):/,'<b>$1:</b>');
+    h+=`<div class="prog-gym"><span class="prog-medal" aria-hidden="true">&#127941;</span><div>${body}</div></div>`;
+  });
+  return h;
+}
+// Report names only. questionTopic() stays the short label the log uses.
+// Ranges are what that tier's math bank actually asks.
+function skillDisplayName(topic,tier){
+  const t=tier|0;
+  if(topic==='Adding'){
+    if(t<=1)return 'Adding within 5';
+    if(t===2)return 'Adding within 20';
+    if(t===3)return 'Adding within 100';
+    return 'Adding 3-digit numbers';
+  }
+  if(topic==='Subtracting'){
+    if(t<=1)return 'Subtracting within 5';
+    if(t===2)return 'Subtracting within 20';
+    if(t===3)return 'Subtracting within 100';
+    return 'Subtracting 3-digit numbers';
+  }
+  if(topic==='Counting'){
+    if(t<=1)return 'Counting to 20';
+    if(t===2)return 'Counting by 2s and 5s';
+    if(t===3)return 'Counting by 2s, 5s, and 10s';
+    return 'Counting by 3s, 4s, and 25s';
+  }
+  if(topic==='Shapes')return t<=1?'Naming shapes':'Sides and corners';
+  if(topic==='Comparing')return t<=1?'Comparing numbers to 10':'Comparing numbers to 20';
+  if(topic==='Place value')return t>=4?'Hundreds, tens, and ones':'Tens and ones';
+  if(topic==='Word problems with more than one step'){
+    if(t<=1)return 'Stories within 5';
+    if(t===2)return 'Stories within 20';
+    if(t===3)return 'Stories within 100';
+    return 'Stories with bigger numbers';
+  }
+  return topic;
+}
+function skillStatus(att,right,days){
+  if(att<10)return 'New';
+  if(right/att>=0.85&&days>=2)return 'Solid';
+  return 'Practicing';
+}
+function progressRows(kid){
+  const log=pruneLog(kid&&kid.data&&kid.data.log);
+  const today=localISO(new Date());
+  const rows=new Map();
+  function rowFor(sub,topic,tier,review){
+    const id=sub+'|'+topic+'|'+tier+'|'+(review?'review':'');
+    if(!rows.has(id))rows.set(id,{sub,topic,tier,review,right7:0,att7:0,right14:0,att14:0,days:new Set(),last:''});
+    return rows.get(id);
+  }
+  Object.keys(log).forEach(day=>{
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(day))return;
+    const age=dayOffset(day,today);
+    if(age<0||age>30)return;
+    const bucket=log[day]||{};
+    Object.keys(bucket).forEach(key=>{
+      const p=key.split('|');
+      if(p[1]==='@'||!subjectOn(p[0]))return;
+      const cell=bucket[key];
+      if(!Array.isArray(cell))return;
+      const att=cell[1]|0;
+      if(att<=0)return;
+      const review=p[3]==='review';
+      const rec=rowFor(p[0],p[1],p[2]|0,review);
+      if(!rec.last||day>rec.last)rec.last=day;
+      if(age<=13){
+        rec.right14+=cell[0]|0;
+        rec.att14+=att;
+        rec.days.add(day);
+      }
+      if(age<=6){
+        rec.right7+=cell[0]|0;
+        rec.att7+=att;
+      }
+    });
+  });
+  enabledSubjects().forEach(sub=>{
+    const tier=sub==='math'?kidMathLevel(kid):((kid.data&&kid.data.stats&&kid.data.stats[sub]&&kid.data.stats[sub].level)|0)||1;
+    const bank=QB[sub]&&QB[sub][tier];
+    if(!bank)return;
+    const seen=new Set();
+    bank.forEach(q=>{
+      const topic=questionTopic(sub,q[0]);
+      if(seen.has(topic))return;
+      seen.add(topic);
+      rowFor(sub,topic,tier,false);
+    });
+  });
+  const rank={Practicing:0,New:1,Solid:2};
+  return [...rows.values()].map(r=>{
+    r.status=skillStatus(r.att14,r.right14,r.days.size);
+    return r;
+  }).sort((a,b)=>{
+    if(rank[a.status]!==rank[b.status])return rank[a.status]-rank[b.status];
+    if(a.last!==b.last){
+      if(!a.last)return 1;
+      if(!b.last)return -1;
+      return a.last<b.last?1:-1;
+    }
+    return a.topic.localeCompare(b.topic);
+  });
+}
+function progressCardHTML(kid){
+  const name=escapeHtml(kid.name);
+  const started=!!(kid.data&&Array.isArray(kid.data.team)&&kid.data.team.length);
+  let h=`<div class="card progress-card" data-progress-for="${escapeHtml(kid.id)}"><h2 class="prog-title">${name}'s progress</h2>`;
+  h+=`<p class="parent-practice">${escapeHtml(practiceLine(kid))}</p>`;
+  h+=`<p class="prog-sub">${escapeHtml(progressSubtitle(kid))}</p>`;
+  if(!started)return h+`</div>`;
+  h+=gymLineHTML(kid);
+  const all=progressRows(kid);
+  const open=!!progressOpen[kid.id];
+  const shown=open?all:all.slice(0,8);
+  h+=`<div class="prog-table" role="table"><div class="prog-head" role="row"><div role="columnheader">Skill</div><div role="columnheader">7 days</div><div role="columnheader">Status</div><div role="columnheader">Last played</div></div>`;
+  shown.forEach(r=>{
+    const nums=r.att7?`${r.right7} / ${r.att7}`:'\u2014';
+    const grade=gradeShort(r.tier)+(r.review?' · review':'');
+    h+=`<div class="prog-row" role="row" data-skill="${escapeHtml(r.topic)}" data-tier="${r.tier}" data-review="${r.review?'1':'0'}">`;
+    h+=`<div class="prog-skill" role="cell">${escapeHtml(skillDisplayName(r.topic,r.tier))}<div class="prog-grade">${escapeHtml(grade)}</div></div>`;
+    h+=`<div class="prog-num" role="cell"><span class="prog-sr">7 days</span>${nums}</div>`;
+    h+=`<div class="prog-status" role="cell"><span class="prog-chip prog-${r.status.toLowerCase()}">${r.status}</span></div>`;
+    h+=`<div class="prog-when" role="cell"><span class="prog-sr">Last played</span>${escapeHtml(lastPlayedLabel(r.last))}</div></div>`;
+  });
+  h+=`</div>`;
+  if(all.length>8)h+=`<button type="button" class="prog-more" data-progress-more="${escapeHtml(kid.id)}">${open?'Show less':'Show all'}</button>`;
+  h+=`<p class="prog-foot">Numbers show the last 7 days. Solid looks at the last 14. <b>Solid</b> = 85%+ right, 10+ tries, 2+ days. <b>Practicing</b> = 10+ tries, not solid yet. <b>New</b> = fewer than 10 tries.</p>`;
+  return h+`</div>`;
+}
 function parentKidHTML(kid){
   const data=kid.data;
   const name=escapeHtml(kid.name);
   const face=faceForKid(kid);
   const score=scoreLine(kid);
   let h=`<div class="card" data-kid-name="${name}"><div class="parent-kid">${pkSprite(face.pi,64,face.shiny)}<div><h2>${name}</h2>`;
-  h+=`<p class="parent-practice">${escapeHtml(practiceLine(kid))}</p>`;
   if(score)h+=`<p class="parent-score">${escapeHtml(score)}</p>`;
+  if(!data||!Array.isArray(data.team)||!data.team.length){
+    h+=`<p class="parent-practice">${escapeHtml(practiceLine(kid))}</p></div></div></div>`;
+    return h;
+  }
   h+=`</div></div>`;
-  if(!data||!Array.isArray(data.team)||!data.team.length)return h+`</div>`;
-  const practice=data.practice&&typeof data.practice==='object'?data.practice:freshPractice();
   const badges=[];
   enabledSubjects().forEach(sub=>{
     subjectSnap(data,sub).badges.forEach(t=>badges.push(badgeName(sub,t)));
   });
   // Hidden-subject badges stay out of this list. With nothing visible, skip
   // the line entirely: "No badges yet" is wrong when a hidden badge exists.
-  // An orange box with no misses is skipped in that same case. A real miss
-  // still gets the box, and a visible badge keeps the old empty box.
   if(badges.length)h+=`<p>Badges: ${escapeHtml(badges.join(', '))}</p>`;
-  const misses=missList(practice);
-  const overall=recentBits(practice,null);
-  const totalAtt=enabledSubjects().reduce((n,sub)=>n+subjectSnap(data,sub).att,0);
-  if(misses.length||(badges.length&&(overall||totalAtt>0))){
-    h+=`<div class="parent-focus">`;
-    if(misses.length){
-      misses.forEach(m=>{
-        h+=`<div class="parent-miss">${escapeHtml(m.topic)} — missed ${m.n} time${m.n===1?'':'s'}</div>`;
-        m.ex.forEach(ex=>{h+=`<p class="parent-ex">${escapeHtml(ex)}</p>`;});
-      });
-    }
-    h+=`</div>`;
-  }
   const again=liveRematches(data,'miss');
   if(again.length){
     h+=`<div class="parent-again"><h3>Trying these again</h3>`;
@@ -3750,6 +4133,13 @@ function parentKidHTML(kid){
     h+=`</div>`;
   }
   return h+`</div>`;
+}
+function parentIntroLine(){
+  const names=profiles.kids.map(k=>String(k&&k.name||'').trim()).filter(Boolean);
+  if(names.length===1)return `See what ${names[0]} is solid on and what to practice.`;
+  if(names.length===2)return `See what ${names[0]} and ${names[1]} are solid on and what to practice.`;
+  if(!names.length)return '';
+  return `See what ${names.slice(0,-1).join(', ')}, and ${names[names.length-1]} are solid on and what to practice.`;
 }
 function parentBackLabel(){
   if(viewBeforeParent==='who')return "Back to who's playing";
@@ -3962,6 +4352,9 @@ function openParent(){
   histPush('parent');
 }
 function renderParent(){
+  const scroller=document.getElementById('app-main');
+  const scrollTop=scroller?scroller.scrollTop:0;
+  const keepScroll=()=>{if(scroller)scroller.scrollTop=scrollTop;};
   shelterMute();
   view='parent';
   gameEl.style.display='none';
@@ -3985,10 +4378,13 @@ function renderParent(){
     document.getElementById('parent-go').addEventListener('click',submitParentQuiz);
     document.getElementById('parent-back').addEventListener('click',closeParent);
     dockMute();
+    keepScroll();
     return;
   }
   const timerOn=gymTimerEnabled();
-  h+=`<div id="parent-report"><div class="parent-kicker">For parents</div><div class="parent-title">How they're doing</div><p class="parent-lead">Each child has their own game. One line says what to practice together.</p>`;
+  const intro=parentIntroLine();
+  h+=`<div id="parent-report">${intro?`<p class="parent-lead" id="parent-intro">${escapeHtml(intro)}</p>`:''}`;
+  profiles.kids.forEach(kid=>{h+=progressCardHTML(kid);});
   h+=`<div class="card" id="timer-setting"><div class="parent-title" style="font-size:20px">Thinking time</div><p class="parent-lead">On harder Gym battles, a bar counts down while they think. It stays off unless you turn it on.</p><div class="timer-row"><span>Thinking time</span><button type="button" id="gym-timer-toggle" class="timer-toggle${timerOn?' on':''}" aria-pressed="${timerOn?'true':'false'}">${timerOn?'On':'Off'}</button></div></div>`;
   h+=gradeSettingHTML();
   if(!profiles.kids.length){
@@ -4007,7 +4403,17 @@ function renderParent(){
     setKidGrade(b.dataset.for,b.dataset.grade);
     renderParent();
   }));
+  parentEl.querySelectorAll('[data-progress-more]').forEach(b=>b.addEventListener('click',()=>{
+    const y=scroller?scroller.scrollTop:0;
+    progressOpen[b.dataset.progressMore]=!progressOpen[b.dataset.progressMore];
+    renderParent();
+    const main=document.getElementById('app-main');
+    if(main)main.scrollTop=y;
+    const again=parentEl.querySelector('[data-progress-more="'+b.dataset.progressMore+'"]');
+    if(again)again.focus({preventScroll:true});
+  }));
   dockMute();
+  keepScroll();
 }
 
 let profiles={activeId:null,kids:[]};

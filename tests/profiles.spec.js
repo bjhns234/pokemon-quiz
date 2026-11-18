@@ -294,14 +294,15 @@ test('the parent page stays behind a math check and shows each child apart',asyn
   await passParentGate(page);
   const mayaCard=page.locator('[data-kid-name="Maya"]');
   const samCard=page.locator('[data-kid-name="Sam"]');
-  await expect(mayaCard).toContainText('Practice adding.');
+  await expect(page.locator('[data-progress-for="maya"] .parent-practice')).toContainText('Practice adding.');
   await expect(mayaCard).not.toContainText('rhyming');
   await expect(mayaCard).toContainText('Bolt Badge');
   await expect(mayaCard).not.toContainText('8 right out of 10');
   await expect(mayaCard).toContainText('Last 4 answers: 2 right');
-  await expect(mayaCard).toContainText('Adding');
-  await expect(mayaCard).toContainText('missed 2 times');
-  await expect(mayaCard).toContainText('What is 8 + 7?');
+  await expect(mayaCard.locator('.parent-focus')).toHaveCount(0);
+  await expect(mayaCard.locator('.parent-miss')).toHaveCount(0);
+  await expect(mayaCard).not.toContainText('missed 2 times');
+  await expect(mayaCard).not.toContainText('What is 8 + 7?');
   await expect(mayaCard).not.toContainText('Rhyming');
   await expect(mayaCard).not.toContainText('Reading');
   await expect(mayaCard).toContainText('Trying these again');
@@ -310,14 +311,14 @@ test('the parent page stays behind a math check and shows each child apart',asyn
   await expect(mayaCard).not.toContainText('Missed topics start from this update');
   await expect(mayaCard).not.toContainText('1st-grade adding and subtracting');
 
-  await expect(samCard).toContainText('Play a little more and this will say what to practice.');
+  await expect(page.locator('[data-progress-for="sam"] .parent-practice')).toContainText('Play a little more and this will say what to practice.');
   await expect(samCard).not.toContainText('time, and money');
   await expect(samCard).not.toContainText('2nd-grade');
   await expect(samCard).toContainText('Bolt Badge');
   await expect(samCard).toContainText('Charge Badge');
   await expect(samCard).toContainText('3 right out of 5');
   await expect(samCard).not.toContainText('5 right out of 7');
-  await expect(samCard.locator('.parent-focus')).toHaveCount(1);
+  await expect(samCard.locator('.parent-focus')).toHaveCount(0);
   await expect(samCard.locator('.parent-miss')).toHaveCount(0);
   await expect(samCard).not.toContainText('What is 8 + 7?');
   await expect(samCard).not.toContainText('Rhyming');
@@ -383,10 +384,10 @@ test('a miss is remembered for the parent page from the next answer on',async({p
   await openParents(page);
   await passParentGate(page);
   const card=page.locator('[data-kid-name="Trainer"]');
-  await expect(card).toContainText('Practice adding.');
-  await expect(card).toContainText('Adding');
-  await expect(card).toContainText('missed 1 time');
+  await expect(page.locator('[data-progress-for] .parent-practice')).toContainText('Practice adding.');
+  await expect(card).toContainText('Trying these again');
   await expect(card).toContainText('What is 1 + 2?');
+  await expect(card.locator('.parent-focus')).toHaveCount(0);
   await expect(card).toContainText('Last 1 answer: 0 right');
   await expect(card).not.toContainText('Missed topics start from this update');
   expect(errors).toEqual([]);
@@ -432,7 +433,8 @@ test('a topic drops off once they keep getting it right',async({page})=>{
   await openParents(page);
   await passParentGate(page);
   const card=page.locator('[data-kid-name="Trainer"]');
-  await expect(card).toContainText(/Adding — missed/);
+  await expect(page.locator('[data-progress-for] .parent-practice')).toContainText('Practice adding.');
+  await expect(card.locator('.parent-focus')).toHaveCount(0);
   await page.click('#parent-back');
 
   for(let i=3;i<12;i++){
@@ -441,8 +443,8 @@ test('a topic drops off once they keep getting it right',async({page})=>{
   }
   await page.click('#parents-link');
   await passParentGate(page);
-  await expect(card).not.toContainText(/Adding — missed/);
-  await expect(card).toContainText('Nothing to practice right now.');
+  await expect(page.locator('[data-progress-for] .parent-practice')).not.toContainText('Practice adding.');
+  await expect(page.locator('[data-progress-for] .parent-practice')).toContainText('Nothing to practice right now.');
   await expect(card).toContainText('Last 10 answers: 10 right');
   expect(errors).toEqual([]);
 });
