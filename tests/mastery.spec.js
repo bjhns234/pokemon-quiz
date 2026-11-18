@@ -265,18 +265,27 @@ test('below a grade lock, the tier changes only after mastery and a Gym win',asy
   expect(errors).toEqual([]);
 });
 
-test('a 3-miss drop keeps badges',async({page})=>{
+test('three current-tier misses keep the level and the badges',async({page})=>{
+  // Was "a 3-miss drop keeps badges". Three misses used to drop a whole level.
+  // Kindergarten is already solid, so placement has nothing to move either.
+  // The miss run starts a warm-up and the level stays put. Badges stay.
   const errors=await boot(page);
   await state(page,()=>{
     st.grade=0;st.stats.math.level=2;st.stats.math.ws=0;st.badges.math=[1,2];st.gymOffer.math=null;
+    st.log={
+      '2026-11-16':{'math|@|1':'1'.repeat(20)},
+      '2026-11-17':{'math|@|1':'1'.repeat(20)},
+    };
   });
   for(let i=0;i<3;i++){
     await serve(page,{sub:'math',lv:2,idx:i});
     await answer(page,false);
   }
-  expect(await state(page,()=>({level:st.stats.math.level,badges:[...st.badges.math].sort()}))).toEqual({
-    level:1,badges:[1,2],
-  });
+  expect(await state(page,()=>({
+    level:st.stats.math.level,
+    badges:[...st.badges.math].sort(),
+    warm:!!(st.warmup&&st.warmup.home===2),
+  }))).toEqual({level:2,badges:[1,2],warm:true});
   expect(errors).toEqual([]);
 });
 
@@ -460,10 +469,14 @@ test('the Parents Gym line uses the same numbers as the gate',async({page})=>{
   });
   const tries=shown.att===1?'try':'tries';
   const days=shown.days===1?'1 day':shown.days+' days';
-  expect(shown.text).toContain(`${shown.pct}% right over ${shown.att} ${tries} on ${days}`);
+  // No tries yet is "just started" instead of "0% over 0 tries". Any real
+  // tally is still the gate's own numbers.
+  if(shown.att===0)expect(shown.text).toContain('just started');
+  else expect(shown.text).toContain(`${shown.pct}% right over ${shown.att} ${tries} on ${days}`);
   expect(shown.open).toBe(false);
   await openParents(page);
-  await expect(page.locator('.prog-gym')).toContainText(`${shown.pct}% right over ${shown.att} ${tries} on ${days}`);
+  if(shown.att===0)await expect(page.locator('.prog-gym')).toContainText('just started');
+  else await expect(page.locator('.prog-gym')).toContainText(`${shown.pct}% right over ${shown.att} ${tries} on ${days}`);
   const sample=await state(page,saved=>masterySnapshot(saved,'math',3),log);
   expect(sample).toMatchObject({pct:75,att:40,days:2,total:40,open:false});
   expect(sample.right*100).toBeLessThan(sample.att*85);
@@ -663,22 +676,33 @@ test('a day with 5 tries still qualifies when only some of them remain in the la
   expect(errors).toEqual([]);
 });
 
-test('a Rematch miss does not count toward the 3-miss drop',async({page})=>{
+test('a Rematch miss does not count toward a warm-up',async({page})=>{
+  // Was "does not count toward the 3-miss drop". A Rematch still must not
+  // finish the run. The next current-tier miss does, and that starts a
+  // warm-up instead of dropping the level. Kindergarten is solid, so
+  // placement is not what would have moved him.
   const errors=await boot(page);
   await state(page,()=>{
     st.stats.math.level=2;
     st.stats.math.ws=2;
     st.badges.math=[1];
     st.gymOffer.math=null;
+    st.log={
+      '2026-11-16':{'math|@|1':'1'.repeat(20)},
+      '2026-11-17':{'math|@|1':'1'.repeat(20)},
+    };
     st.review=[{sub:'math',lv:2,idx:0,wins:0,due:0,why:'miss'}];
     st.served=10;st.lastRematchAt=null;
     loadQuestion();
   });
   expect(await state(page,()=>!!st.q.rematch)).toBe(true);
   await answer(page,false);
-  expect(await state(page,()=>({level:st.stats.math.level,ws:st.stats.math.ws,badges:[...st.badges.math]}))).toEqual({
-    level:2,ws:2,badges:[1],
+  expect(await state(page,()=>({level:st.stats.math.level,ws:st.stats.math.ws,badges:[...st.badges.math],warm:st.warmup||null}))).toEqual({
+    level:2,ws:2,badges:[1],warm:null,
   });
+  await serve(page,{sub:'math',lv:2,idx:4});
+  await answer(page,false);
+  expect(await state(page,()=>({level:st.stats.math.level,warm:!!st.warmup}))).toEqual({level:2,warm:true});
   expect(errors).toEqual([]);
 });
 

@@ -69,6 +69,9 @@ button.mon-strip:focus{outline:3px solid #1D4ED8;outline-offset:2px}
 /* Sits beside the subject pill rather than up in the header: the streak is what
    the XP ladder pays for, so it has to be in his eyeline while he reads. */
 .streak-pill{display:inline-flex;align-items:center;gap:4px;font-size:14px;font-weight:700;padding:3px 10px;border-radius:20px;background:#FEF3C7;color:#92400E;letter-spacing:0.03em;white-space:nowrap}
+/* Warm-up sits in the streak slot. Sky, not red: nothing was lost. */
+.warmup-tag{display:inline-flex;align-items:center;box-sizing:border-box;height:24px;padding:0 10px;border-radius:20px;background:#E0F2FE;color:#075985;font-size:14px;font-weight:700;letter-spacing:0.03em;white-space:nowrap}
+.warmup-say,.warmup-back{background:#EFF6FF;color:#1E3A8A;border-radius:12px;padding:8px 12px;font-size:16px;font-weight:700;text-align:center;margin:0 0 8px;line-height:1.3}
 .rematch-pill{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:#EDE9FE;color:#6D28D9;letter-spacing:0.03em;white-space:nowrap}
 .rematch-toast{background:linear-gradient(90deg,#8B5CF6,#6D28D9);color:#fff;border-radius:12px;padding:11px 16px;font-size:15px;font-weight:700;margin-bottom:12px;text-align:center;box-shadow:0 4px 16px rgba(109,40,217,0.35);animation:lvl-up-flash 0.55s cubic-bezier(0.34,1.56,0.64,1)}
 /* Quiet on purpose: it sits under the answers on every question, so it has to be
@@ -247,7 +250,8 @@ button.mon-strip:focus{outline:3px solid #1D4ED8;outline-offset:2px}
 }
 @media (prefers-reduced-motion:reduce){
   .gym-ring.glow,.psvg,.psvg.bk,.psvg.sk,
-  #game .mon-strip .psvg.bk img,#game .mon-strip .psvg.sk img{animation:none}
+  #game .mon-strip .psvg.bk img,#game .mon-strip .psvg.sk img,
+  .warmup-tag,.warmup-say,.warmup-back,.streak-pill{animation:none}
 }
 /* A level-up lands on the pill that actually changed instead of a bar above the card.
    Green because the +XP badge just below it is green too, so the badge, the bar filling
@@ -569,6 +573,7 @@ button.mon-strip:focus{outline:3px solid #1D4ED8;outline-offset:2px}
 .parent-focus{background:#FFF7ED;border:1.5px solid #FDBA74;border-radius:12px;padding:10px 12px;margin-top:12px}
 .parent-focus h3{font-size:14px;font-weight:800;color:#9A3412;margin-bottom:6px}
 .parent-miss{font-size:14px;font-weight:700;color:#9A3412;margin-top:6px}
+.parent-move{font-size:16px;font-weight:700;color:#1A1A2E;line-height:1.4;margin:8px 0 0}
 .parent-ex{font-size:13px;color:#7C2D12;margin:1px 0 0 0}
 .parent-note{font-size:14px;color:#374151;line-height:1.4;margin-top:10px}
 .parent-again{margin-top:10px}
@@ -935,7 +940,8 @@ button.mon-strip:focus{outline:3px solid #1D4ED8;outline-offset:2px}
   #game .streak-pill,#game .q-head,#game .qcard::before{box-sizing:border-box;height:24px;min-height:24px;line-height:24px;padding:0 10px}
   #game .qcard::before{content:"\1F525  5 in a row";visibility:hidden;display:flex;width:max-content;align-items:center;font-size:14px;font-weight:700;letter-spacing:0.03em;margin:0 0 4px;white-space:nowrap}
   #game .q-head{margin:0 0 4px;padding:0}
-  #game .qcard:has(.q-head)::before{content:none;height:0;min-height:0;padding:0;margin:0}
+  #game .qcard:has(.q-head)::before,
+  #game .qcard:has(.warmup-back)::before{content:none;height:0;min-height:0;padding:0;margin:0}
   /* One spacing for every tablet height, so the picture grows smoothly
      instead of jumping at 750px or 960px. Four key columns and 44px keys
      keep a typed question on screen down at 700px tall. */
@@ -2615,11 +2621,15 @@ function wildLevel(){
 // A wrong answer during an encounter costs a ball rather than ending it outright;
 // the Pokemon only flees once the balls run out.
 const CATCH_MISSES_ALLOWED=1;
-// Five clean first-tries in a row unlock the Gym for the tier he is on.
-// Dropping a tier still takes three misses, so a short stumble does not undo
-// a long run.
+// Five clean first-tries in a row is only the streak celebration. A Gym waits
+// for mastery. Three misses in a row on the current tier start a warm-up.
+// They do not drop a level. LEVEL_DOWN_STREAK is that warm-up trigger; the
+// name stayed so older calls still read.
 const LEVEL_UP_STREAK=5;
 const LEVEL_DOWN_STREAK=3;
+const WARMUP_N=3;
+// Last 20 eligible tries. Under 60% of those, on 2 local days, drops one tier.
+const DROP_WINDOW=20;
 // A difficulty step is a Gym battle now. Five clean answers in a subject unlock
 // the leader for the tier he is ON; the next tier opens only when that battle is
 // won. Questions in the battle come from that same tier.
@@ -2731,6 +2741,12 @@ function mkState(saved){
     log:{},
     // Day tracking began for this child. Optional on old saves.
     logSince:'',
+    // Optional. A warm-up in progress, parent notes about a one-tier move,
+    // and the ring-refill cursor for the tier he was moved down to.
+    warmup:null,
+    moves:[],
+    redo:{},
+    backPending:false,
   };
   if(saved){
     s.starter=saved.starter;
@@ -2754,6 +2770,10 @@ function mkState(saved){
     s.log=saved.log||{};
     s.logSince=saved.logSince||'';
     s.grade=saved.grade|0;
+    s.warmup=saved.warmup||null;
+    s.moves=Array.isArray(saved.moves)?saved.moves:[];
+    s.redo=saved.redo||{};
+    s.backPending=!!saved.backPending;
     if(saved.reviewCount){
       SUBS.forEach(sub=>{s.reviewCount[sub]=Math.max(0,saved.reviewCount[sub]|0);});
     }
@@ -2802,7 +2822,7 @@ function markDex(pi,shiny){(shiny?st.sdx:st.pdx)[pi]=true;}
 // plus `practice` for the parent page. Optional fields stay optional.
 // SAVE_V stays 1 — bumping it would wipe Pokedexes to add a feature.
 function gamePayload(){
-  return{
+  const payload={
     v:SAVE_V,
     starter:st.starter,
     activeIdx:st.activeIdx,
@@ -2847,6 +2867,18 @@ function gamePayload(){
       science:Math.max(0,(st.reviewCount&&st.reviewCount.science)|0),
     },
   };
+  // Optional. Missing on old saves, and omitted again while they're empty,
+  // so a Pokédex saved before warm-ups still round-trips.
+  if(st.warmup)payload.warmup={
+    sub:st.warmup.sub,home:st.warmup.home|0,tier:st.warmup.tier|0,
+    topic:String(st.warmup.topic||'').slice(0,80),
+    queue:(st.warmup.queue||[]).slice(0,WARMUP_N),
+    at:st.warmup.at|0,
+  };
+  if(st.moves&&st.moves.length)payload.moves=st.moves.slice(-8);
+  if(st.redo&&Object.keys(st.redo).length)payload.redo=st.redo;
+  if(st.backPending)payload.backPending=true;
+  return payload;
 }
 
 function seenPayload(){
@@ -2875,6 +2907,40 @@ function clearSave(){
   try{localStorage.removeItem(SAVE_KEY);}catch(e){}
 }
 
+// Optional save fields. A bad or missing value is the same as an old save.
+function parseWarmup(raw){
+  if(!raw||typeof raw!=='object'||!SUBS.includes(raw.sub))return null;
+  const home=raw.home|0,tier=raw.tier|0,at=raw.at|0;
+  const bank=QB[raw.sub]&&QB[raw.sub][tier];
+  if(!bank||home<1||tier<1||at<0)return null;
+  if(!Array.isArray(raw.queue)||raw.queue.length<1||raw.queue.length>WARMUP_N)return null;
+  const queue=raw.queue.map(i=>i|0);
+  if(!queue.every(i=>i>=0&&i<bank.length)||at>queue.length)return null;
+  if(at>=queue.length)return null;
+  return {sub:raw.sub,home,tier,at,queue,topic:typeof raw.topic==='string'?raw.topic.slice(0,80):''};
+}
+function parseMoves(raw){
+  if(!Array.isArray(raw))return [];
+  return raw.filter(m=>m&&SUBS.includes(m.sub)&&/^\d{4}-\d{2}-\d{2}$/.test(m.day)&&(m.tier|0)>=1)
+    .slice(-8).map(m=>{
+      const row={sub:m.sub,tier:m.tier|0,day:m.day};
+      const from=m.from|0;
+      if(from>=1&&from<=8&&from!==row.tier)row.from=from;
+      return row;
+    });
+}
+function parseRedo(raw){
+  const out={};
+  if(!raw||typeof raw!=='object')return out;
+  SUBS.forEach(sub=>{
+    const r=raw[sub];
+    if(!r||typeof r!=='object')return;
+    const tier=r.tier|0,fresh=r.fresh|0;
+    if(tier<1||tier>8||fresh<0||fresh>10000)return;
+    out[sub]={tier,fresh};
+  });
+  return out;
+}
 function parseGameSave(data){
   try{
     if(!data||data.v!==SAVE_V)return null;
@@ -3048,6 +3114,10 @@ function parseGameSave(data){
       reviewCount,
       log:placedLog,
       logSince:/^\d{4}-\d{2}-\d{2}$/.test(data.logSince)?data.logSince:LOG_EPOCH,
+      warmup:parseWarmup(data.warmup),
+      moves:parseMoves(data.moves),
+      redo:parseRedo(data.redo),
+      backPending:data.backPending===true,
     };
   }catch(e){
     // corrupt or half-written save: start fresh rather than fail to a blank screen
@@ -3442,7 +3512,12 @@ function questionTopic(sub,stem){
 // the skill row (review on its own line). The @ tape is eligible tries only:
 // regular deals and wild encounters, first try, hint-right as 0.
 function noteProgress(tmpl,outcome){
-  if(st.q&&st.q.rematch)return;
+  // A warm-up is a breather, not evidence. It does not touch the current
+  // tier's tape, and it does not touch the lower tier's either: three easy
+  // rights would puff a thin tape, and three misses would make a cleared
+  // tier look weak enough for placement to drop him. The questions stay off
+  // the skill rows for the same reason.
+  if(st.q&&(st.q.rematch||st.q.warmup))return;
   const sub=tmpl.sub;
   const topic=questionTopic(sub,tmpl.raw[0]);
   const tier=tmpl.lv|0;
@@ -3463,6 +3538,10 @@ function noteProgress(tmpl,outcome){
     const prevN=typeof day[countKey]==='number'?day[countKey]:prev.length;
     day[countKey]=prevN+1;
     day[tape]=(prev+(outcome==='right'?'1':'0')).slice(-TAPE_KEEP);
+    // Tries after a one-tier drop refill that tier's ring. The old tape stays;
+    // only the count of new tries is kept, so the tail of this same tape is
+    // the refill.
+    if(st.redo&&st.redo[sub]&&st.redo[sub].tier===tier)st.redo[sub].fresh=(st.redo[sub].fresh|0)+1;
   }
 }
 function notePractice(tmpl,outcome){
@@ -4022,7 +4101,7 @@ function progressSubtitle(kid){
 // for that tier (no review, no gym, no rematch). The Parents line and the
 // Gym gate both read this. `att`/`days`/`pct` are the last 40. `total` and
 // `qualified` are the whole stored tape (a day counts once it has 5+).
-function masterySnapshot(log,sub,tier){
+function masterySnapshot(log,sub,tier,redo){
   log=pruneLog(log);
   const days=Object.keys(log||{}).filter(d=>/^\d{4}-\d{2}-\d{2}$/.test(d)).sort();
   const tapeKey=sub+'|@|'+tier;
@@ -4067,7 +4146,52 @@ function masterySnapshot(log,sub,tier){
   // eligible tries, so they cannot open a Gym or move him.
   const fromTape=!!(anyTape&&parts.length);
   const open=fromTape&&full.length>=30&&qualified>=2&&att>0&&right*100>=att*85;
-  return {pct:att?Math.floor(100*right/att):0,att,days:dayCount,total:full.length,qualified,right,ratio,open,window,fromTape};
+  const recent=fromTape?recentWindow(parts):{att:0,right:0,days:0,window:''};
+  const gate=redo&&(redo.tier|0)===(tier|0)?gateFromTail(parts,Math.max(0,redo.fresh|0)):null;
+  const fullGate={pct:att?Math.floor(100*right/att):0,att,days:dayCount,total:full.length,qualified,right,ratio,open,window,fromTape};
+  return Object.assign({recent},fullGate,{gate:gate||fullGate});
+}
+// The last DROP_WINDOW results on the tape, and how many local days they
+// touch. Skill-total fallbacks never get here: they are not a drop signal.
+function recentWindow(parts){
+  let need=DROP_WINDOW;
+  const chunks=[];
+  const days=[];
+  for(let i=parts.length-1;i>=0&&need>0;i--){
+    const seq=parts[i].seq||'';
+    const take=Math.min(need,seq.length);
+    if(!take)continue;
+    chunks.push(seq.slice(seq.length-take));
+    days.push(parts[i].d);
+    need-=take;
+  }
+  const window=chunks.reverse().join('');
+  const right=(window.match(/1/g)||[]).length;
+  return {att:window.length,right,days:new Set(days).size,window};
+}
+// Tries appended after a drop. fresh 0 is an empty ring, not the old tape.
+function gateFromTail(parts,freshN){
+  const blank={pct:0,att:0,days:0,total:0,qualified:0,right:0,ratio:0,open:false,window:'',fromTape:false};
+  if(freshN<=0)return blank;
+  let need=freshN;
+  const chunks=[];
+  const taken=new Map();
+  for(let i=parts.length-1;i>=0&&need>0;i--){
+    const seq=parts[i].seq||'';
+    const take=Math.min(need,seq.length);
+    if(!take)continue;
+    const bit=seq.slice(seq.length-take);
+    chunks.push(bit);
+    taken.set(parts[i].d,(taken.get(parts[i].d)||0)+bit.length);
+    need-=take;
+  }
+  const window=chunks.reverse().join('');
+  const right=(window.match(/1/g)||[]).length;
+  const att=window.length;
+  const qualified=[...taken.values()].filter(n=>n>=5).length;
+  const ratio=att?right/att:0;
+  const open=att>=30&&qualified>=2&&right*100>=att*85;
+  return {pct:att?Math.floor(100*right/att):0,att,days:taken.size,total:att,qualified,right,ratio,open,window,fromTape:att>0};
 }
 function gymWindow(log,sub,tier){
   const s=masterySnapshot(log,sub,tier);
@@ -4110,8 +4234,9 @@ function ringFill(snap){
 function masteryRingHTML(){
   const sub=(st.q&&subjectOn(st.q.subject))?st.q.subject:(enabledSubjects()[0]||'math');
   if(!st.stats[sub]||st.stats[sub].level>=maxLevel(sub))return '';
-  const snap=masterySnapshot(st.log,sub,st.stats[sub].level);
-  const fill=ringFill(snap);
+  const redo=st.redo&&st.redo[sub];
+  const snap=masterySnapshot(st.log,sub,st.stats[sub].level,redo&&redo.tier===(st.stats[sub].level|0)?redo:null);
+  const fill=ringFill(snap.gate||snap);
   const state=fill<=0?'empty':fill>=0.999?'full':'partial';
   const glow=st.masteryGlow===sub;
   if(glow)st.masteryGlow='';
@@ -4122,19 +4247,62 @@ function masteryRingHTML(){
 }
 // The Parents Gym line uses the same tally as the gate.
 const MASTERY_GYM=true;
-function gymLineText(sub,tier,log){
-  if((tier|0)>=maxLevel(sub))return 'Top level reached.';
-  const sum=gymWindow(log,sub,tier|0);
+function practiceGradeName(tier){
+  const t=tier|0;
+  if(t<=1)return 'Kindergarten';
+  if(t===2)return '1st grade';
+  if(t===3)return '2nd grade';
+  if(t===4)return '3rd grade';
+  return 'Grade '+t;
+}
+function tallyPhrase(sum){
   const tries=sum.att===1?'try':'tries';
-  const days=sum.days===1?'1 day':sum.days+' days';
-  return `${gymGradeLabel(tier)} Gym: ${sum.pct}% right over ${sum.att} ${tries} on ${days}. Opens at 85% (needs 30+ tries on 2+ days).`;
+  const days=(sum.days|0)===1?'1 day':(sum.days|0)+' days';
+  return `${sum.pct|0}% right over ${sum.att|0} ${tries} on ${days}`;
+}
+// Same snapshot the climb and the Gym gate read, including a refill after a
+// drop. A met bar does not repeat the threshold. A badge he already holds
+// is a climb, not another Gym. A grade lock is still a ceiling.
+function gymLineText(sub,tier,log,extra){
+  extra=extra||{};
+  if((tier|0)>=maxLevel(sub))return 'Top level reached.';
+  const redo=extra.redo&&(extra.redo.tier|0)===(tier|0)?extra.redo:null;
+  const snap=masterySnapshot(log,sub,tier|0,redo);
+  const sum=snap.gate||snap;
+  const phrase=tallyPhrase(sum);
+  const here=practiceGradeName(tier);
+  const next=practiceGradeName((tier|0)+1);
+  const lock=extra.lock|0;
+  // The tier at the ceiling already returned above. The one just under it
+  // still climbs, same as maybeMasteryAdvance. Only a grade lock holds him.
+  const canClimb=!(lock&&(tier|0)>=lock);
+  const bar='at 85% (needs 30+ tries on 2+ days)';
+  const fresh=(sum.att|0)===0;
+  if(extra.badge&&sum.open&&canClimb)return `${here}: solid! Back to ${next} next.`;
+  if(extra.badge&&sum.open)return `${here}: solid!`;
+  if(extra.badge&&fresh&&canClimb)return `${here}: just started. Back to ${next} at 85% right (needs 30+ tries on 2+ days).`;
+  if(extra.badge&&fresh)return `${here}: just started.`;
+  if(extra.badge&&canClimb)return `${here}: ${phrase}. Back to ${next} ${bar}.`;
+  if(extra.badge)return `${here}: ${phrase}.`;
+  if(sum.open)return `${gymGradeLabel(tier)} Gym: ready! ${phrase}.`;
+  if(fresh)return `${gymGradeLabel(tier)} Gym: just started. Opens at 85% right (needs 30+ tries on 2+ days).`;
+  return `${gymGradeLabel(tier)} Gym: ${phrase}. Opens at 85% (needs 30+ tries on 2+ days).`;
 }
 function gymLineHTML(kid){
   if(!MASTERY_GYM)return '';
   let h='';
+  const live=kid&&kid.id===profiles.activeId;
   enabledSubjects().forEach(sub=>{
     const tier=sub==='math'?kidMathLevel(kid):((kid.data&&kid.data.stats&&kid.data.stats[sub]&&kid.data.stats[sub].level)|0)||1;
-    const text=gymLineText(sub,tier,kid.data&&kid.data.log);
+    const badges=live?(st.badges[sub]||[]):subjectSnap(kid.data||{},sub).badges;
+    const redoAll=live?(st.redo||{}):parseRedo(kid.data&&kid.data.redo);
+    const redo=redoAll[sub]&&redoAll[sub].tier===(tier|0)?redoAll[sub]:null;
+    const grade=live?(st.grade|0):kidGrade(kid);
+    const lock=sub==='math'&&grade?Math.min(grade,maxLevel('math')):0;
+    const text=gymLineText(sub,tier,live?st.log:(kid.data&&kid.data.log),{
+      badge:badges.indexOf(tier|0)>=0,
+      redo,lock,
+    });
     const body=text==='Top level reached.'?text:text.replace(/^([^:]+):/,'<b>$1:</b>');
     h+=`<div class="prog-gym"><span class="prog-medal" aria-hidden="true">&#127941;</span><div>${body}</div></div>`;
   });
@@ -4245,6 +4413,7 @@ function progressCardHTML(kid){
   let h=`<div class="card progress-card" data-progress-for="${escapeHtml(kid.id)}"><h2 class="prog-title">${name}'s progress</h2>`;
   h+=`<p class="parent-practice">${escapeHtml(practiceLine(kid))}</p>`;
   h+=`<p class="prog-sub">${escapeHtml(progressSubtitle(kid))}</p>`;
+  h+=movesHTML(kid);
   if(!started)return h+`</div>`;
   h+=gymLineHTML(kid);
   const all=progressRows(kid);
@@ -4264,6 +4433,18 @@ function progressCardHTML(kid){
   if(all.length>8)h+=`<button type="button" class="prog-more" data-progress-more="${escapeHtml(kid.id)}">${open?'Show less':'Show all'}</button>`;
   h+=`<p class="prog-foot">Numbers show the last 7 days. Solid looks at the last 14. <b>Solid</b> = 85%+ right, 10+ tries, 2+ days. <b>Practicing</b> = 10+ tries, not solid yet. <b>New</b> = fewer than 10 tries.</p>`;
   return h+`</div>`;
+}
+function moveSentence(m){
+  const to=practiceGradeName(m.tier);
+  const when=`on ${monthDayLabel(m.day)} (under 60% right on his last 20 tries).`;
+  if(m.from)return `Moved from ${practiceGradeName(m.from)} to ${to} practice ${when}`;
+  return `Moved to ${to} practice ${when}`;
+}
+function movesHTML(kid){
+  const live=kid&&kid.id===profiles.activeId&&Array.isArray(st.moves)?st.moves:null;
+  const list=parseMoves(live||(kid&&kid.data&&kid.data.moves));
+  if(!list.length)return '';
+  return list.map(m=>`<p class="parent-move">${escapeHtml(moveSentence(m))}</p>`).join('');
 }
 function parentKidHTML(kid){
   const data=kid.data;
@@ -4684,13 +4865,14 @@ function maybeMasteryAdvance(sub){
   if(!s||s.level>=maxLevel(sub))return;
   const cur=st.gymOffer[sub];
   if(cur&&cur.tier===s.level)return;
-  const snap=masterySnapshot(st.log,sub,s.level);
-  if(!snap.open)return;
+  const snap=masterySnapshot(st.log,sub,s.level,st.redo&&st.redo[sub]);
+  if(!snap.gate.open)return;
   const lock=sub==='math'?mathLock():0;
   if(hasBadge(sub,s.level)){
     if((lock&&s.level>=lock)||s.level+1>maxLevel(sub))return;
     s.cs=0;
     s.level++;
+    if(st.redo&&st.redo[sub]&&st.redo[sub].tier!==s.level)delete st.redo[sub];
     const off=st.gymOffer[sub];
     if(off&&off.tier!==s.level)st.gymOffer[sub]=null;
     return;
@@ -4704,21 +4886,111 @@ function updStats(sub,ok,skipStreak){
   s.att++;
   if(ok)s.cor++;
   if(skipStreak)return;
+  // Warm-up answers are not the current tier's run, and they cannot drop him.
+  if(st.q&&st.q.warmup)return;
   const rematch=!!(st.q&&st.q.rematch);
+  const onTier=!!(st.q&&st.q.tmpl&&(st.q.tmpl.lv|0)===(s.level|0));
   if(ok){
     s.cs++;s.ws=0;
-  } else {
+  } else if(onTier){
     s.ws++;s.cs=0;
-    if(s.ws>=LEVEL_DOWN_STREAK&&s.level>1){
-      s.level--;s.ws=0;
-      // A badge is earned history. A drop does not take it away.
-      const off=st.gymOffer[sub];
-      if(off&&off.tier!==s.level)st.gymOffer[sub]=null;
+    if(s.ws>=LEVEL_DOWN_STREAK&&!st.warmup){
+      s.ws=0;
+      beginWarmup(sub);
+      return;
     }
+  } else {
+    s.cs=0;
   }
   if(rematch||st.phase==='gym')return;
   if(ok)maybeMasteryAdvance(sub);
-  applyPlacement(sub);
+  if(!maybeAccuracyDrop(sub))applyPlacement(sub);
+}
+// Gentlest stems first. A numberless stem counts as gentler than any sum.
+// Same topic wins over a gentler different topic. Kindergarten has no tier
+// below, so the warm-up stays on tier 1 and uses this same order, skipping
+// the question that just triggered it.
+function stemEase(stem){
+  const nums=String(stem||'').match(/\d+/g);
+  return nums?Math.max(...nums.map(Number)):0;
+}
+function pickWarmup(sub,tier,topic,avoid,n){
+  const bank=QB[sub]&&QB[sub][tier];
+  if(!bank||!bank.length)return [];
+  const rows=bank.map((q,idx)=>({idx,topic:questionTopic(sub,q[0]),ease:stemEase(q[0])})).filter(r=>r.idx!==avoid);
+  rows.sort((a,b)=>{
+    const at=a.topic===topic?0:1,bt=b.topic===topic?0:1;
+    if(at!==bt)return at-bt;
+    if(a.ease!==b.ease)return a.ease-b.ease;
+    return a.idx-b.idx;
+  });
+  const out=[];
+  for(let i=0;i<n&&rows.length;i++)out.push(rows[i%rows.length].idx);
+  return out;
+}
+function beginWarmup(sub){
+  const s=st.stats[sub];
+  if(!s)return;
+  const home=s.level|0;
+  // No tier below Kindergarten. Stay there and serve the gentlest questions
+  // the bank has, same topic first. Every other tier steps down one.
+  const tier=home>1?home-1:home;
+  const topic=st.q&&st.q.tmpl?questionTopic(sub,st.q.tmpl.raw[0]):'';
+  const avoid=tier===home&&st.q&&st.q.tmpl?(st.q.tmpl.idx|0):-1;
+  const queue=pickWarmup(sub,tier,topic,avoid,WARMUP_N);
+  if(queue.length<WARMUP_N)return;
+  st.warmup={sub,home,tier,topic,queue,at:0};
+}
+function advanceWarmup(){
+  const w=st.warmup;
+  if(!w||!st.q||!st.q.warmup)return;
+  w.at=(w.at|0)+1;
+  if(w.at>=w.queue.length){
+    st.warmup=null;
+    st.backPending=true;
+  }
+}
+function noteMove(sub,tier,fromTier){
+  if(!st.moves)st.moves=[];
+  const day=localISO(new Date());
+  const row={sub,tier:tier|0,day};
+  const from=fromTier|0;
+  if(from>=1&&from!==row.tier)row.from=from;
+  const last=st.moves[st.moves.length-1];
+  if(last&&last.sub===row.sub&&last.tier===row.tier&&last.day===row.day)return;
+  st.moves.push(row);
+  if(st.moves.length>8)st.moves.splice(0,st.moves.length-8);
+}
+// One tier, and only when placement would have stayed. Placement still owns
+// a save that has not proved the tiers under the one he is on: that can move
+// more than one tier, and it does not write a Parents line. The accuracy
+// drop is the other case — he is already on the lowest unproved tier, and
+// the last 20 tries there are under 60% on two days — so he steps into the
+// solid tier below. The ring on that tier starts over (redo) so a full old
+// tape does not walk him straight back up. Badges stay.
+function maybeAccuracyDrop(sub){
+  const s=st.stats[sub];
+  if(!s||s.level<=1)return false;
+  if(st.gymOffer[sub]&&st.gymOffer[sub].tier===s.level)return false;
+  const before=s.level|0;
+  const placed=placementTarget(st.stats,st.log,sub);
+  if(placed<before){
+    s.level=placed;
+    const off=st.gymOffer[sub];
+    if(off&&off.tier!==s.level)st.gymOffer[sub]=null;
+    return true;
+  }
+  const recent=masterySnapshot(st.log,sub,before).recent;
+  if(!recent||recent.att<DROP_WINDOW||recent.days<2)return false;
+  if(recent.right*100>=recent.att*60)return false;
+  s.level=before-1;
+  s.ws=0;
+  const off=st.gymOffer[sub];
+  if(off&&off.tier!==s.level)st.gymOffer[sub]=null;
+  if(!st.redo)st.redo={};
+  st.redo[sub]={tier:s.level,fresh:0};
+  noteMove(sub,s.level,before);
+  return true;
 }
 function gymQueue(sub,tier){
   const bank=QB[sub]&&QB[sub][tier];
@@ -5382,10 +5654,18 @@ function qCardHTML(resultMsg,btnLabel){
   const maxed=st.streak>=XP_STREAK_CAP;
   // One tag at most, and only once a run is long enough to notice. Best, shiny
   // odds, rematch, and the subject name stay off this card. A rematch still pays.
-  const streakPill=st.streak>=3
+  const warming=!!q.warmup;
+  const streakPill=!warming&&st.streak>=3
     ?`<span class="streak-pill${maxed?' maxed':''}${grew?' bump':''}">&#128293; ${st.streak} in a row</span>`
     :'';
-  let h=`<div class="card qcard">${streakPill?`<div class="q-head">${streakPill}</div>`:''}<div class="qtext">${q.question}</div>`;
+  const warmTag=warming?'<span class="warmup-tag">Warm-up</span>':'';
+  const head=streakPill||warmTag?`<div class="q-head">${streakPill||warmTag}</div>`:'';
+  const partner=PKM[activePi()].n;
+  // The hello is only the first warm-up question. The tag stays for all three.
+  const say=warming&&st.warmup&&(st.warmup.at|0)===0
+    ?`<div class="warmup-say"><strong>${partner} says:</strong> Let's do a quick warm-up!</div>`:'';
+  const back=q.back?`<div class="warmup-back">${partner} says: Back to it!</div>`:'';
+  let h=`<div class="card qcard">${head}${say}${back}<div class="qtext">${q.question}</div>`;
   if(gymTimerApplies()){
     h+=`<div class="gym-time" id="gym-time"><span class="gym-time-lbl">Thinking time</span><span class="gym-time-track"><span class="gym-time-fill" id="gym-time-fill"></span></span></div>`;
   }
@@ -5990,9 +6270,17 @@ async function loadQuestion(){
   st.rematchMsg=null;
   // A due Rematch takes the slot without spending the subject bag, so Mix keeps
   // its rotation either way.
+  const w=st.warmup;
   const r=dueReview();
   let q;
-  if(r){
+  // The warm-up owes a fixed queue. A reload deals the same unanswered one
+  // again (at is the next to serve, and it moves only when that one is scored).
+  if(w&&w.at<w.queue.length&&QB[w.sub]&&QB[w.sub][w.tier]){
+    const idx=w.queue[w.at]|0;
+    pullFromBag(w.sub,w.tier,idx);
+    q=serveQuestion(w.sub,w.tier,idx,pname);
+    q.warmup=true;
+  } else if(r){
     // Take it out of the practice bag too, or the bag can deal the same
     // question again a couple of turns after the Rematch.
     pullFromBag(r.sub,r.lv,r.idx);
@@ -6002,6 +6290,13 @@ async function loadQuestion(){
   } else {
     const sub=nextSubject(st.subject);
     q=dealRegular(sub,pname);
+  }
+  if(st.backPending&&!(q&&q.warmup)){
+    q.back=true;
+    st.backPending=false;
+    // Spent once the return question is dealt, so a second reload does not
+    // say it again. Optional on the save; SAVE_V stays 1.
+    save();
   }
   rememberSeen(q);
   st.q=q;st.sel=null;st.cor=false;st.anim="";st.helped=false;
@@ -6015,9 +6310,13 @@ function refillQuestion(){
   if(!st.q)return;
   const rematch=st.q.rematch;
   const bankReview=st.q.bankReview;
+  const warmup=st.q.warmup;
+  const back=st.q.back;
   st.q=fillQuestion(st.q.tmpl,questionPname());
   st.q.rematch=rematch;
   if(bankReview)st.q.bankReview=true;
+  if(warmup)st.q.warmup=true;
+  if(back)st.q.back=true;
 }
 
 // Shows the hint before he commits an answer. Only offered on a question he
@@ -6643,6 +6942,10 @@ function fleeWild(){
 }
 
 function afterTurn(){
+  // A warm-up question is practice, not a hunt. No Poké Ball is rolled for it,
+  // and the streak ladder was not paid. The next regular question can meet
+  // a Pokémon again.
+  if(st.q&&st.q.warmup){loadQuestion();return;}
   // Not after a question he needed help on. Help pauses the streak rather than
   // spending it, so without this he could park at streak 10 and ask on every
   // question to keep rolling encounters at the top shiny odds forever.
@@ -6809,12 +7112,12 @@ function commitAttempt(ok,choice,nextDraft){
       // not wipe the practice run that unlocked the battle.
       const sub=st.stats[st.q.subject];sub.att++;sub.cor++;
       // A review question must not wipe the run it is sitting inside.
-      if(st.phase!=='gym'&&!(st.q&&st.q.bankReview))sub.cs=0;
+      if(st.phase!=='gym'&&!(st.q&&(st.q.bankReview||st.q.warmup)))sub.cs=0;
       if(st.phase==='play'||st.phase==='gym'){
         const tm=activeTM();
         if(tm){st.lastXp=XP_WITH_HELP;tm.xp+=st.lastXp;applyLevelUps();}
       }
-      if(st.phase!=='gym'&&!(st.q&&st.q.bankReview)&&!(st.q&&st.q.rematch))applyPlacement(st.q.subject);
+      if(st.phase!=='gym'&&!(st.q&&(st.q.bankReview||st.q.rematch||st.q.warmup)))applyPlacement(st.q.subject);
     } else if(st.phase==='gym'){
       // Gym answers count toward the subject totals, and nothing else.
       // Misses must not drop a tier, strip a badge, or arm another invite.
@@ -6822,7 +7125,13 @@ function commitAttempt(ok,choice,nextDraft){
     } else {
       updStats(st.q.subject,ok,!!(st.q&&(st.q.bankReview||st.q.rematch)));
     }
-    if(ok&&!helped){
+    if(st.q&&st.q.warmup)advanceWarmup();
+    if(ok&&!helped&&st.q&&st.q.warmup){
+      // Flat base XP. The streak ladder, the milestone bonus, and a catch
+      // all stay put: a warm-up cannot be farmed into a Gym or a 5-in-a-row.
+      const tm=activeTM();
+      if(tm&&(st.phase==='play'||st.phase==='gym')){st.lastXp=XP_BASE;tm.xp+=st.lastXp;applyLevelUps();}
+    } else if(ok&&!helped){
       st.streak++;
       if(st.streak>st.bestStreak){st.bestStreak=st.streak;if(st.streak>=BEST_STREAK_NOTE)st.newRecord=true;}
       const bonus=milestoneBonus(st.streak);
@@ -6838,7 +7147,7 @@ function commitAttempt(ok,choice,nextDraft){
         if(tm&&bonus){tm.xp+=bonus;applyLevelUps();}
       }
       if(bonus)st.streakMsg=`${st.streak} in a row! +${bonus} bonus XP!`;
-    } else if(!ok){
+    } else if(!ok&&!(st.q&&st.q.warmup)){
       st.streak=0;
       st.newRecord=false;
       // A miss spends a ball but leaves the catch progress intact; only the last
@@ -6885,7 +7194,7 @@ function commitAttempt(ok,choice,nextDraft){
   // a wrong answer from becoming a free rapid-fire second guess.
   if(!ok)st.armAt=Date.now()+PAUSE.retry;
   // Cooldown is practice questions he actually answers, not a reload dealing one.
-  if(firstTry&&st.phase==='play')tickGymCool();
+  if(firstTry&&st.phase==='play'&&!(st.q&&st.q.warmup))tickGymCool();
   save();
   render();
   // A long answer can leave Next, or the hint, under the Game bar.
