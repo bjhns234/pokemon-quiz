@@ -227,15 +227,28 @@ button.mon-strip:focus{outline:3px solid #1D4ED8;outline-offset:2px}
 .bug-type{background:#ECFCCB;color:#3F6212}
 .fairy-type{background:#FCE7F3;color:#9D174D}
 .lvl-badge{display:inline-block;background:#1A1A2E;color:white;font-size:14px;font-weight:700;padding:3px 9px;border-radius:10px;margin-left:6px;letter-spacing:0.04em;vertical-align:middle}
-/* 24px, in the name line, so the tablet hero picture stays 200px. Not a control. */
+/* 24px on a phone, 32px from 768px up. In the name line, so the tablet hero stays 200px. Not a control. */
 .gym-ring{display:inline-block;width:24px;height:24px;margin-left:6px;vertical-align:middle;pointer-events:none;line-height:0}
-.gym-ring svg{display:block;width:24px;height:24px}
-.gym-ring-track{fill:none;stroke:#E5E7EB;stroke-width:2.5}
-.gym-ring-val{fill:none;stroke:#7C3AED;stroke-width:2.5;stroke-linecap:round;transform:rotate(-90deg);transform-origin:12px 12px}
-.gym-ring-badge{fill:#FBBF24;stroke:#B45309;stroke-width:0.8}
-@keyframes gym-ring-glow{0%{filter:drop-shadow(0 0 0 rgba(251,191,36,0))}40%{filter:drop-shadow(0 0 5px #FBBF24)}100%{filter:drop-shadow(0 0 0 rgba(251,191,36,0))}}
+.gym-ring svg{display:block;width:100%;height:100%}
+.gym-ring-track{fill:none;stroke:#E5E7EB;stroke-width:3}
+.gym-ring-val{fill:none;stroke:#7C3AED;stroke-width:3;stroke-linecap:round}
+.gym-ring-solid{display:none;fill:#7C3AED}
+.gym-ring[data-state="full"] .gym-ring-solid{display:block}
+.gym-ring[data-state="empty"] .gym-ring-val,
+.gym-ring[data-state="full"] .gym-ring-val,
+.gym-ring[data-state="full"] .gym-ring-track{display:none}
+.gym-ring-mark{fill:#7C3AED}
+.gym-ring[data-state="empty"] .gym-ring-mark{fill:#C4B5FD}
+.gym-ring[data-state="full"] .gym-ring-mark{fill:#fff}
+@keyframes gym-ring-glow{0%{filter:drop-shadow(0 0 0 rgba(124,58,237,0))}40%{filter:drop-shadow(0 0 5px #7C3AED)}100%{filter:drop-shadow(0 0 0 rgba(124,58,237,0))}}
 .gym-ring.glow{animation:gym-ring-glow .8s ease-out 1}
-@media (prefers-reduced-motion:reduce){.gym-ring.glow{animation:none}}
+@media (min-width:768px){
+  .gym-ring{width:32px;height:32px}
+}
+@media (prefers-reduced-motion:reduce){
+  .gym-ring.glow,.psvg,.psvg.bk,.psvg.sk,
+  #game .mon-strip .psvg.bk img,#game .mon-strip .psvg.sk img{animation:none}
+}
 /* A level-up lands on the pill that actually changed instead of a bar above the card.
    Green because the +XP badge just below it is green too, so the badge, the bar filling
    and the number lighting up read as one movement rather than three separate signals.
@@ -902,9 +915,17 @@ button.mon-strip:focus{outline:3px solid #1D4ED8;outline-offset:2px}
   }
   /* The sprite is taken out of the flow. A 475px file would otherwise
      refuse to shrink and push Ask for help under the bar. */
-  #game .mon-strip .psvg{position:relative;grid-row:1;height:100%;width:auto;min-height:0;max-height:none;aspect-ratio:1;margin:0;align-self:stretch;justify-self:center}
+  /* The answer bounce scales the sprite. Clip it to the picture cell so a
+     tilt cannot paint over the name on the next row. */
+  #game .mon-strip .psvg{position:relative;grid-row:1;height:100%;width:auto;min-height:0;max-height:none;aspect-ratio:1;margin:0;align-self:stretch;justify-self:center;overflow:hidden}
+  #game .mon-strip .psvg.bk,#game .mon-strip .psvg.sk{animation:float 3s ease-in-out infinite}
+  #game .mon-strip .psvg.bk img{animation:bounce 0.5s ease forwards}
+  #game .mon-strip .psvg.sk img{animation:shake 0.45s ease forwards}
   #game .mon-strip .mon-meta{grid-row:2;width:100%;display:flex;flex-direction:column;align-items:center}
   #game .mon-strip .pname{text-align:center;line-height:28px}
+  /* 32px tall, inside a 28px line. The extra 4px stays in the line's margin
+     so the picture and the gap under the XP bar do not shrink. */
+  #game .mon-strip .gym-ring{margin-top:-2px;margin-bottom:-5px}
   #game .mon-strip .lvl-badge,#game .mon-strip .shiny-badge{line-height:18px;padding-top:1px;padding-bottom:1px}
   #game .mon-strip .xp-track{width:min(220px,70%);height:8px;margin:4px auto 0}
   #game .mon-strip .psvg img{position:absolute;inset:0;width:100%;height:100%;max-width:none;object-fit:contain;image-rendering:auto}
@@ -2912,8 +2933,8 @@ function parseGameSave(data){
     ).slice(-RECENT_WINDOW).map(r=>({sub:r.sub,lv:r.lv|0,idx:r.idx|0,q:r.q}));
 
     // Tiers below the saved difficulty were already earned, Gym or not. Union
-    // them with any badges the save names, and if a badge sits at or above the
-    // saved tier, move the tier up to match so it is not fought again.
+    // them with any badges the save names. A badge above the saved tier stays
+    // in the case, but it does not move the tier back up.
     const gradeLock=gradeValue(data.settings&&data.settings.grade);
     const mathLock=gradeLock?Math.min(gradeLock,maxLevel('math')):0;
     const badges={};
@@ -2924,14 +2945,13 @@ function parseGameSave(data){
       for(let t=1;t<level;t++)set.add(t);
       const raw=(data.badges||{})[sub];
       if(Array.isArray(raw))raw.forEach(t=>{t=t|0;if(t>=1&&t<maxLevel(sub))set.add(t);});
-      let top=level;
-      // A lock keeps the saved tier. A badge for that tier must not push
-      // the child up, and it must not be thrown away because they stayed.
-      if(!locked)set.forEach(t=>{if(t+1>top)top=t+1;});
-      stats[sub].level=Math.min(maxLevel(sub),top);
+      // A badge never raises the saved level. A 3-miss drop keeps the
+      // badge, and loading must not climb back up to it. Tiers below the
+      // saved level were already earned, so those badges are filled in.
+      stats[sub].level=Math.min(maxLevel(sub),level);
       if(locked&&stats[sub].level>mathLock)stats[sub].level=mathLock;
       for(let t=1;t<stats[sub].level;t++)set.add(t);
-      badges[sub]=[...set].filter(t=>locked?(t>=1&&t<maxLevel(sub)):t<stats[sub].level).sort((a,b)=>a-b);
+      badges[sub]=[...set].filter(t=>t>=1&&t<maxLevel(sub)).sort((a,b)=>a-b);
     });
     const gymOffer={};
     SUBS.forEach(sub=>{
@@ -2991,18 +3011,15 @@ function parseGameSave(data){
       reviewCount[sub]=Math.max(0,raw|0);
     });
 
-    // A tier he is not solid on can sit below the grade lock. An empty log,
-    // a Gym in progress, and a saved invite stay where they are.
+    // Not solid, including a save with no tape: start at the first tier that
+    // is not solid. A Gym in progress and a saved invite stay where they are.
+    // Badges, tallies, and the log stay. The grade lock is not a floor.
     const placedLog=parseLog(data.log);
     SUBS.forEach(sub=>{
       if(gym&&gym.sub===sub)return;
       if(gymOffer[sub])return;
       const next=placementTarget(stats,placedLog,sub);
-      if(next<stats[sub].level){
-        stats[sub].level=next;
-        stats[sub].cs=0;
-        stats[sub].ws=0;
-      }
+      if(next<stats[sub].level)stats[sub].level=next;
     });
 
     return{
@@ -3141,6 +3158,7 @@ function logKeyOk(key){
   if(!p[1]||p[1].length>80)return false;
   const tier=Number(p[2]);
   if(!Number.isInteger(tier)||tier<1||tier>8)return false;
+  if(p.length===4&&p[3]==='n'&&p[1]==='@')return true;
   if(p.length===4&&p[3]!=='review'&&p[3]!=='gym')return false;
   return true;
 }
@@ -3156,6 +3174,14 @@ function parseLog(raw){
       if(!logKeyOk(key))return;
       const v=bucket[key];
       if(key.split('|')[1]==='@'){
+        const parts=key.split('|');
+        // Optional. The full day count, kept when the rolling tape has
+        // already let some of that day's tries age out. Old saves have none.
+        if(parts[3]==='n'){
+          const n=Math.max(0,v|0);
+          if(n>0&&n<=10000)next[key]=n;
+          return;
+        }
         if(typeof v==='string'&&/^[01]{0,80}$/.test(v)&&v)next[key]=v.slice(-80);
         return;
       }
@@ -3175,6 +3201,7 @@ function mergeLogBucket(into,extra){
   Object.keys(extra||{}).forEach(key=>{
     const add=extra[key];
     if(typeof add==='string'){out[key]=(out[key]||'')+add;return;}
+    if(typeof add==='number'){out[key]=(typeof out[key]==='number'?out[key]:0)+Math.max(0,add|0);return;}
     const cur=Array.isArray(out[key])?out[key]:[0,0,0];
     out[key]=[(cur[0]|0)+(add[0]|0),(cur[1]|0)+(add[1]|0),(cur[2]|0)+(add[2]|0)];
   });
@@ -3192,21 +3219,49 @@ function pruneLog(raw){
     const dest=age<0?today:day;
     out[dest]=mergeLogBucket(out[dest],src[day]);
   });
-  // Eligible tapes: the last 14 days that tier was played. The accuracy
-  // window is still the last 40 results; the day strings stay so a day
-  // can show it had 5 or more even when those tries sit outside that window.
-  const tapes={};
-  Object.keys(out).sort().forEach(day=>{
+  // Each tier keeps two things. The string is a rolling tape of the last
+  // 40 results, so a try inside that window is never thrown away with its
+  // day. The optional |n field is the day's full count for the last 14
+  // dates that tier was played, and a day still qualifies at 5 even when
+  // part of it has aged out of the 40. Old saves have no |n; the string
+  // length is the count until the next save writes one.
+  const tapeKeys=new Set();
+  Object.keys(out).forEach(day=>{
     Object.keys(out[day]||{}).forEach(key=>{
-      if(String(key).split('|')[1]!=='@')return;
-      (tapes[key]||(tapes[key]=[])).push(day);
+      const p=String(key).split('|');
+      if(p[1]!=='@')return;
+      tapeKeys.add(p[3]==='n'?p[0]+'|@|'+p[2]:key);
     });
   });
-  Object.keys(tapes).forEach(key=>{
-    tapes[key].slice(0,Math.max(0,tapes[key].length-14)).forEach(day=>{
-      if(!out[day])return;
-      delete out[day][key];
-      if(!Object.keys(out[day]).length)delete out[day];
+  tapeKeys.forEach(key=>{
+    const countKey=key+'|n';
+    const days=Object.keys(out).filter(d=>out[d]&&(typeof out[d][key]==='string'||typeof out[d][countKey]==='number')).sort();
+    let all='';
+    const spans=days.map(d=>{
+      const seq=typeof out[d][key]==='string'?out[d][key]:'';
+      const n=typeof out[d][countKey]==='number'?out[d][countKey]:seq.length;
+      const span={d,start:all.length,len:seq.length,n};
+      all+=seq;
+      return span;
+    });
+    const cut=Math.max(0,all.length-40);
+    spans.forEach(s=>{
+      const from=Math.max(s.start,cut);
+      const to=Math.min(s.start+s.len,all.length);
+      s.kept=from<to?all.slice(from,to):'';
+    });
+    const recent=new Set(spans.filter(s=>s.n>0).slice(-14).map(s=>s.d));
+    days.forEach(d=>{
+      if(!out[d])return;
+      delete out[d][key];
+      delete out[d][countKey];
+      if(!Object.keys(out[d]).length)delete out[d];
+    });
+    spans.forEach(s=>{
+      if(!s.kept&&!(recent.has(s.d)&&s.n>0))return;
+      if(!out[s.d])out[s.d]={};
+      if(s.kept)out[s.d][key]=s.kept;
+      if(s.n>0)out[s.d][countKey]=s.n;
     });
   });
   return out;
@@ -3400,6 +3455,9 @@ function noteProgress(tmpl,outcome){
   if(!gym&&!review){
     const tape=sub+'|@|'+tier;
     const prev=typeof day[tape]==='string'?day[tape]:'';
+    const countKey=tape+'|n';
+    const prevN=typeof day[countKey]==='number'?day[countKey]:prev.length;
+    day[countKey]=prevN+1;
     day[tape]=(prev+(outcome==='right'?'1':'0')).slice(-200);
   }
 }
@@ -3964,13 +4022,17 @@ function masterySnapshot(log,sub,tier){
   log=pruneLog(log);
   const days=Object.keys(log||{}).filter(d=>/^\d{4}-\d{2}-\d{2}$/.test(d)).sort();
   const tapeKey=sub+'|@|'+tier;
-  const anyTape=days.some(d=>log[d]&&typeof log[d][tapeKey]==='string');
+  const countKey=tapeKey+'|n';
+  const anyTape=days.some(d=>log[d]&&(typeof log[d][tapeKey]==='string'||typeof log[d][countKey]==='number'));
   const parts=[];
+  const dayCounts=[];
   days.forEach(d=>{
     const bucket=log[d]||{};
     if(anyTape){
-      const seq=bucket[tapeKey];
-      if(typeof seq==='string'&&seq)parts.push({d,seq});
+      const seq=typeof bucket[tapeKey]==='string'?bucket[tapeKey]:'';
+      const count=typeof bucket[countKey]==='number'?bucket[countKey]:seq.length;
+      if(seq)parts.push({d,seq});
+      if(count)dayCounts.push(count);
       return;
     }
     let seq='';
@@ -3983,7 +4045,7 @@ function masterySnapshot(log,sub,tier){
       const right=Math.min(att,Math.max(0,cell[0]|0));
       seq+='1'.repeat(right)+'0'.repeat(att-right);
     });
-    if(seq)parts.push({d,seq});
+    if(seq){parts.push({d,seq});dayCounts.push(seq.length);}
   });
   const full=parts.map(p=>p.seq).join('');
   const window=full.slice(-40);
@@ -3995,7 +4057,7 @@ function masterySnapshot(log,sub,tier){
   }
   const right=(window.match(/1/g)||[]).length;
   const att=window.length;
-  const qualified=parts.filter(p=>p.seq.length>=5).length;
+  const qualified=dayCounts.filter(n=>n>=5).length;
   const ratio=att?right/att:0;
   // Skill totals fill the Parents line when a day has no tape. They are not
   // eligible tries, so they cannot open a Gym or move him.
@@ -4016,7 +4078,9 @@ function placementTarget(stats,log,sub){
   const level=(stats[sub]&&stats[sub].level)|0;
   if(level<1)return 1;
   const cur=masterySnapshot(log,sub,level);
-  if(!accuracyFailed(cur))return level;
+  // Solid stays. Anything else, including a save with no tape, starts at
+  // the first tier that is not solid and has to prove each step.
+  if(cur.open)return level;
   for(let t=1;t<=level;t++){
     if(!masterySnapshot(log,sub,t).open)return t;
   }
@@ -4027,11 +4091,7 @@ function applyPlacement(sub){
   if(st.gym&&st.gym.sub===sub)return;
   if(st.gymOffer[sub])return;
   const next=placementTarget(st.stats,st.log,sub);
-  if(next<st.stats[sub].level){
-    st.stats[sub].level=next;
-    st.stats[sub].cs=0;
-    st.stats[sub].ws=0;
-  }
+  if(next<st.stats[sub].level)st.stats[sub].level=next;
 }
 function ringFill(snap){
   const attempts=Math.min(1,(snap.total||0)/30);
@@ -4048,11 +4108,13 @@ function masteryRingHTML(){
   if(!st.stats[sub]||st.stats[sub].level>=maxLevel(sub))return '';
   const snap=masterySnapshot(st.log,sub,st.stats[sub].level);
   const fill=ringFill(snap);
+  const state=fill<=0?'empty':fill>=0.999?'full':'partial';
   const glow=st.masteryGlow===sub;
   if(glow)st.masteryGlow='';
-  const circ=56.5487;
+  const circ=75.3982;
   const dash=(fill*circ).toFixed(2);
-  return `<span class="gym-ring${glow?' glow':''}" role="img" aria-label="Gym badge: getting closer." data-fill="${fill.toFixed(3)}"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false"><circle class="gym-ring-track" cx="12" cy="12" r="9"/><circle class="gym-ring-val" cx="12" cy="12" r="9" stroke-dasharray="${dash} ${circ.toFixed(2)}"/><circle class="gym-ring-badge" cx="12" cy="12" r="3.2"/></svg></span>`;
+  const mark='<path class="gym-ring-mark" d="M16 9.2l1.35 2.9 3.15.35-2.35 2.15.7 3.05L16 16.15l-2.85 1.5.7-3.05-2.35-2.15 3.15-.35z"/>';
+  return `<span class="gym-ring${glow?' glow':''}" role="img" aria-label="Gym badge: getting closer." data-state="${state}" data-fill="${fill.toFixed(3)}"><svg viewBox="0 0 32 32" aria-hidden="true" focusable="false"><circle class="gym-ring-track" cx="16" cy="16" r="12"/><circle class="gym-ring-solid" cx="16" cy="16" r="12"/><circle class="gym-ring-val" cx="16" cy="16" r="12" stroke-dasharray="${dash} ${circ.toFixed(2)}" transform="rotate(-90 16 16)"/>${mark}</svg></span>`;
 }
 // The Parents Gym line uses the same tally as the gate.
 const MASTERY_GYM=true;
@@ -4803,10 +4865,11 @@ function leaveAfterGym(){
   else loadQuestion();
 }
 function startGym(sub){
-  if(!subjectOn(sub)||st.phase!=='play'||!st.cor||!gymReady(sub))return;
+  if(!subjectOn(sub)||st.phase!=='play'||(!st.cor&&!st.gymReveal)||!gymReady(sub))return;
   const tier=st.stats[sub].level;
   st.gym={sub,tier,queue:gymQueue(sub,tier),qi:0,kid:GYM_KID_HP,lead:GYM_LEAD_HP,solved:false,over:null};
   st.gymOffer[sub]=null;
+  st.gymReveal=false;
   st.phase='gym';
   save();
   dealGymQuestion();
@@ -4965,11 +5028,16 @@ function armGymTimer(){
   tick();
 }
 function gymInviteHTML(){
-  // Only after the question is finished. No "waiting" line while they are still answering.
-  if(!st.cor)return '';
+  // One primary action. An evolution or a level-up already owns the button,
+  // so the invite waits and comes back on the next question. The offer itself
+  // stays put — this only remembers that it still needs to be shown.
+  const blocked=!!(st.pendingEvo||st.lvlUpMsg);
+  const ready=enabledSubjects().filter(sub=>gymReady(sub));
+  if(!ready.length)return '';
+  if(!st.cor&&!st.gymReveal)return '';
+  if(blocked){st.gymReveal=true;return '';}
   let h='';
-  enabledSubjects().forEach(sub=>{
-    if(!gymReady(sub))return;
+  ready.forEach(sub=>{
     const leader=GYM_LEADER[sub];
     h+=`<div class="gym-invite"><div class="gym-invite-txt">${leader} wants a Gym battle!</div><div class="gym-invite-row"><button class="gym-go" data-gym-start="${sub}">Battle</button><button class="gym-later" data-gym-later="${sub}">Not now</button></div></div>`;
   });
@@ -5515,9 +5583,13 @@ function render(){
     // Pokémon, no evolution waiting, and a practice question. The strip is the
     // button then. Otherwise it is just the picture and the name.
     const offerSwitch=canOfferSwitch();
-    const strip=`<div class="psvg ${st.anim}">${offerSwitch?'<span class="switch-mark" aria-hidden="true">&#128260;</span>':''}${pkSprite(tm.pi,96,tm.shiny)}</div><div class="mon-meta"><div class="pname">${p.n}${tm.shiny?` <span class="shiny-badge">${SHINY_STAR} Shiny</span>`:''} <span class="lvl-badge${st.lvlUpMsg?' lvl-up':''}">Lv ${tm.level}</span>${masteryRingHTML()}</div><div class="xp-track" aria-hidden="true"><div class="xp-fill" style="width:${pct}%"></div></div></div>`;
+    const ring=masteryRingHTML();
+    // The button's own name replaces everything inside it, so the ring's
+    // label has to be part of that sentence or a screen reader never hears it.
+    const switchLabel=ring?'Switch Pokémon. Gym badge: getting closer.':'Switch Pokémon';
+    const strip=`<div class="psvg ${st.anim}">${offerSwitch?'<span class="switch-mark" aria-hidden="true">&#128260;</span>':''}${pkSprite(tm.pi,96,tm.shiny)}</div><div class="mon-meta"><div class="pname">${p.n}${tm.shiny?` <span class="shiny-badge">${SHINY_STAR} Shiny</span>`:''} <span class="lvl-badge${st.lvlUpMsg?' lvl-up':''}">Lv ${tm.level}</span>${ring}</div><div class="xp-track" aria-hidden="true"><div class="xp-fill" style="width:${pct}%"></div></div></div>`;
     h+=offerSwitch
-      ?`<button type="button" class="card pcard mon-strip" id="mon-switch" aria-label="Switch Pokémon">${strip}</button>`
+      ?`<button type="button" class="card pcard mon-strip" id="mon-switch" aria-label="${switchLabel}">${strip}</button>`
       :`<div class="card pcard mon-strip">${strip}</div>`;
     // No level-up bar here: the Lv pill on the card above is lit instead, and the
     // Pokemon's name is already sitting beside it, so the bar's sentence said nothing
@@ -5660,6 +5732,7 @@ function render(){
   gameEl.querySelectorAll('[data-gym-start]').forEach(b=>b.addEventListener('click',()=>startGym(b.dataset.gymStart)));
   gameEl.querySelectorAll('[data-gym-later]').forEach(b=>b.addEventListener('click',()=>{
     st.gymSnooze[b.dataset.gymLater]=true;
+    st.gymReveal=false;
     save();
     render();
   }));
@@ -6614,6 +6687,9 @@ function onNext(){
     loadQuestion();return;
   }
   if(st.pendingEvo){processEvolution();return;}
+  // Leaving the level-up screen is what the held invite was waiting for.
+  // Leaving any other solved screen spends it, so it does not follow forever.
+  if(!st.lvlUpMsg)st.gymReveal=false;
   afterTurn();
 }
 
@@ -6740,7 +6816,7 @@ function commitAttempt(ok,choice,nextDraft){
       // Misses must not drop a tier, strip a badge, or arm another invite.
       const sub=st.stats[st.q.subject];sub.att++;if(ok)sub.cor++;
     } else {
-      updStats(st.q.subject,ok,!!(st.q&&st.q.bankReview));
+      updStats(st.q.subject,ok,!!(st.q&&(st.q.bankReview||st.q.rematch)));
     }
     if(ok&&!helped){
       st.streak++;

@@ -71,7 +71,7 @@ test('an old save loads as Auto, five in a row does not open a Gym, and a Gym wi
   }
   expect(await state(page,()=>st.stats.math.level)).toBe(1);
   expect(await state(page,()=>st.gymOffer.math)).toBeNull();
-  await state(page,()=>{st.gymOffer.math={tier:1,cool:0};st.cor=true;render();});
+  await state(page,()=>{st.gymOffer.math={tier:1,cool:0};st.cor=true;st.lvlUpMsg=null;st.pendingEvo=null;render();});
   await page.click('[data-gym-start="math"]');
   await state(page,()=>{st.gym.lead=1;});
   await answer(page,true);

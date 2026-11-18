@@ -7,24 +7,40 @@ const {openGame,startGame,state,answer,serve}=require('./helpers');
 const TODAY=new Date(2026,10,18,12,0,0);
 
 function kidSave(name,id,data){
+  const row=Object.assign({
+    v:1,starter:0,activeIdx:0,
+    team:[{num:'#025',level:8,xp:10}],
+    dex:['#025'],
+    subject:'math',
+    stats:{
+      math:{cor:20,att:24,level:3,cs:0,ws:0},
+      reading:{cor:0,att:0,level:1,cs:0,ws:0},
+      science:{cor:0,att:0,level:1,cs:0,ws:0},
+    },
+    badges:{math:[1,2],reading:[],science:[]},
+    settings:{grade:'auto'},
+  },data);
+  // A report fixture that already has a skill log is a child who reached
+  // this tier. Prove the tiers below it so the new placement rule leaves
+  // him there. A save with no log is the no-tape case and is not proved.
+  const level=row.stats&&row.stats.math?row.stats.math.level|0:1;
+  if(row.log&&level>1){
+    const key='math|@|'+(level-1);
+    const has=Object.keys(row.log).some(d=>row.log[d]&&typeof row.log[d][key]==='string');
+    if(!has){
+      row.log=Object.assign({},row.log);
+      ['2026-11-17','2026-11-18'].forEach(d=>{
+        row.log[d]=Object.assign({},row.log[d]);
+        for(let t=1;t<level;t++){
+          const tape='math|@|'+t;
+          if(typeof row.log[d][tape]!=='string')row.log[d][tape]='1'.repeat(20);
+        }
+      });
+    }
+  }
   return {
     v:1,roster:1,activeId:id,
-    kids:[{
-      id,name,avatar:'#025',
-      data:Object.assign({
-        v:1,starter:0,activeIdx:0,
-        team:[{num:'#025',level:8,xp:10}],
-        dex:['#025'],
-        subject:'math',
-        stats:{
-          math:{cor:20,att:24,level:3,cs:0,ws:0},
-          reading:{cor:0,att:0,level:1,cs:0,ws:0},
-          science:{cor:0,att:0,level:1,cs:0,ws:0},
-        },
-        badges:{math:[1,2],reading:[],science:[]},
-        settings:{grade:'auto'},
-      },data),
-    }],
+    kids:[{id,name,avatar:'#025',data:row}],
   };
 }
 
@@ -100,6 +116,7 @@ test('review mix is marked review and a rematch does not change the numbers',asy
     return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
   });
   expect(afterReview[today]['math|Subtracting|2|review']).toEqual([1,1,0]);
+  expect(afterReview[today]['math|@|1']).toBeUndefined();
   expect(afterReview[today]['math|@|2']).toBeUndefined();
   expect(afterReview[today]['math|@|3']).toBeUndefined();
 
@@ -213,6 +230,29 @@ test('only the last 7 days fill the column and the last 14 decide the status',as
   await expect(adding).toContainText('1 / 1');
   await expect(adding.locator('.prog-chip')).toHaveText('Solid');
   await expect(page.locator('[data-skill="Money"]')).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
+
+test('an Auto save at tier 3 with no tape starts at Kindergarten and keeps the team',async({page})=>{
+  await page.clock.install({time:TODAY});
+  const errors=await openGame(page,{save:kidSave('Simon','simon',{})});
+  expect(await state(page,()=>({
+    level:st.stats.math.level,
+    grade:st.grade,
+    badges:[...st.badges.math].sort(),
+    team:st.team.map(t=>({num:PKM[t.pi].num,level:t.level,xp:t.xp})),
+    caught:st.pdx.some(Boolean),
+  }))).toEqual({
+    level:1,grade:0,badges:[1,2],
+    team:[{num:'#025',level:8,xp:10}],
+    caught:true,
+  });
+  await openParents(page);
+  const card=page.locator('[data-progress-for="simon"]');
+  await expect(card.locator('.prog-gym')).toContainText('Kindergarten Gym');
+  await expect(card.locator('.prog-gym')).toContainText('0 tries');
+  await expect(card.locator('.prog-gym')).not.toContainText('2nd-grade');
+  await expect(card.locator('.prog-chip').first()).toHaveText('New');
   expect(errors).toEqual([]);
 });
 

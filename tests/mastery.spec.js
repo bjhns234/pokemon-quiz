@@ -34,7 +34,12 @@ async function boot(page,save){
   await page.clock.install({time:save?DAY2:DAY1});
   const errors=await openGame(page,save?{save}:undefined);
   if(!save)await startGame(page,'math');
-  await state(page,()=>{const tm=activeTM();tm.level=60;tm.xp=0;st.pendingEvo=null;});
+  await state(page,()=>{
+    const tm=activeTM();
+    tm.level=60;tm.xp=-8000;st.pendingEvo=null;
+    const line=LINES.find(ln=>ln.includes(tm.pi))||LINES[0];
+    tm.pi=line[line.length-1];
+  });
   return errors;
 }
 
@@ -98,7 +103,7 @@ test('50 tries on one day do not open a Gym, and 5 more the next day do',async({
   expect(await state(page,()=>st.gymOffer.math)).toBeNull();
   await drill(page,{n:1,lv:1,start:54});
   const snap=await state(page,()=>masterySnapshot(st.log,'math',1));
-  expect(snap.total).toBe(55);
+  expect(snap.total).toBe(40);
   expect(snap.qualified).toBeGreaterThanOrEqual(2);
   expect(snap.open).toBe(true);
   expect(await state(page,()=>st.gymOffer.math)).toEqual({tier:1,cool:0});
@@ -133,7 +138,10 @@ test('84 percent of the last 40 does not open a Gym, and 85 percent does',async(
 
 test('review, Rematch, and Gym answers do not change the mastery tally',async({page})=>{
   const errors=await boot(page);
-  await state(page,()=>{st.stats.math.level=2;st.badges.math=[1];st.gymOffer.math=null;st.review=[];});
+  await state(page,()=>{
+    st.stats.math.level=2;st.badges.math=[1];st.gymOffer.math=null;st.review=[];
+    st.log={'2026-11-16':{'math|@|1':'1'.repeat(20)},'2026-11-17':{'math|@|1':'1'.repeat(20)}};
+  });
   await drill(page,{n:3,lv:2});
   const before=await state(page,()=>masterySnapshot(st.log,'math',2));
 
@@ -146,6 +154,23 @@ test('review, Rematch, and Gym answers do not change the mastery tally',async({p
   expect(await state(page,()=>!!st.q.bankReview)).toBe(true);
   await answer(page,true);
   expect(await state(page,()=>masterySnapshot(st.log,'math',2))).toEqual(before);
+  await state(page,()=>{
+    st.phase='play';st.gym=null;
+    st.q=serveQuestion('math',2,1,questionPname());
+    st.q.bankReview=true;
+    st.cor=false;st.tries=0;st.wrong=[];st.helped=false;st.armAt=0;
+  });
+  expect(await state(page,()=>st.q.tmpl.lv)).toBe(2);
+  const kinder=await state(page,()=>{
+    const day=localISO(new Date());
+    return st.log[day]&&st.log[day]['math|@|1'];
+  });
+  await answer(page,true);
+  expect(await state(page,()=>masterySnapshot(st.log,'math',2))).toEqual(before);
+  expect(await state(page,()=>{
+    const day=localISO(new Date());
+    return st.log[day]&&st.log[day]['math|@|1'];
+  }),'a tier-2 review must not write the kindergarten tape').toBe(kinder);
 
   await state(page,()=>{
     st.phase='play';st.gym=null;
@@ -207,6 +232,7 @@ test('below a grade lock, the tier changes only after mastery and a Gym win',asy
   const errors=await boot(page);
   await state(page,()=>{
     st.grade=3;st.stats.math.level=2;st.stats.math.cs=0;st.badges.math=[1];st.gymOffer.math=null;
+    st.log={'2026-11-16':{'math|@|1':'1'.repeat(20)},'2026-11-17':{'math|@|1':'1'.repeat(20)}};
   });
   for(let i=0;i<5;i++){
     await serve(page,{sub:'math',lv:2,idx:i});
@@ -355,10 +381,10 @@ test('a future date counts as today, so it is not a second day',async({page})=>{
   expect(errors).toEqual([]);
 });
 
-test('an empty log stays put, and a weak tier 3 moves below the grade lock',async({page})=>{
+test('an empty log starts at Kindergarten, and a weak tier 3 moves below the grade lock',async({page})=>{
   const emptyErrors=await boot(page,kid({}));
   expect(await state(page,()=>({level:st.stats.math.level,grade:st.grade,badges:[...st.badges.math]}))).toEqual({
-    level:3,grade:3,badges:[1,2],
+    level:1,grade:3,badges:[1,2],
   });
   expect(emptyErrors).toEqual([]);
 
@@ -367,7 +393,11 @@ test('an empty log stays put, and a weak tier 3 moves below the grade lock',asyn
   const thinErrors=await openGame(thin,{save:kid({
     log:{'2026-11-18':{'math|@|3':'1'.repeat(12)}},
   })});
-  expect(await state(thin,()=>st.stats.math.level)).toBe(3);
+  expect(await state(thin,()=>({
+    level:st.stats.math.level,
+    tape:((st.log['2026-11-18']||{})['math|@|3']||'').length,
+    badges:[...st.badges.math].sort(),
+  }))).toEqual({level:1,tape:12,badges:[1,2]});
   expect(thinErrors).toEqual([]);
   await thin.close();
 
@@ -435,7 +465,7 @@ test('the Parents Gym line uses the same numbers as the gate',async({page})=>{
   await openParents(page);
   await expect(page.locator('.prog-gym')).toContainText(`${shown.pct}% right over ${shown.att} ${tries} on ${days}`);
   const sample=await state(page,saved=>masterySnapshot(saved,'math',3),log);
-  expect(sample).toMatchObject({pct:75,att:40,days:2,total:50,open:false});
+  expect(sample).toMatchObject({pct:75,att:40,days:2,total:40,open:false});
   expect(sample.right*100).toBeLessThan(sample.att*85);
   expect(errors).toEqual([]);
 });
@@ -500,10 +530,10 @@ test('the ring sits by the level, and the question screen still fits',async({pag
   expect(box.focused).toBe(false);
   expect(box.pe).toBe('none');
   expect(box.label).toBe('Gym badge: getting closer.');
-  expect(box.w).toBeGreaterThan(23.5);
-  expect(box.w).toBeLessThan(24.5);
-  expect(box.h).toBeGreaterThan(23.5);
-  expect(box.h).toBeLessThan(24.5);
+  expect(box.w).toBeGreaterThan(31);
+  expect(box.w).toBeLessThan(33);
+  expect(box.h).toBeGreaterThan(31);
+  expect(box.h).toBeLessThan(33);
   await expect(page.getByRole('img',{name:'Gym badge: getting closer.'})).toBeVisible();
   const fill=Number(await ring.getAttribute('data-fill'));
   expect(fill).toBeGreaterThan(0.45);
@@ -554,6 +584,240 @@ test('the ring glows once when the invite appears, and Reduce Motion stays still
   expect(errors).toEqual([]);
 });
 
+test('results inside the last 40 survive a 14-day prune and still open the gate',async({page})=>{
+  const errors=await boot(page);
+  const snap=await state(page,()=>{
+    st.stats.math.level=1;st.badges.math=[];st.gymOffer.math=null;
+    const log={};
+    const start=new Date(2026,10,2);
+    for(let i=0;i<16;i++){
+      const d=new Date(start);d.setDate(start.getDate()+i);
+      log[localISO(d)]={'math|@|1':'1'.repeat(i<2?5:2)};
+    }
+    st.log=log;
+    save();
+    return masterySnapshot(st.log,'math',1);
+  });
+  expect(snap.total).toBe(38);
+  expect(snap.qualified).toBeGreaterThanOrEqual(2);
+  expect(snap.right).toBe(38);
+  expect(snap.open).toBe(true);
+  await page.reload();
+  const again=await state(page,()=>masterySnapshot(st.log,'math',1));
+  expect(again.total).toBe(38);
+  expect(again.qualified).toBeGreaterThanOrEqual(2);
+  expect(again.open).toBe(true);
+  expect(errors).toEqual([]);
+});
+
+test('a day with 5 tries still qualifies when only some of them remain in the last 40',async({page})=>{
+  const errors=await boot(page);
+  const snap=await state(page,()=>{
+    st.stats.math.level=1;st.badges.math=[];st.gymOffer.math=null;
+    const log={};
+    const start=new Date(2026,10,4);
+    for(let i=0;i<14;i++){
+      const d=new Date(start);d.setDate(start.getDate()+i);
+      log[localISO(d)]={'math|@|1':'1'.repeat(i===0?10:3)};
+    }
+    st.log=log;
+    save();
+    return masterySnapshot(st.log,'math',1);
+  });
+  expect(snap.total).toBe(40);
+  expect(snap.att).toBe(40);
+  expect(snap.qualified).toBeGreaterThanOrEqual(1);
+  await page.reload();
+  const again=await state(page,()=>masterySnapshot(st.log,'math',1));
+  expect(again.total).toBe(40);
+  expect(again.qualified).toBeGreaterThanOrEqual(1);
+  expect(errors).toEqual([]);
+});
+
+test('a Rematch miss does not count toward the 3-miss drop',async({page})=>{
+  const errors=await boot(page);
+  await state(page,()=>{
+    st.stats.math.level=2;
+    st.stats.math.ws=2;
+    st.badges.math=[1];
+    st.gymOffer.math=null;
+    st.review=[{sub:'math',lv:2,idx:0,wins:0,due:0,why:'miss'}];
+    st.served=10;st.lastRematchAt=null;
+    loadQuestion();
+  });
+  expect(await state(page,()=>!!st.q.rematch)).toBe(true);
+  await answer(page,false);
+  expect(await state(page,()=>({level:st.stats.math.level,ws:st.stats.math.ws,badges:[...st.badges.math]}))).toEqual({
+    level:2,ws:2,badges:[1],
+  });
+  expect(errors).toEqual([]);
+});
+
+test('the Switch button name includes the Gym ring',async({page})=>{
+  const errors=await boot(page);
+  await state(page,()=>{
+    st.team.push({pi:LINES[1][0],level:5,xp:0,shiny:false});
+    st.stats.math.level=1;
+    render();
+  });
+  await expect(page.locator('#mon-switch')).toHaveAttribute('aria-label','Switch Pokémon. Gym badge: getting closer.');
+  expect(errors).toEqual([]);
+});
+
+test('a pending evolution or level-up holds the Gym invite until the event is gone',async({page})=>{
+  const errors=await boot(page);
+  await state(page,()=>{
+    st.stats.math.level=1;
+    st.badges.math=[];
+    st.gymOffer.math={tier:1,cool:0};
+    st.cor=true;
+    st.tries=1;
+    const tm=activeTM();
+    tm.pi=0;
+    st.pendingEvo={fromPi:0,toPi:1};
+    render();
+  });
+  await expect(page.locator('.gym-invite')).toHaveCount(0);
+  await expect(page.locator('#nxt')).toContainText("What's happening");
+  expect(await state(page,()=>st.gymOffer.math)).toEqual({tier:1,cool:0});
+
+  await state(page,()=>{
+    st.pendingEvo=null;
+    st.lvlUpMsg='Bulbasaur grew to level 61!';
+    render();
+  });
+  await expect(page.locator('.gym-invite')).toHaveCount(0);
+  await expect(page.locator('#nxt')).not.toContainText("What's happening");
+  expect(await state(page,()=>st.gymOffer.math)).toEqual({tier:1,cool:0});
+
+  await state(page,()=>{st.lvlUpMsg=null;render();});
+  await expect(page.locator('.gym-invite')).toBeVisible();
+  await expect(page.locator('[data-gym-start="math"]')).toHaveCount(1);
+  expect(await state(page,()=>st.gymOffer.math)).toEqual({tier:1,cool:0});
+  expect(errors).toEqual([]);
+});
+
+test('a held Gym invite returns on the next question and the offer survives a reload',async({page})=>{
+  test.setTimeout(45000);
+  const errors=await boot(page);
+  await page.setViewportSize({width:768,height:1024});
+  await state(page,()=>{
+    st.stats.math.level=1;
+    st.badges.math=[];
+    st.gymOffer.math={tier:1,cool:0};
+    st.cor=true;
+    st.tries=1;
+    const tm=activeTM();
+    tm.pi=0;
+    st.pendingEvo={fromPi:0,toPi:1};
+    render();
+    save();
+  });
+  const before=await state(page,()=>JSON.parse(JSON.stringify(st.gymOffer)));
+  await page.reload();
+  expect(await state(page,()=>st.gymOffer)).toEqual(before);
+  expect(await state(page,()=>Object.keys(st.gymOffer).filter(k=>st.gymOffer[k]).length)).toBe(1);
+
+  await state(page,()=>{
+    st.cor=true;
+    st.tries=1;
+    const tm=activeTM();
+    tm.pi=0;
+    st.pendingEvo={fromPi:0,toPi:1};
+    render();
+  });
+  await expect(page.locator('.gym-invite')).toHaveCount(0);
+  await expect(page.locator('#nxt')).toContainText("What's happening");
+  fs.mkdirSync(ART,{recursive:true});
+  await page.screenshot({path:ART+'/invite_evolution_pending_768x1024.png'});
+  await state(page,()=>{Math.random=()=>0.99;});
+  await page.click('#nxt');
+  await page.locator('#evo-overlay.active').waitFor({state:'visible',timeout:5000});
+  await page.locator('#evo-overlay.active').waitFor({state:'hidden',timeout:25000});
+  await expect(page.locator('.gym-invite')).toBeVisible();
+  await expect(page.getByRole('button',{name:/What's happening/})).toHaveCount(0);
+  await page.screenshot({path:ART+'/invite_after_evolution_768x1024.png'});
+  expect(await state(page,()=>st.gymOffer.math)).toEqual({tier:1,cool:0});
+  expect(errors).toEqual([]);
+});
+
+test('the ring is 32px on a tablet, 24px on a phone, and full is not just a longer arc',async({page})=>{
+  const errors=await boot(page);
+  await page.setViewportSize({width:768,height:1024});
+  await state(page,()=>{st.stats.math.level=1;st.log={};st.gymOffer.math=null;render();});
+  const empty=page.locator('.gym-ring');
+  await expect(empty).toHaveAttribute('data-state','empty');
+  fs.mkdirSync(ART,{recursive:true});
+  await empty.screenshot({path:ART+'/ring_empty_768x1024.png'});
+  const emptyBox=await empty.boundingBox();
+  expect(emptyBox.width).toBeGreaterThan(31);
+  expect(emptyBox.width).toBeLessThan(33);
+  expect(emptyBox.height).toBeGreaterThan(31);
+  expect(emptyBox.height).toBeLessThan(33);
+
+  await state(page,()=>{
+    st.log={'2026-11-17':{'math|@|1':'1'.repeat(15)}};
+    render();
+  });
+  await expect(page.locator('.gym-ring')).toHaveAttribute('data-state','partial');
+  await expect(page.locator('.gym-ring-solid')).toBeHidden();
+  await page.locator('.gym-ring').screenshot({path:ART+'/ring_partial_768x1024.png'});
+
+  await state(page,()=>{
+    st.log['2026-11-16']={'math|@|1':'1'.repeat(15)};
+    render();
+  });
+  const full=page.locator('.gym-ring');
+  await expect(full).toHaveAttribute('data-state','full');
+  await expect(page.locator('.gym-ring-solid')).toBeVisible();
+  await expect(page.locator('.gym-ring-val')).toBeHidden();
+  await expect(page.locator('.gym-ring-mark')).toBeVisible();
+  await expect(page.locator('.gym-ring-badge')).toHaveCount(0);
+  await full.screenshot({path:ART+'/ring_full_768x1024.png'});
+  const focus=await full.evaluate(el=>{
+    el.focus();
+    return {tab:el.tabIndex,focused:document.activeElement===el,label:el.getAttribute('aria-label')};
+  });
+  expect(focus.tab).toBeLessThan(0);
+  expect(focus.focused).toBe(false);
+  expect(focus.label).toBe('Gym badge: getting closer.');
+
+  await page.setViewportSize({width:1024,height:768});
+  const land=await page.locator('.gym-ring').boundingBox();
+  await page.locator('.gym-ring').screenshot({path:ART+'/ring_1024x768.png'});
+  expect(land.width).toBeGreaterThan(31);
+  expect(land.width).toBeLessThan(33);
+
+  await page.setViewportSize({width:390,height:844});
+  const phone=await page.locator('.gym-ring').boundingBox();
+  await page.locator('.gym-ring').screenshot({path:ART+'/ring_390x844.png'});
+  expect(phone.width).toBeGreaterThan(23.5);
+  expect(phone.width).toBeLessThan(24.5);
+  expect(phone.height).toBeGreaterThan(23.5);
+  expect(phone.height).toBeLessThan(24.5);
+
+  await page.setViewportSize({width:768,height:1024});
+  const hero=await page.locator('#game .mon-strip img').evaluate(el=>el.getBoundingClientRect().height);
+  expect(hero).toBeGreaterThan(198);
+  expect(hero).toBeLessThan(202);
+  await state(page,()=>{st.anim='bk';render();});
+  const clear=await state(page,()=>{
+    const pic=document.querySelector('#game .mon-strip .psvg').getBoundingClientRect();
+    const name=document.querySelector('#game .mon-strip .pname').getBoundingClientRect();
+    const pill=document.querySelector('.lvl-badge').getBoundingClientRect();
+    const ring=document.querySelector('.gym-ring').getBoundingClientRect();
+    const overlap=!(ring.right<pill.left||ring.left>pill.right||ring.bottom<pill.top||ring.top>pill.bottom);
+    return {nameTop:name.top,picBottom:pic.bottom,overlap,overflow:getComputedStyle(document.querySelector('#game .mon-strip .psvg')).overflow};
+  });
+  expect(clear.nameTop).toBeGreaterThanOrEqual(clear.picBottom-1);
+  expect(clear.overlap).toBe(false);
+  expect(clear.overflow).toBe('hidden');
+  await page.emulateMedia({reducedMotion:'reduce'});
+  await state(page,()=>{st.anim='bk';render();});
+  await page.locator('#game .mon-strip').screenshot({path:ART+'/ring_reduce_motion_768x1024.png'});
+  expect(errors).toEqual([]);
+});
+
 test('the Gym invite is on screen at iPad size when mastery is met',async({page})=>{
   const errors=await boot(page);
   await state(page,()=>{st.stats.math.level=1;st.badges.math=[];st.gymOffer.math=null;});
@@ -567,5 +831,6 @@ test('the Gym invite is on screen at iPad size when mastery is met',async({page}
   expect(audit.scroll).toBeLessThanOrEqual(1);
   fs.mkdirSync(ART,{recursive:true});
   await page.screenshot({path:ART+'/gym_invite_768x1024.png'});
+  await page.screenshot({path:ART+'/invite_no_event_768x1024.png'});
   expect(errors).toEqual([]);
 });

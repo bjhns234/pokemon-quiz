@@ -164,6 +164,7 @@ test('a right answer and a wrong answer each say so with an icon',async({page})=
     st.streak=4;
     st.streakMsg=null;
     st.rematchMsg=null;
+    const tm=activeTM();tm.level=60;tm.xp=0;
   });
   await answer(page,true);
   const right=page.locator('.ans-btn.cor');

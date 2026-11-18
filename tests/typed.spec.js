@@ -286,7 +286,10 @@ test('a typed catch fills a pip, a miss spends a ball, and help fills nothing',a
 });
 
 test('typed first-tries still pay the streak and do not open a Gym',async({page})=>{
-  await state(page,()=>{st.stats.math.level=3;st.stats.math.cs=4;st.streak=4;});
+  await state(page,()=>{
+    st.stats.math.level=3;st.stats.math.cs=4;st.streak=4;
+    st.log={'2026-11-16':{'math|@|1':'1'.repeat(20),'math|@|2':'1'.repeat(20)},'2026-11-17':{'math|@|1':'1'.repeat(20),'math|@|2':'1'.repeat(20)}};
+  });
   await serve(page,{sub:'math',lv:3,idx:0});
   expect(await state(page,()=>isTypedQuestion(st.q))).toBe(true);
   await state(page,()=>{st.armAt=0;submitTyped(st.q.answers[st.q.correctIndex]);});

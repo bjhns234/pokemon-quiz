@@ -167,6 +167,8 @@ test('questions, Next, Gym, and the name line stay above the bar',async({page})=
     st.badges.math=[];
     st.gymOffer.math={tier:1,cool:0};
     st.cor=true;
+    st.lvlUpMsg=null;
+    st.pendingEvo=null;
     st.phase='play';
     render();
   });
