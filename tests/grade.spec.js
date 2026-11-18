@@ -144,6 +144,7 @@ test('locking kindergarten stays in tier 1, and a Gym win gives the badge only',
   await expect(page.locator('.award-sub')).toHaveText('You earned the badge!');
   await expect(page.locator('.award-card')).not.toContainText('Same questions');
   expect(await state(page,()=>({level:st.stats.math.level,badges:[...st.badges.math]}))).toEqual({level:1,badges:[1]});
+  await state(page,()=>{st.armAt=0;});
   await page.click('#award-go');
 
   for(let i=0;i<5;i++){

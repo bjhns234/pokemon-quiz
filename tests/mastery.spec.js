@@ -256,6 +256,7 @@ test('below a grade lock, the tier changes only after mastery and a Gym win',asy
   expect(await state(page,()=>({level:st.stats.math.level,badges:[...st.badges.math].sort(),phase:st.phase}))).toEqual({
     level:3,badges:[1,2],phase:'award',
   });
+  await state(page,()=>{st.armAt=0;});
   await page.click('#award-go');
   for(let i=0;i<5;i++){
     await serve(page,{sub:'math',lv:3,idx:i});

@@ -59,6 +59,10 @@ async function backToGame(page){
 
 // `rights` of the answers are clean first tries. The rest ask for help and
 // then land it: one question, not a check, and not a warm-up.
+async function releaseRound(page){
+  await state(page,()=>{st.armAt=0;});
+}
+
 async function playAnswers(page,total,rights){
   for(let i=0;i<total;i++){
     if(i<rights){
@@ -131,6 +135,7 @@ test('six of ten has no encounter and seven of ten starts one that does not coun
   await expect(page.locator('#round-xp')).toContainText(String(want));
   await expect(page.locator('#round-xp')).toContainText('XP');
 
+  await releaseRound(page);
   await page.click('#round-again');
   await playAnswers(page,10,7);
   await expect(page.locator('#round-done')).toHaveCount(0);
@@ -159,6 +164,7 @@ test('six of ten has no encounter and seven of ten starts one that does not coun
   expect(saved.team.some(t=>t.num==='#016')).toBe(true);
   expect(saved.v).toBe(1);
 
+  await releaseRound(page);
   await page.click('#round-again');
   expect(await state(page,()=>st.round.n)).toBe(0);
   await answer(page,true);
@@ -184,6 +190,202 @@ test('a bonus the Pokémon leaves still shows the round, with no red cross',asyn
   await expect(page.locator('#round-bonus')).toHaveText('Pidgey got away this time. Great work!');
   await expect(page.locator('#round-done')).not.toContainText('✗');
   expect(await state(page,()=>st.team.some(t=>PKM[t.pi].n==='Pidgey'))).toBe(false);
+  expect(errors).toEqual([]);
+});
+
+async function forceWild(page,name,streak){
+  await state(page,({name,streak})=>{
+    const pi=PKM.findIndex(p=>p.n===name);
+    st.wild={pi,level:6,shiny:false,correctStreak:streak|0,misses:0};
+    st.phase='wild';
+    st.bonusWild=false;
+    loadQuestion();
+  },{name,streak});
+}
+
+test('a catch that fills the round keeps the Pokémon',async({page})=>{
+  test.setTimeout(60000);
+  const errors=await boot(page);
+  await state(page,()=>{
+    st.round={n:9,right:9,len:10,marks:Array(9).fill(1),xp:0,bonus:null,endAfter:false,closed:false,holdEvo:false};
+    st.streak=0;
+  });
+  await forceWild(page,'Pidgey',0);
+  await answer(page,true);
+  expect(await state(page,()=>({
+    phase:st.phase,
+    name:st.wild&&PKM[st.wild.pi].n,
+    cs:st.wild&&st.wild.correctStreak,
+    n:st.round.n,
+    caught:st.team.some(t=>PKM[t.pi].n==='Pidgey'),
+  }))).toEqual({phase:'wild',name:'Pidgey',cs:1,n:10,caught:false});
+  await page.click('#nxt');
+  await answer(page,true);
+  expect(await state(page,()=>({n:st.round.n,name:st.wild&&PKM[st.wild.pi].n,cs:st.wild&&st.wild.correctStreak}))).toEqual({
+    n:10,name:'Pidgey',cs:2,
+  });
+  await page.click('#nxt');
+  await answer(page,true);
+  await expect(page.locator('#nxt')).toContainText('Catch');
+  await page.click('#nxt');
+  expect(await state(page,()=>st.team.some(t=>PKM[t.pi].n==='Pidgey'))).toBe(true);
+  expect(await state(page,()=>st.round.n)).toBe(10);
+  expect(errors).toEqual([]);
+});
+
+test('a catch below the line still keeps the Pokémon and shows round done',async({page})=>{
+  test.setTimeout(60000);
+  const errors=await boot(page);
+  await state(page,()=>{
+    st.round={n:9,right:5,len:10,marks:[1,1,1,1,1,0,0,0,0],xp:0,bonus:null,endAfter:false,closed:false,holdEvo:false};
+    st.streak=0;
+  });
+  await forceWild(page,'Pidgey',2);
+  await answer(page,true);
+  expect(await state(page,()=>st.wild&&PKM[st.wild.pi].n)).toBe('Pidgey');
+  expect(await state(page,()=>st.team.some(t=>PKM[t.pi].n==='Pidgey'))).toBe(false);
+  await expect(page.locator('#nxt')).toContainText('Catch');
+  await page.click('#nxt');
+  expect(await state(page,()=>st.team.some(t=>PKM[t.pi].n==='Pidgey'))).toBe(true);
+  await expect(page.locator('#round-done')).toBeVisible({timeout:20000});
+  await expect(page.locator('.wild-card')).toHaveCount(0);
+  expect(await state(page,()=>st.round.n)).toBe(10);
+  expect(errors).toEqual([]);
+});
+
+test('an evolution from the filling catch runs before the finale and the Pokémon stays',async({page})=>{
+  test.setTimeout(60000);
+  const errors=await boot(page);
+  await state(page,()=>{
+    const tm=activeTM();
+    tm.pi=0;
+    tm.level=15;
+    tm.xp=xpToNext(15)-10;
+    st.streak=4;
+    st.pendingEvo=null;
+    st.round={n:9,right:9,len:10,marks:Array(9).fill(1),xp:0,bonus:null,endAfter:false,closed:false,holdEvo:false};
+  });
+  await forceWild(page,'Pidgey',2);
+  await answer(page,true);
+  expect(await state(page,()=>st.wild&&PKM[st.wild.pi].n)).toBe('Pidgey');
+  expect(await state(page,()=>!!st.pendingEvo)).toBe(true);
+  await expect(page.locator('#nxt')).toContainText('Catch');
+  await page.click('#nxt');
+  expect(await state(page,()=>st.team.some(t=>PKM[t.pi].n==='Pidgey'))).toBe(true);
+  await expect.poll(()=>state(page,()=>PKM[activeTM().pi].n),{timeout:25000}).toBe('Ivysaur');
+  await expect.poll(()=>state(page,()=>st.bonusWild||st.phase==='round'),{timeout:25000}).toBe(true);
+  expect(await state(page,()=>st.round.n)).toBe(10);
+  expect(errors).toEqual([]);
+});
+
+test('tapping 10 after 5 lets this round run to 10',async({page})=>{
+  const errors=await boot(page);
+  await playAnswers(page,6,6);
+  await page.click('#nxt');
+  expect(await state(page,()=>st.round.n)).toBe(6);
+  await openParents(page);
+  await page.locator('#round-setting [data-round="5"]').click();
+  await page.locator('#round-setting [data-round="10"]').click();
+  await backToGame(page);
+  await answer(page,true);
+  await page.click('#nxt');
+  expect(await state(page,()=>({n:st.round.n,len:st.round.len,end:!!st.round.endAfter,phase:st.phase}))).toEqual({
+    n:7,len:10,end:false,phase:'play',
+  });
+  const other=await state(page,()=>{
+    profiles.kids.push({
+      id:'leo',name:'Leo',avatar:'#004',
+      data:{
+        v:1,
+        settings:{grade:'auto',round:10},
+        round:{n:6,right:6,len:10,marks:[],xp:0,endAfter:false,closed:false},
+        team:[{num:'#004',level:5,xp:0}],
+      },
+    });
+    setKidRound('leo','5');
+    setKidRound('leo','10');
+    const round=profiles.kids.find(k=>k.id==='leo').data.round;
+    return {endAfter:!!round.endAfter,len:round.len,pref:profiles.kids.find(k=>k.id==='leo').data.settings.round};
+  });
+  expect(other).toEqual({endAfter:false,len:10,pref:10});
+  expect(errors).toEqual([]);
+});
+
+test('a round length saved before the first Pokémon is kept',async({page})=>{
+  const maya={id:'maya',name:'Maya',avatar:'#004',data:null,settings:{grade:1,round:15}};
+  const simon={id:'simon',name:'Simon',avatar:'#001',data:{
+    v:1,starter:0,activeIdx:0,
+    team:[{num:'#001',level:8,xp:0}],
+    dex:['#001'],subject:'math',
+    stats:{math:{cor:0,att:0,level:1,cs:0,ws:0},reading:{cor:0,att:0,level:1,cs:0,ws:0},science:{cor:0,att:0,level:1,cs:0,ws:0}},
+    settings:{grade:'auto',round:10},
+  }};
+  const errors=await openGame(page,{save:{v:1,roster:1,activeId:null,kids:[simon,maya]}});
+  await page.locator('[data-pick]').filter({hasText:'Maya'}).click();
+  expect(await state(page,()=>({len:st.round.len,pref:st.roundPref,grade:st.grade}))).toEqual({len:15,pref:15,grade:1});
+  const stored=await page.evaluate(()=>{
+    const kid=JSON.parse(localStorage.getItem('pkq-save')).kids.find(k=>k.name==='Maya');
+    return {round:kid.settings&&kid.settings.round,v:JSON.parse(localStorage.getItem('pkq-save')).v};
+  });
+  expect(stored).toEqual({round:15,v:1});
+  expect(errors).toEqual([]);
+});
+
+test('reloading during the bonus encounter starts it again without counting',async({page})=>{
+  const errors=await boot(page);
+  await state(page,()=>{st.streak=0;st.review=[];});
+  await playAnswers(page,10,8);
+  expect(await state(page,()=>st.bonusWild)).toBe(true);
+  expect(await state(page,()=>st.round.n)).toBe(10);
+  await page.reload();
+  expect(await state(page,()=>({phase:st.phase,bonus:!!st.bonusWild,n:st.round.n}))).toEqual({
+    phase:'wild',bonus:true,n:10,
+  });
+  await answer(page,true);
+  expect(await state(page,()=>st.round.n)).toBe(10);
+  expect(errors).toEqual([]);
+});
+
+test('Back to it hides the round dots on a phone',async({page})=>{
+  const errors=await boot(page);
+  await page.setViewportSize({width:390,height:844});
+  await state(page,()=>{st.q.back=true;render();});
+  await expect(page.locator('.warmup-back')).toBeVisible();
+  const shown=await page.locator('#game .q-head').evaluate(el=>getComputedStyle(el).display!=='none'&&el.getBoundingClientRect().height>1);
+  expect(shown).toBe(false);
+  fs.mkdirSync(ART,{recursive:true});
+  await page.screenshot({path:ART+'/question_dots_390x844.png'});
+  expect(errors).toEqual([]);
+});
+
+test('a reflex tap does not start the next round',async({page})=>{
+  const errors=await boot(page);
+  await playAnswers(page,10,6);
+  await expect(page.locator('#round-done')).toBeVisible();
+  await page.click('#round-again');
+  expect(await state(page,()=>st.phase)).toBe('round');
+  await page.click('#round-done-exit');
+  await expect(page.locator('#who-screen')).toHaveCount(0);
+  await state(page,()=>{st.armAt=0;});
+  await page.click('#round-again');
+  expect(await state(page,()=>st.phase)).toBe('play');
+  expect(await state(page,()=>st.round.n)).toBe(0);
+  expect(errors).toEqual([]);
+});
+
+test('a milestone on a wild question is counted in the round XP',async({page})=>{
+  const errors=await boot(page);
+  await state(page,()=>{
+    st.streak=4;
+    st.round=freshRound(10);
+    st.review=[];
+  });
+  await forceWild(page,'Pidgey',0);
+  const before=await state(page,()=>st.round.xp);
+  await answer(page,true);
+  const bonus=await state(page,()=>milestoneBonus(5));
+  expect(bonus).toBeGreaterThan(0);
+  expect(await state(page,()=>st.round.xp)).toBe(before+bonus);
   expect(errors).toEqual([]);
 });
 
@@ -274,6 +476,7 @@ test('round XP is this round only, and a bonus catch does not add to it',async({
   expect(await state(page,()=>st.round.xp),'the catch is not added again').toBe(ladder);
   await expect(page.locator('#round-xp')).toHaveText(`${ladder} XP`);
 
+  await releaseRound(page);
   await page.click('#round-again');
   await answer(page,true);
   const one=await state(page,()=>xpForStreak(st.streak)+milestoneBonus(st.streak));
@@ -306,6 +509,7 @@ test('round done and who\'s playing have no countdown or come-back copy',async({
   await expect(page.locator('#round-done')).toBeVisible();
   expect(await state(page,()=>st.phase)).toBe('round');
 
+  await releaseRound(page);
   await page.click('#round-done-exit');
   await expect(page.locator('#who-screen')).toBeVisible();
   await expect(page.locator('#who-farewell')).toHaveText('Great playing, Simon!');
@@ -319,6 +523,7 @@ test('round done and who\'s playing have no countdown or come-back copy',async({
 test('play again starts a new round at 0 and does not start by itself',async({page})=>{
   const errors=await boot(page);
   await playAnswers(page,10,6);
+  await releaseRound(page);
   await page.click('#round-again');
   await expect(page.locator('.qtext')).toBeVisible();
   await expect(page.locator('#round-done')).toHaveCount(0);
@@ -447,6 +652,7 @@ test('round length is per child, and 5 and 15 use 4 and 11',async({page})=>{
   await expect(page.locator('.wild-card')).toHaveCount(0);
   await expect(page.locator('#round-line')).toHaveText('3 of 5 right. You and Bulbasaur kept going!');
 
+  await releaseRound(page);
   await page.click('#round-again');
   await openParents(page);
   await page.locator('#round-setting [data-round="5"]').click();
@@ -492,6 +698,7 @@ test('round length is per child, and 5 and 15 use 4 and 11',async({page})=>{
   await expect(page.locator('#round-done')).toBeVisible();
   await expect(page.locator('.wild-card')).toHaveCount(0);
   await expect(page.locator('#round-line')).toContainText('10 of 15 right');
+  await releaseRound(page);
   await page.click('#round-again');
   await playAnswers(page,15,11);
   await expect(page.locator('.wild-card')).toBeVisible();
@@ -521,6 +728,7 @@ test('a longer length waits until the next round, and a shorter one already reac
   await expect(page.locator('.wild-card')).toBeVisible();
   await bonusRunsOff(page);
   await expect(page.locator('#round-done')).toBeVisible();
+  await releaseRound(page);
   await page.click('#round-again');
   expect(await state(page,()=>st.round.len)).toBe(15);
   expect(await page.locator('.round-dot').count()).toBe(15);
@@ -632,6 +840,7 @@ test('a Gym award ends the round, and a held invite still waits out an evolution
   expect(again.height).toBeGreaterThanOrEqual(44);
   expect(done.height).toBeGreaterThanOrEqual(44);
   expect(await state(page,()=>st.round.n)).toBe(0);
+  await releaseRound(page);
   await page.click('#round-done-exit');
   await expect(page.locator('#who-farewell')).toHaveText('Great playing, Simon!');
   expect(errors).toEqual([]);
@@ -690,7 +899,7 @@ test('the round screen and the dotted question fit an iPad and a phone',async({p
   await page.setViewportSize({width:768,height:1024});
   await page.screenshot({path:ART+'/question_dots_768x1024.png'});
   await page.setViewportSize({width:390,height:844});
-  await page.screenshot({path:ART+'/question_dots_390x844.png'});
+  await page.screenshot({path:ART+'/question_playing_dots_390x844.png'});
 
   await page.setViewportSize({width:768,height:1024});
   await openParents(page);
@@ -703,6 +912,7 @@ test('the round screen and the dotted question fit an iPad and a phone',async({p
   await expect(page.locator('#round-done')).toBeVisible();
   await page.screenshot({path:ART+'/round_done_none_768x1024.png'});
 
+  await releaseRound(page);
   await page.click('#round-again');
   await playAnswers(page,10,7);
   await state(page,()=>{
@@ -715,6 +925,7 @@ test('the round screen and the dotted question fit an iPad and a phone',async({p
   await page.setViewportSize({width:768,height:1024});
   await page.screenshot({path:ART+'/round_done_ran_off_768x1024.png'});
 
+  await releaseRound(page);
   await page.click('#round-again');
   await playAnswers(page,10,8);
   await state(page,()=>{
@@ -777,6 +988,7 @@ test('the round screen and the dotted question fit an iPad and a phone',async({p
   }
 
   await page.setViewportSize({width:768,height:1024});
+  await releaseRound(page);
   await page.click('#round-done-exit');
   await expect(page.locator('#who-farewell')).toHaveText('Great playing, Simon!');
   await page.screenshot({path:ART+'/who_great_playing_768x1024.png'});

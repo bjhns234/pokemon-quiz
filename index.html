@@ -555,6 +555,8 @@ button.mon-strip:focus{outline:3px solid #1D4ED8;outline-offset:2px}
 .grade-blurb{font-size:16px;font-weight:700;color:#1A1A2E;line-height:1.35;margin-top:10px}
 /* Progress through this round. Sits in the streak row's free space. Not a control. */
 .round-dots{display:inline-flex;align-items:center;gap:4px;margin-left:auto;height:10px;pointer-events:none;flex:0 0 auto}
+/* Back to it owns the top of the card on every screen size. The dots come back on the next question. */
+#game .qcard:has(.warmup-back) .q-head{display:none;height:0;min-height:0;margin:0;padding:0}
 .round-dot{width:10px;height:10px;border-radius:50%;background:#E5E7EB;box-shadow:inset 0 0 0 1.5px #D1D5DB;pointer-events:none;flex:0 0 auto}
 .round-dot[data-on="1"]{background:#34D399;box-shadow:none}
 .round-card{text-align:center;padding:12px 14px 14px}
@@ -979,8 +981,6 @@ button.mon-strip:focus{outline:3px solid #1D4ED8;outline-offset:2px}
   #game .q-head{margin:0 0 4px;padding:0;flex-wrap:nowrap}
   #game .qcard:has(.q-head)::before,
   #game .qcard:has(.warmup-back)::before{content:none;height:0;min-height:0;padding:0;margin:0}
-  /* Back to it owns the top of the card. The dots come back on the next question. */
-  #game .qcard:has(.warmup-back) .q-head{display:none;height:0;min-height:0;margin:0;padding:0}
   /* One spacing for every tablet height, so the picture grows smoothly
      instead of jumping at 750px or 960px. Four key columns and 44px keys
      keep a typed question on screen down at 700px tall. */
@@ -2828,7 +2828,8 @@ function mkState(saved){
     // happens, so leaving during the animation keeps the Pokémon.
     // A finished round comes back on its done screen. A half-played one
     // resumes at the same count.
-    const roundScreen=s.round&&s.round.closed&&!saved.award&&!saved.gym;
+    const pendingBonus=s.round&&s.round.bonusPending&&!(s.round.bonus&&s.round.bonus.name);
+    const roundScreen=s.round&&s.round.closed&&!pendingBonus&&!saved.award&&!saved.gym;
     s.phase=saved.award?'award':saved.gym?'gym':roundScreen?'round':saved.team.length>0?'play':'starter';
   }
   parkHiddenSubject(s);
@@ -2940,6 +2941,7 @@ function gamePayload(){
       endAfter:!!rr.endAfter,
       closed:!!rr.closed,
     };
+    if(rr.bonusPending)payload.round.bonusPending=true;
     if(rr.bonus&&rr.bonus.name)payload.round.bonus={name:String(rr.bonus.name).slice(0,40),caught:!!rr.bonus.caught};
   }
   return payload;
@@ -3016,7 +3018,7 @@ function roundGoal(len){
   return 7;
 }
 function freshRound(len){
-  return {n:0,right:0,len:roundLengthValue(len),marks:[],xp:0,bonus:null,endAfter:false,closed:false,holdEvo:false};
+  return {n:0,right:0,len:roundLengthValue(len),marks:[],xp:0,bonus:null,endAfter:false,closed:false,holdEvo:false,holdWild:false,bonusPending:false};
 }
 function parseRound(raw,pref){
   const len0=roundLengthValue(pref);
@@ -3040,6 +3042,8 @@ function parseRound(raw,pref){
     endAfter:!!raw.endAfter&&n<len,
     closed:n>=len?true:!!raw.closed,
     holdEvo:false,
+    holdWild:false,
+    bonusPending:!!raw.bonusPending&&!bonus,
     bonus,
   };
 }
@@ -3475,7 +3479,10 @@ function sanitizeKid(k){
   const kid={id:k.id.slice(0,40),name:cleanName(k.name),avatar,data};
   if(k.askName)kid.askName=true;
   // A grade picked before the first starter has no game payload yet.
-  if(!data&&k.settings&&typeof k.settings==='object')kid.settings={grade:gradeValue(k.settings.grade)||'auto'};
+  if(!data&&k.settings&&typeof k.settings==='object'){
+    kid.settings={grade:gradeValue(k.settings.grade)||'auto'};
+    if(k.settings.round!=null)kid.settings.round=roundLengthValue(k.settings.round);
+  }
   return kid;
 }
 function activeKid(){return profiles.kids.find(k=>k.id===profiles.activeId)||null;}
@@ -3502,7 +3509,7 @@ function captureActive(){
     delete kid.settings;
   } else {
     kid.data=null;
-    kid.settings={grade:st.grade>=1&&st.grade<=4?st.grade:'auto'};
+    kid.settings={grade:st.grade>=1&&st.grade<=4?st.grade:'auto',round:roundLengthValue(st.roundPref)};
   }
 }
 function writeRoster(){
@@ -3514,7 +3521,10 @@ function writeRoster(){
       kids:profiles.kids.map(k=>{
         const row={id:k.id,name:k.name,avatar:k.avatar,data:k.data||null};
         if(k.askName)row.askName=true;
-        if(!row.data&&k.settings)row.settings={grade:gradeValue(k.settings.grade)||'auto'};
+        if(!row.data&&k.settings){
+          row.settings={grade:gradeValue(k.settings.grade)||'auto'};
+          if(k.settings.round!=null)row.settings.round=roundLengthValue(k.settings.round);
+        }
         return row;
       }),
     }));
@@ -3764,6 +3774,12 @@ function showGameChrome(){
 }
 function bootInto(){
   view='game';
+  if(st.round&&st.round.bonusPending&&!(st.round.bonus&&st.round.bonus.name)){
+    st.bonusWild=true;
+    st.round.closed=true;
+    triggerWildEncounter(rollShiny());
+    return;
+  }
   if(st.phase==='gym'&&st.gym){
     if(st.gym.solved){
       st.gym.solved=false;
@@ -3794,7 +3810,13 @@ function selectProfile(id){
   profiles.activeId=id;
   const parsed=kid.data?parseGameSave(kid.data):null;
   st=mkState(parsed);
-  if(!parsed&&kid.settings)st.grade=gradeValue(kid.settings.grade);
+  if(!parsed&&kid.settings){
+    st.grade=gradeValue(kid.settings.grade);
+    if(kid.settings.round!=null){
+      st.roundPref=roundLengthValue(kid.settings.round);
+      if(st.round)st.round.len=st.roundPref;
+    }
+  }
   reshuffleDecks();
   subjectBag=[];
   lastSubject=null;
@@ -4792,7 +4814,9 @@ function setKidGrade(kidId, raw){
     }
     delete kid.settings;
   } else {
+    const kept=kid.settings&&kid.settings.round;
     kid.settings={grade:stored};
+    if(kept!=null)kid.settings.round=roundLengthValue(kept);
   }
   if(activeKid()&&st.team.length)save();
   else writeRoster();
@@ -4819,26 +4843,30 @@ function roundSettingHTML(){
   });
   return h+`</div>`;
 }
+function tuneRoundLength(round, next){
+  if(!round)return;
+  if((round.n|0)===0&&!round.closed){
+    round.len=next;
+    round.endAfter=false;
+  } else if((round.n|0)>=next&&next<(round.len|0)){
+    round.endAfter=true;
+  } else {
+    round.endAfter=false;
+  }
+}
 function setKidRound(kidId, raw){
   const kid=profiles.kids.find(k=>k.id===kidId);
   if(!kid)return;
   const next=roundLengthValue(raw);
   if(kid.id===profiles.activeId){
     st.roundPref=next;
-    const r=activeRound();
-    if((r.n|0)===0&&!r.closed)r.len=next;
-    else if((r.n|0)>=next&&next<r.len)r.endAfter=true;
+    tuneRoundLength(activeRound(),next);
     save();
     return;
   }
   if(kid.data){
     kid.data.settings=Object.assign({},kid.data.settings,{round:next});
-    if(kid.data.round&&typeof kid.data.round==='object'){
-      const n=kid.data.round.n|0;
-      const len=kid.data.round.len|0;
-      if(n===0)kid.data.round.len=next;
-      else if(n>=next&&next<len)kid.data.round.endAfter=true;
-    }
+    if(kid.data.round&&typeof kid.data.round==='object')tuneRoundLength(kid.data.round,next);
     delete kid.settings;
   } else {
     kid.settings=Object.assign({},kid.settings,{grade:(kid.settings&&kid.settings.grade)||'auto',round:next});
@@ -4946,7 +4974,13 @@ let st=mkState(loadSaved());
 // A grade chosen before the first starter lives on the trainer, not in a game.
 (function applyPendingGrade(){
   const kid=activeKid();
-  if(kid&&!kid.data&&kid.settings)st.grade=gradeValue(kid.settings.grade);
+  if(kid&&!kid.data&&kid.settings){
+    st.grade=gradeValue(kid.settings.grade);
+    if(kid.settings.round!=null){
+      st.roundPref=roundLengthValue(kid.settings.round);
+      if(st.round)st.round.len=st.roundPref;
+    }
+  }
 })();
 let view=openingWho?'who':'game';
 const gameEl=document.getElementById("game");
@@ -5283,6 +5317,7 @@ function finishGymWin(){
   };
   st.gym=null;
   st.phase='award';
+  st.armAt=Date.now()+ROUND_TAP_PAUSE;
   // The award is the end of this round. The next one starts at 0.
   st.bonusWild=false;
   st.round=freshRound(st.roundPref||10);
@@ -5416,6 +5451,7 @@ function forfeitGym(){
 }
 function dismissAward(){
   if(st.phase!=='award')return;
+  if(Date.now()<(st.armAt||0))return;
   st.award=null;
   st.phase='play';
   save();
@@ -5826,26 +5862,53 @@ function roundDotsHTML(){
   for(let i=0;i<len;i++)s+=`<span class="round-dot" data-on="${i<n?'1':'0'}"></span>`;
   return s+'</span>';
 }
+const ROUND_TAP_PAUSE=800;
+function enterRoundScreen(){
+  if(st.phase!=='round')st.armAt=Date.now()+ROUND_TAP_PAUSE;
+  st.phase='round';
+  const r=st.round;
+  if(r){r.closed=true;r.bonusPending=false;r.holdWild=false;}
+}
 function openRoundFinale(){
+  if(st.phase==='wild'&&st.wild&&!st.wildEscape)return;
   const r=activeRound();
   r.closed=true;
   r.holdEvo=false;
+  r.holdWild=false;
   const goalLen=r.endAfter?roundLengthValue(st.roundPref):roundLengthValue(r.len);
-  if((r.right|0)>=roundGoal(goalLen)&&activeTM()){
+  if((r.right|0)>=roundGoal(goalLen)&&activeTM()&&!(st.phase==='wild'&&st.wild)){
     st.bonusWild=true;
+    r.bonusPending=true;
+    r.bonus=null;
     triggerWildEncounter(rollShiny());
     if(st.phase==='wild'&&st.wild)return;
     st.bonusWild=false;
+    r.bonusPending=false;
   }
   st.wild=null;
   st.wildEscape=false;
-  st.phase='round';
+  enterRoundScreen();
+}
+function finishHeldWild(){
+  const r=st.round;
+  if(!r||!r.holdWild)return false;
+  r.holdWild=false;
+  r.closed=true;
+  if(st.pendingEvo){
+    r.holdEvo=true;
+    st.phase='play';
+    processEvolution();
+    return true;
+  }
+  openRoundFinale();
+  return true;
 }
 function noteRoundAnswer(ok,firstTry){
   if(!(ok||st.wildEscape))return;
   if(st.bonusWild)return;
   if(st.phase!=='play'&&st.phase!=='wild')return;
   let r=activeRound();
+  if(r.holdWild)return;
   if(r.closed){
     st.bonusWild=false;
     st.round=freshRound(st.roundPref||10);
@@ -5858,6 +5921,10 @@ function noteRoundAnswer(ok,firstTry){
   r.marks.push(right?1:0);
   r.xp=(r.xp|0)+Math.max(0,st.lastXp|0);
   if(!(r.endAfter||r.n>=r.len))return;
+  if(st.phase==='wild'&&st.wild&&!st.wildEscape){
+    r.holdWild=true;
+    return;
+  }
   r.closed=true;
   if(st.pendingEvo){r.holdEvo=true;return;}
   openRoundFinale();
@@ -5871,10 +5938,12 @@ function finishBonusMiss(){
   st.bonusWild=false;
   const r=activeRound();
   r.closed=true;
+  r.bonusPending=false;
   r.bonus={name,caught:false};
-  st.phase='round';
+  enterRoundScreen();
 }
 function playRoundAgain(){
+  if(Date.now()<(st.armAt||0))return;
   if(st.pendingEvo){
     const tm=activeTM();
     const evo=st.pendingEvo;
@@ -5895,6 +5964,7 @@ function playRoundAgain(){
   loadQuestion();
 }
 function doneForNow(){
+  if(Date.now()<(st.armAt||0))return;
   if(st.pendingEvo){
     const tm=activeTM();
     const evo=st.pendingEvo;
@@ -7246,10 +7316,21 @@ function fleeWild(){
     st.bonusWild=false;
     const r=activeRound();
     r.closed=true;
+    r.bonusPending=false;
     r.bonus={name,caught:false};
-    st.phase='round';
+    enterRoundScreen();
     save();
     render();
+    return;
+  }
+  if(st.round&&st.round.holdWild){
+    spendGreatBall();
+    st.wild=null;
+    st.wildEscape=false;
+    st.phase='play';
+    finishHeldWild();
+    save();
+    if(st.phase!=='wild')render();
     return;
   }
   // The ball is spent only once this fight is actually over.
@@ -7267,11 +7348,13 @@ function fleeWild(){
 function afterTurn(){
   // The round waited for the evolution. That was the button's job.
   if(st.round&&st.round.holdEvo&&st.round.closed&&!st.pendingEvo){
-    st.round.holdEvo=false;
-    openRoundFinale();
-    save();
-    if(st.phase!=='wild')render();
-    return;
+    if(!(st.phase==='wild'&&st.wild)){
+      st.round.holdEvo=false;
+      openRoundFinale();
+      save();
+      if(st.phase!=='wild')render();
+      return;
+    }
   }
   // A warm-up question is practice, not a hunt. No Poké Ball is rolled for it,
   // and the streak ladder was not paid. The next regular question can meet
@@ -7304,13 +7387,22 @@ function onNext(){
   if(st.phase==='wild'){
     if(st.wildEscape){
       spendGreatBall();
-      st.wild=null;st.wildEscape=false;st.phase='play';
+      st.wild=null;st.wildEscape=false;
+      if(st.round&&st.round.holdWild){
+        st.phase='play';
+        finishHeldWild();
+        save();
+        if(st.phase!=='wild')render();
+        return;
+      }
+      st.phase='play';
       save();
       loadQuestion();return;
     }
     if(st.wild&&st.wild.correctStreak>=CATCH_STREAK_NEEDED){
       const wp=st.wild.pi;const wlev=st.wild.level;const wsh=!!st.wild.shiny;
       const bonus=!!st.bonusWild;
+      const held=!!(st.round&&st.round.holdWild);
       const caughtName=PKM[wp].n;
       // The ball, the team, and the Pokédex are saved before the animation,
       // so closing or going back during Gotcha still keeps the Pokémon.
@@ -7323,10 +7415,29 @@ function onNext(){
         st.bonusWild=false;
         const r=activeRound();
         r.closed=true;
+        r.bonusPending=false;
         r.bonus={name:caughtName,caught:true};
-        st.phase='round';
+        enterRoundScreen();
         save();
         playCatch(wp,wsh,()=>{if(view==='game')render();});
+        return;
+      }
+      if(held){
+        st.round.holdWild=false;
+        save();
+        playCatch(wp,wsh,()=>{
+          if(view!=='game')return;
+          if(st.pendingEvo){
+            st.round.closed=true;
+            st.round.holdEvo=true;
+            st.phase='play';
+            processEvolution();
+          } else {
+            openRoundFinale();
+            save();
+            if(st.phase!=='wild')render();
+          }
+        });
         return;
       }
       st.phase='play';
@@ -7484,10 +7595,12 @@ function commitAttempt(ok,choice,nextDraft){
       } else if(st.phase==='wild'&&st.wild){
         st.wild.correctStreak++;
         // A milestone shouldn't be worth less because a wild Pokemon happened to
-        // turn up, so the bonus is paid in either phase -- unlike per-answer XP,
-        // which stays a play-phase reward.
+        // turn up, so the bonus is paid in either phase. A regular wild question
+        // has no per-answer XP of its own. When it counts toward the round, the
+        // done screen gets the milestone and nothing left over from last time.
         const tm=activeTM();
         if(tm&&bonus){tm.xp+=bonus;applyLevelUps();}
+        if(!st.bonusWild)st.lastXp=bonus|0;
       }
       if(bonus)st.streakMsg=`${st.streak} in a row! +${bonus} bonus XP!`;
     } else if(!ok&&!(st.q&&st.q.warmup)){
@@ -7498,6 +7611,7 @@ function commitAttempt(ok,choice,nextDraft){
       if(st.phase==='wild'&&st.wild){
         st.wild.misses=(st.wild.misses||0)+1;
         if(st.wild.misses>CATCH_MISSES_ALLOWED)st.wildEscape=true;
+        if(!st.bonusWild)st.lastXp=0;
       }
     }
     // Paid in either phase, like a milestone: it's for beating this question, and
