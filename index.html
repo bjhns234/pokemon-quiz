@@ -940,7 +940,8 @@ button.mon-strip:focus{outline:3px solid #1D4ED8;outline-offset:2px}
   #game .streak-pill,#game .q-head,#game .qcard::before{box-sizing:border-box;height:24px;min-height:24px;line-height:24px;padding:0 10px}
   #game .qcard::before{content:"\1F525  5 in a row";visibility:hidden;display:flex;width:max-content;align-items:center;font-size:14px;font-weight:700;letter-spacing:0.03em;margin:0 0 4px;white-space:nowrap}
   #game .q-head{margin:0 0 4px;padding:0}
-  #game .qcard:has(.q-head)::before{content:none;height:0;min-height:0;padding:0;margin:0}
+  #game .qcard:has(.q-head)::before,
+  #game .qcard:has(.warmup-back)::before{content:none;height:0;min-height:0;padding:0;margin:0}
   /* One spacing for every tablet height, so the picture grows smoothly
      instead of jumping at 750px or 960px. Four key columns and 44px keys
      keep a typed question on screen down at 700px tall. */
@@ -2772,6 +2773,7 @@ function mkState(saved){
     s.warmup=saved.warmup||null;
     s.moves=Array.isArray(saved.moves)?saved.moves:[];
     s.redo=saved.redo||{};
+    s.backPending=!!saved.backPending;
     if(saved.reviewCount){
       SUBS.forEach(sub=>{s.reviewCount[sub]=Math.max(0,saved.reviewCount[sub]|0);});
     }
@@ -2875,6 +2877,7 @@ function gamePayload(){
   };
   if(st.moves&&st.moves.length)payload.moves=st.moves.slice(-8);
   if(st.redo&&Object.keys(st.redo).length)payload.redo=st.redo;
+  if(st.backPending)payload.backPending=true;
   return payload;
 }
 
@@ -2919,7 +2922,12 @@ function parseWarmup(raw){
 function parseMoves(raw){
   if(!Array.isArray(raw))return [];
   return raw.filter(m=>m&&SUBS.includes(m.sub)&&/^\d{4}-\d{2}-\d{2}$/.test(m.day)&&(m.tier|0)>=1)
-    .slice(-8).map(m=>({sub:m.sub,tier:m.tier|0,day:m.day}));
+    .slice(-8).map(m=>{
+      const row={sub:m.sub,tier:m.tier|0,day:m.day};
+      const from=m.from|0;
+      if(from>=1&&from<=8&&from!==row.tier)row.from=from;
+      return row;
+    });
 }
 function parseRedo(raw){
   const out={};
@@ -3109,6 +3117,7 @@ function parseGameSave(data){
       warmup:parseWarmup(data.warmup),
       moves:parseMoves(data.moves),
       redo:parseRedo(data.redo),
+      backPending:data.backPending===true,
     };
   }catch(e){
     // corrupt or half-written save: start fresh rather than fail to a blank screen
@@ -4238,19 +4247,56 @@ function masteryRingHTML(){
 }
 // The Parents Gym line uses the same tally as the gate.
 const MASTERY_GYM=true;
-function gymLineText(sub,tier,log){
-  if((tier|0)>=maxLevel(sub))return 'Top level reached.';
-  const sum=gymWindow(log,sub,tier|0);
+function practiceGradeName(tier){
+  const t=tier|0;
+  if(t<=1)return 'Kindergarten';
+  if(t===2)return '1st grade';
+  if(t===3)return '2nd grade';
+  if(t===4)return '3rd grade';
+  return 'Grade '+t;
+}
+function tallyPhrase(sum){
   const tries=sum.att===1?'try':'tries';
-  const days=sum.days===1?'1 day':sum.days+' days';
-  return `${gymGradeLabel(tier)} Gym: ${sum.pct}% right over ${sum.att} ${tries} on ${days}. Opens at 85% (needs 30+ tries on 2+ days).`;
+  const days=(sum.days|0)===1?'1 day':(sum.days|0)+' days';
+  return `${sum.pct|0}% right over ${sum.att|0} ${tries} on ${days}`;
+}
+// Same snapshot the climb and the Gym gate read, including a refill after a
+// drop. A met bar does not repeat the threshold. A badge he already holds
+// is a climb, not another Gym. A grade lock is still a ceiling.
+function gymLineText(sub,tier,log,extra){
+  extra=extra||{};
+  if((tier|0)>=maxLevel(sub))return 'Top level reached.';
+  const redo=extra.redo&&(extra.redo.tier|0)===(tier|0)?extra.redo:null;
+  const snap=masterySnapshot(log,sub,tier|0,redo);
+  const sum=snap.gate||snap;
+  const phrase=tallyPhrase(sum);
+  const here=practiceGradeName(tier);
+  const next=practiceGradeName((tier|0)+1);
+  const lock=extra.lock|0;
+  const canClimb=(tier|0)+1<maxLevel(sub)&&!(lock&&(tier|0)>=lock);
+  const bar='at 85% (needs 30+ tries on 2+ days)';
+  if(extra.badge&&sum.open&&canClimb)return `${here}: solid! Back to ${next} next.`;
+  if(extra.badge&&sum.open)return `${here}: solid!`;
+  if(extra.badge&&canClimb)return `${here}: ${phrase}. Back to ${next} ${bar}.`;
+  if(extra.badge)return `${here}: ${phrase}.`;
+  if(sum.open)return `${gymGradeLabel(tier)} Gym: ready! ${phrase}.`;
+  return `${gymGradeLabel(tier)} Gym: ${phrase}. Opens at 85% (needs 30+ tries on 2+ days).`;
 }
 function gymLineHTML(kid){
   if(!MASTERY_GYM)return '';
   let h='';
+  const live=kid&&kid.id===profiles.activeId;
   enabledSubjects().forEach(sub=>{
     const tier=sub==='math'?kidMathLevel(kid):((kid.data&&kid.data.stats&&kid.data.stats[sub]&&kid.data.stats[sub].level)|0)||1;
-    const text=gymLineText(sub,tier,kid.data&&kid.data.log);
+    const badges=live?(st.badges[sub]||[]):subjectSnap(kid.data||{},sub).badges;
+    const redoAll=live?(st.redo||{}):parseRedo(kid.data&&kid.data.redo);
+    const redo=redoAll[sub]&&redoAll[sub].tier===(tier|0)?redoAll[sub]:null;
+    const grade=live?(st.grade|0):kidGrade(kid);
+    const lock=sub==='math'&&grade?Math.min(grade,maxLevel('math')):0;
+    const text=gymLineText(sub,tier,live?st.log:(kid.data&&kid.data.log),{
+      badge:badges.indexOf(tier|0)>=0,
+      redo,lock,
+    });
     const body=text==='Top level reached.'?text:text.replace(/^([^:]+):/,'<b>$1:</b>');
     h+=`<div class="prog-gym"><span class="prog-medal" aria-hidden="true">&#127941;</span><div>${body}</div></div>`;
   });
@@ -4383,9 +4429,10 @@ function progressCardHTML(kid){
   return h+`</div>`;
 }
 function moveSentence(m){
-  const tier=m.tier|0;
-  const name=tier<=1?'Kindergarten':tier===2?'1st grade':tier===3?'2nd grade':tier===4?'3rd grade':('Grade '+tier);
-  return `Moved to ${name} practice on ${monthDayLabel(m.day)} (accuracy under 60%).`;
+  const to=practiceGradeName(m.tier);
+  const when=`on ${monthDayLabel(m.day)} (under 60% right on his last 20 tries).`;
+  if(m.from)return `Moved from ${practiceGradeName(m.from)} to ${to} practice ${when}`;
+  return `Moved to ${to} practice ${when}`;
 }
 function movesHTML(kid){
   const live=kid&&kid.id===profiles.activeId&&Array.isArray(st.moves)?st.moves:null;
@@ -4897,10 +4944,12 @@ function advanceWarmup(){
     st.backPending=true;
   }
 }
-function noteMove(sub,tier){
+function noteMove(sub,tier,fromTier){
   if(!st.moves)st.moves=[];
   const day=localISO(new Date());
   const row={sub,tier:tier|0,day};
+  const from=fromTier|0;
+  if(from>=1&&from!==row.tier)row.from=from;
   const last=st.moves[st.moves.length-1];
   if(last&&last.sub===row.sub&&last.tier===row.tier&&last.day===row.day)return;
   st.moves.push(row);
@@ -4934,7 +4983,7 @@ function maybeAccuracyDrop(sub){
   if(off&&off.tier!==s.level)st.gymOffer[sub]=null;
   if(!st.redo)st.redo={};
   st.redo[sub]={tier:s.level,fresh:0};
-  noteMove(sub,s.level);
+  noteMove(sub,s.level,before);
   return true;
 }
 function gymQueue(sub,tier){
@@ -6239,6 +6288,9 @@ async function loadQuestion(){
   if(st.backPending&&!(q&&q.warmup)){
     q.back=true;
     st.backPending=false;
+    // Spent once the return question is dealt, so a second reload does not
+    // say it again. Optional on the save; SAVE_V stays 1.
+    save();
   }
   rememberSeen(q);
   st.q=q;st.sel=null;st.cor=false;st.anim="";st.helped=false;

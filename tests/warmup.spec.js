@@ -306,7 +306,7 @@ test('under 60% over 20 tries on 2 days drops one tier, silently, with a Parents
   expect(dropped.badges).toEqual([1,2]);
   expect(dropped.offer).toBeNull();
   expect(dropped.warm).toBeNull();
-  expect(dropped.moves).toEqual([{sub:'math',tier:1,day:'2026-11-18'}]);
+  expect(dropped.moves).toEqual([{sub:'math',tier:1,from:2,day:'2026-11-18'}]);
   const screen=await page.locator('#game').innerText();
   expect(screen).not.toMatch(/level down|Moved to|dropped/i);
   await nextQuestion(page);
@@ -325,7 +325,24 @@ test('under 60% over 20 tries on 2 days drops one tier, silently, with a Parents
   await page.setViewportSize({width:768,height:1024});
   await openParents(page);
   const line=page.locator('.parent-move');
-  await expect(line).toHaveText('Moved to Kindergarten practice on Nov 18 (accuracy under 60%).');
+  await expect(line).toHaveText('Moved from 1st grade to Kindergarten practice on Nov 18 (under 60% right on his last 20 tries).');
+  // The drop is real: Kindergarten was already mastered, so the old Gym line
+  // quoted that 100% and still promised a Gym. He holds the badge, and the
+  // ring is refilling, so the line has to follow that gate.
+  const gym=await page.locator('.prog-gym').innerText();
+  const gate=await state(page,()=>{
+    const snap=masterySnapshot(st.log,'math',1,st.redo&&st.redo.math);
+    return {open:!!(snap.gate&&snap.gate.open),pct:snap.gate.pct,att:snap.gate.att,days:snap.gate.days};
+  });
+  expect(gate.open).toBe(false);
+  expect(gate.att).toBe(0);
+  const tries=gate.att===1?'try':'tries';
+  const days=gate.days===1?'1 day':gate.days+' days';
+  expect(gym).toContain(`${gate.pct}% right over ${gate.att} ${tries} on ${days}`);
+  expect(gym).not.toContain('100%');
+  expect(gym).not.toContain('Opens at 85%');
+  expect(gym).not.toMatch(/\bGym\b/);
+  expect(gym).toContain('Back to 1st grade');
   await line.scrollIntoViewIfNeeded();
   fs.mkdirSync(ART,{recursive:true});
   await page.screenshot({path:ART+'/parents_drop_log_768x1024.png'});
@@ -480,6 +497,37 @@ test('placement still drops an unproved tier, and that is not a second accuracy 
   expect(errors).toEqual([]);
 });
 
+test('a mastered tier says the Gym is ready and does not repeat the bar',async({page})=>{
+  const errors=await boot(page);
+  const solid={
+    '2026-11-17':{'math|@|1':'1'.repeat(20)},
+    '2026-11-18':{'math|@|1':'1'.repeat(20)},
+  };
+  const line=await state(page,log=>gymLineText('math',1,log),solid);
+  expect(line).toBe('Kindergarten Gym: ready! 100% right over 40 tries on 2 days.');
+  expect(line).not.toContain('Opens at 85%');
+  const snap=await state(page,log=>masterySnapshot(log,'math',1),solid);
+  expect(snap.open).toBe(true);
+  expect(line).toContain(`${snap.pct}% right over ${snap.att} tries on ${snap.days} days`);
+  expect(errors).toEqual([]);
+});
+
+test('a badge he already holds does not promise another Gym',async({page})=>{
+  const errors=await boot(page);
+  const solid={
+    '2026-11-17':{'math|@|1':'1'.repeat(20)},
+    '2026-11-18':{'math|@|1':'1'.repeat(20)},
+  };
+  const line=await state(page,log=>gymLineText('math',1,log,{badge:true}),solid);
+  expect(line).toBe('Kindergarten: solid! Back to 1st grade next.');
+  expect(line).not.toContain('Gym');
+  expect(line).not.toContain('Opens at 85%');
+  const locked=await state(page,log=>gymLineText('math',1,log,{badge:true,lock:1}),solid);
+  expect(locked).toBe('Kindergarten: solid!');
+  expect(locked).not.toContain('1st grade');
+  expect(errors).toEqual([]);
+});
+
 test('the warm-up start fits a tablet, a sideways tablet, and a phone',async({page})=>{
   const errors=await boot(page);
   for(let i=0;i<3;i++)await missTier(page,2,i);
@@ -531,6 +579,28 @@ test('the warm-up start fits a tablet, a sideways tablet, and a phone',async({pa
   expect(errors).toEqual([]);
 });
 
+test('a reload after the third warm-up answer still says Back to it once',async({page})=>{
+  const errors=await boot(page);
+  for(let i=0;i<3;i++)await missTier(page,2,i);
+  await nextQuestion(page);
+  await state(page,()=>{Math.random=()=>0.99;});
+  for(let i=0;i<2;i++){
+    await answer(page,true);
+    await page.click('#nxt');
+  }
+  expect(await state(page,()=>!!(st.q&&st.q.warmup))).toBe(true);
+  await answer(page,true);
+  expect(await state(page,()=>st.backPending)).toBe(true);
+  await expect(page.locator('.warmup-back')).toHaveCount(0);
+  await page.reload();
+  await expect(page.locator('.warmup-back')).toContainText('Back to it!');
+  await expect(page.locator('.warmup-back')).toHaveCount(1);
+  expect(await state(page,()=>SAVE_V)).toBe(1);
+  await page.reload();
+  await expect(page.locator('.warmup-back')).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
+
 test('Back to it fits the tablet',async({page})=>{
   const errors=await boot(page);
   for(let i=0;i<3;i++)await missTier(page,2,i);
@@ -554,7 +624,30 @@ test('Back to it fits the tablet',async({page})=>{
   });
   expect(fit.overflow).toBe(false);
   expect(fit.in).toBe(true);
+  // The empty streak stand-in must not sit above the bubble. A normal
+  // question still keeps that 24px row so the card does not jump later.
+  const gap=await page.evaluate(()=>{
+    const card=document.querySelector('#game .qcard');
+    const back=document.querySelector('.warmup-back');
+    const before=getComputedStyle(card,'::before');
+    const gone=before.content==='none'||before.height==='0px';
+    return {
+      beforeH:gone?0:parseFloat(before.height),
+      gap:back.getBoundingClientRect().top-card.getBoundingClientRect().top,
+    };
+  });
+  expect(gap.beforeH).toBe(0);
+  expect(gap.gap).toBeLessThan(16);
   fs.mkdirSync(ART,{recursive:true});
   await page.screenshot({path:ART+'/warmup_back_768x1024.png'});
+  await state(page,()=>{st.q.back=false;st.streak=0;render();});
+  const reserved=await page.evaluate(()=>{
+    const card=document.querySelector('#game .qcard');
+    const before=getComputedStyle(card,'::before');
+    const head=document.querySelector('#game .q-head');
+    return {h:parseFloat(before.height),head:!!head};
+  });
+  expect(reserved.head).toBe(false);
+  expect(reserved.h).toBe(24);
   expect(errors).toEqual([]);
 });
