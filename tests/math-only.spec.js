@@ -250,7 +250,7 @@ test('putting every subject back in the flag restores the old game',async({page}
     renderParent();
   });
   const card=page.locator('[data-kid-name="Trainer"]');
-  await expect(card).toContainText('Rhyming');
+  await expect(card).toContainText('Trying these again');
   await expect(card).toContainText('Reading:');
 });
 

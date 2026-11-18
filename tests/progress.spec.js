@@ -225,7 +225,7 @@ test('an old save with no log shows every skill as New and says tracking started
   const n=await chips.count();
   expect(n).toBeGreaterThan(0);
   for(let i=0;i<n;i++)await expect(chips.nth(i)).toHaveText('New');
-  await expect(card.locator('.prog-when').first()).toHaveText('Not yet');
+  await expect(card.locator('.prog-when').first()).toContainText('Not yet');
   expect(errors).toEqual([]);
 });
 
@@ -460,5 +460,207 @@ test('status chips say the word and clear 4.5 to 1',async({page})=>{
   });
   expect([...new Set(contrast.map(c=>c.word))].sort()).toEqual(['New','Practicing','Solid']);
   contrast.forEach(c=>expect(c.ratio,c.word).toBeGreaterThanOrEqual(4.5));
+  expect(errors).toEqual([]);
+});
+
+function miniData(level,log){
+  return {
+    v:1,starter:0,activeIdx:0,
+    team:[{num:'#025',level:8,xp:1}],
+    dex:['#025'],
+    subject:'math',
+    stats:{
+      math:{cor:1,att:1,level,cs:0,ws:0},
+      reading:{cor:0,att:0,level:1,cs:0,ws:0},
+      science:{cor:0,att:0,level:1,cs:0,ws:0},
+    },
+    badges:{math:[],reading:[],science:[]},
+    settings:{grade:'auto'},
+    log,
+  };
+}
+
+test('the progress table replaces the missed-topics box',async({page})=>{
+  const errors=await openGame(page);
+  await startGame(page,'math');
+  await serve(page,{sub:'math',lv:1,idx:0});
+  await answer(page,false);
+  await answer(page,true);
+  await serve(page,{sub:'math',lv:1,idx:4});
+  await state(page,()=>askForHelp());
+  await answer(page,true);
+  await openParents(page);
+  await expect(page.locator('.parent-focus')).toHaveCount(0);
+  await expect(page.locator('.parent-miss')).toHaveCount(0);
+  const card=page.locator('[data-kid-name="Trainer"]');
+  await expect(card.locator('.parent-practice')).toContainText('Practice adding.');
+  await expect(card).toContainText('Trying these again');
+  await expect(card).toContainText('Right after a hint');
+  await expect(card).toContainText('1 + 2');
+  expect(errors).toEqual([]);
+});
+
+test('the footer states the real rules and one perfect day is still Practicing',async({page})=>{
+  const errors=await openSeeded(page,{
+    log:{'2026-11-18':{'math|Adding|3':[10,10,0]}},
+  });
+  const card=page.locator('[data-progress-for="simon"]');
+  await expect(card.locator('.prog-foot')).toHaveText('Solid = 85%+ right, 10+ tries on 2+ days (last 14 days) · Practicing = 10+ tries, not solid yet · New = fewer than 10 tries');
+  const adding=card.locator('[data-skill="Adding"][data-tier="3"]');
+  await expect(adding).toContainText('10 / 10');
+  await expect(adding.locator('.prog-chip')).toHaveText('Practicing');
+  expect(errors).toEqual([]);
+});
+
+test('tracking started stays for seven days after the first logged answer',async({page})=>{
+  const errors=await openSeeded(page,{
+    log:{'2026-11-18':{'math|Adding|3':[4,5,0]}},
+  });
+  await expect(page.locator('[data-progress-for="simon"] .prog-sub')).toContainText('Tracking started Nov 17');
+  const later=await (async()=>{
+    const next=await page.context().newPage();
+    await next.clock.install({time:new Date(2026,10,24,12,0,0)});
+    const err=await openGame(next,{save:kidSave('Simon','simon',{
+      log:{'2026-11-18':{'math|Adding|3':[4,5,0]}},
+    })});
+    if(!(await next.locator('#parents-link').isVisible()))await next.click('#nav-pdx');
+    await next.click('#parents-link');
+    const q=await next.locator('#parent-q').innerText();
+    const m=q.match(/(\d+)\s*times\s*(\d+)/i);
+    for(const d of String(Number(m[1])*Number(m[2])))await next.locator(`[data-parent-digit="${d}"]`).click();
+    await next.click('#parent-go');
+    await expect(next.locator('[data-progress-for="simon"] .prog-sub')).toContainText('saved on this iPad only');
+    await expect(next.locator('[data-progress-for="simon"] .prog-sub')).not.toContainText('Tracking started');
+    await next.close();
+    return err;
+  })();
+  expect(errors).toEqual([]);
+  expect(later).toEqual([]);
+});
+
+test('a sibling card folds a future day and drops a day older than 30 without a save',async({page})=>{
+  await page.clock.install({time:TODAY});
+  const errors=await openGame(page,{save:{
+    v:1,roster:1,activeId:null,
+    kids:[
+      {id:'simon',name:'Simon',avatar:'#025',data:miniData(3,{
+        '2026-11-18':{'math|Counting|3':[1,1,0],'math|@|3':'1'},
+      })},
+      {id:'sam',name:'Sam',avatar:'#004',data:miniData(3,{
+        '2026-10-18':{'math|Adding|3':[40,40,0],'math|@|3':'1'.repeat(40)},
+        '2026-11-18':{'math|Adding|3':[5,5,0],'math|@|3':'11111'},
+        '2026-12-01':{'math|Adding|3':[0,10,0],'math|@|3':'0'.repeat(10)},
+      })},
+    ],
+  }});
+  await openParents(page);
+  const sam=page.locator('[data-progress-for="sam"]');
+  const adding=sam.locator('[data-skill="Adding"][data-tier="3"][data-review="0"]');
+  await expect(adding).toContainText('5 / 15');
+  await expect(adding.locator('.prog-chip')).toHaveText('Practicing');
+  await expect(sam.locator('.prog-gym')).toContainText('33% right over 15 tries on 1 day');
+  await expect(page.locator('[data-progress-for="simon"] .prog-gym')).toContainText('100% right over 1 try');
+  const raw=await page.evaluate(()=>JSON.parse(localStorage.getItem('pkq-save')).kids.find(k=>k.id==='sam').data.log);
+  expect(raw['2026-10-18']['math|Adding|3']).toEqual([40,40,0]);
+  expect(raw['2026-12-01']['math|@|3']).toBe('0'.repeat(10));
+  expect(errors).toEqual([]);
+});
+
+test('the gym line floors the percent so 85 shows only at 85 percent or more',async({page})=>{
+  // 33/39 is 84.6%, which rounds to 85 and floors to 84.
+  const errors=await openSeeded(page,{
+    log:{'2026-11-18':{'math|@|3':'1'.repeat(33)+'0'.repeat(6),'math|Adding|3':[10,10,0]}},
+  });
+  await expect(page.locator('.prog-gym')).toContainText('84% right over 39 tries on 1 day');
+  await expect(page.locator('.prog-gym')).not.toContainText('85% right');
+  expect(errors).toEqual([]);
+});
+
+test('phone rows still announce 7 days and Last played',async({page})=>{
+  const errors=await openSeeded(page,{log:{'2026-11-18':{'math|Adding|3':[1,2,0]}}});
+  await page.setViewportSize({width:390,height:844});
+  const access=await page.locator('.prog-head').evaluate(el=>{
+    const s=getComputedStyle(el);
+    const r=el.getBoundingClientRect();
+    return {display:s.display,visibility:s.visibility,text:el.textContent,h:r.height};
+  });
+  expect(access.display).not.toBe('none');
+  expect(access.visibility).not.toBe('hidden');
+  expect(access.text).toContain('7 days');
+  expect(access.text).toContain('Last played');
+  expect(access.h).toBeLessThan(8);
+  const num=await page.locator('.prog-num').first().evaluate(el=>el.textContent);
+  const when=await page.locator('.prog-when').first().evaluate(el=>el.textContent);
+  expect(num).toContain('7 days');
+  expect(when).toContain('Last played');
+  expect(errors).toEqual([]);
+});
+
+test('Show all keeps the page where it was',async({page})=>{
+  const log=eightRowLog();
+  log['2026-11-16']={'math|Money|4':[1,3,0]};
+  const errors=await openSeeded(page,{log});
+  await page.setViewportSize({width:768,height:500});
+  await page.evaluate(()=>{document.getElementById('app-main').scrollTop=320;});
+  const before=await page.evaluate(()=>document.getElementById('app-main').scrollTop);
+  expect(before).toBeGreaterThan(200);
+  await page.evaluate(()=>document.querySelector('.prog-more').click());
+  await expect(page.locator('[data-skill="Money"]')).toBeAttached();
+  const after=await page.evaluate(()=>document.getElementById('app-main').scrollTop);
+  expect(Math.abs(after-before)).toBeLessThan(5);
+  expect(errors).toEqual([]);
+});
+
+test('rows follow status order even when the log lists Solid first',async({page})=>{
+  const errors=await openSeeded(page,{
+    log:{
+      '2026-11-17':{'math|Adding|3':[9,10,0]},
+      '2026-11-18':{
+        'math|Adding|3':[9,10,0],
+        'math|Counting|3':[1,2,0],
+        'math|Subtracting|3':[6,10,0],
+      },
+    },
+  });
+  const names=await page.locator('[data-progress-for="simon"] .prog-row').evaluateAll(rows=>rows.map(r=>r.dataset.skill));
+  const tracked=names.filter(n=>n==='Subtracting'||n==='Counting'||n==='Adding');
+  expect(tracked).toEqual(['Subtracting','Counting','Adding']);
+  expect(errors).toEqual([]);
+});
+
+test('the gym line follows the tape when the skill totals disagree',async({page})=>{
+  const errors=await openSeeded(page,{
+    log:{'2026-11-18':{'math|Adding|3':[10,10,0],'math|@|3':'1111100000'}},
+  });
+  await expect(page.locator('.prog-gym')).toContainText('50% right over 10 tries on 1 day');
+  await expect(page.locator('.prog-gym')).not.toContainText('100% right');
+  expect(errors).toEqual([]);
+});
+
+test('each trainer card reads only that child\'s log',async({page})=>{
+  await page.clock.install({time:TODAY});
+  const errors=await openGame(page,{save:{
+    v:1,roster:1,activeId:null,
+    kids:[
+      {id:'maya',name:'Maya',avatar:'#001',data:miniData(3,{
+        '2026-11-18':{'math|Adding|3':[10,10,0],'math|@|3':'1'.repeat(10)},
+        '2026-11-17':{'math|Adding|3':[8,10,0],'math|@|3':'1'.repeat(8)+'00'},
+      })},
+      {id:'sam',name:'Sam',avatar:'#004',data:miniData(3,{
+        '2026-11-18':{'math|Subtracting|3':[2,3,0],'math|@|3':'110'},
+      })},
+    ],
+  }});
+  await openParents(page);
+  const maya=page.locator('[data-progress-for="maya"]');
+  const sam=page.locator('[data-progress-for="sam"]');
+  await expect(maya.locator('[data-skill="Adding"][data-tier="3"]')).toContainText('18 / 20');
+  await expect(maya.locator('[data-skill="Adding"] .prog-chip')).toHaveText('Solid');
+  await expect(maya.locator('.prog-gym')).toContainText('90% right over 20 tries on 2 days');
+  await expect(sam.locator('[data-skill="Subtracting"][data-tier="3"]')).toContainText('2 / 3');
+  await expect(sam.locator('[data-skill="Subtracting"] .prog-chip')).toHaveText('New');
+  await expect(sam.locator('.prog-gym')).toContainText('66% right over 3 tries on 1 day');
+  await expect(sam.locator('[data-skill="Adding"][data-tier="3"]')).toContainText('Not yet');
+  await expect(maya).not.toContainText('2 / 3');
   expect(errors).toEqual([]);
 });

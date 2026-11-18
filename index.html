@@ -579,8 +579,10 @@ button.mon-strip:focus{outline:3px solid #1D4ED8;outline-offset:2px}
 .prog-foot b{font-weight:800}
 .prog-empty{font-size:16px;font-weight:800;color:#1A1A2E;margin:0}
 .prog-more{display:inline-flex;align-items:center;justify-content:center;min-height:44px;min-width:44px;margin-top:10px;padding:10px 16px;border-radius:12px;border:2px solid #1A1A2E;background:#fff;color:#1A1A2E;font-family:inherit;font-weight:800;font-size:16px;cursor:pointer}
+/* Off screen, still read. Used for the phone column names. */
+.prog-sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;font-size:16px}
 @media (max-width:640px){
-  .prog-head{display:none}
+  .prog-head{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
   .prog-row{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"skill status" "num when";row-gap:2px;padding:8px 2px}
   .prog-skill{grid-area:skill}
   .prog-status{grid-area:status;justify-self:end}
@@ -2697,6 +2699,8 @@ function mkState(saved){
     // Per-day skill totals for the parent report, and the eligible tape the
     // Gym line (and a later mastery check) reads. Missing on old saves.
     log:{},
+    // Day tracking began for this child. Optional on old saves.
+    logSince:'',
   };
   if(saved){
     s.starter=saved.starter;
@@ -2718,6 +2722,7 @@ function mkState(saved){
     s.seen=saved.seen||[];
     s.practice=saved.practice||freshPractice();
     s.log=saved.log||{};
+    s.logSince=saved.logSince||'';
     s.grade=saved.grade|0;
     if(saved.reviewCount){
       SUBS.forEach(sub=>{s.reviewCount[sub]=Math.max(0,saved.reviewCount[sub]|0);});
@@ -2803,6 +2808,7 @@ function gamePayload(){
     practice:parsePractice(st.practice),
     // Optional. Old saves have none; an empty log is the same as missing.
     log:pruneLog(st.log),
+    logSince:/^\d{4}-\d{2}-\d{2}$/.test(st.logSince)?st.logSince:LOG_EPOCH,
     // Auto when missing. A number 1–4 keeps math at that tier.
     settings:{grade:st.grade>=1&&st.grade<=4?st.grade:'auto'},
     reviewCount:{
@@ -3001,6 +3007,7 @@ function parseGameSave(data){
       grade:mathLock,
       reviewCount,
       log:parseLog(data.log),
+      logSince:/^\d{4}-\d{2}-\d{2}$/.test(data.logSince)?data.logSince:LOG_EPOCH,
     };
   }catch(e){
     // corrupt or half-written save: start fresh rather than fail to a blank screen
@@ -3887,12 +3894,22 @@ function lastPlayedLabel(iso){
   const MO=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   return WD[dt.getDay()]+', '+MO[m-1]+' '+d;
 }
+function trackingStart(kid){
+  const raw=kid&&kid.data&&kid.data.logSince;
+  if(typeof raw==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(raw))return raw;
+  return LOG_EPOCH;
+}
+function monthDayLabel(iso){
+  const parts=String(iso).split('-');
+  const m=Number(parts[1]);
+  const d=Number(parts[2]);
+  const MO=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return (MO[m-1]||'')+' '+d;
+}
 function trackingNote(kid){
-  const log=kid&&kid.data&&kid.data.log;
-  const has=log&&Object.keys(log).some(day=>/^\d{4}-\d{2}-\d{2}$/.test(day)&&Object.keys(log[day]||{}).some(key=>key.split('|')[1]!=='@'));
-  if(has)return '';
-  if(dayOffset(LOG_EPOCH,localISO(new Date()))>=7)return '';
-  return 'Tracking started Nov 17';
+  const start=trackingStart(kid);
+  if(dayOffset(start,localISO(new Date()))>=7)return '';
+  return 'Tracking started '+monthDayLabel(start);
 }
 function progressSubtitle(kid){
   const note=trackingNote(kid);
@@ -3902,6 +3919,7 @@ function progressSubtitle(kid){
 // Eligible tries for the Gym line: the tape when a day has one, otherwise the
 // skill totals for that tier (no review, no gym, no rematch). Last 40.
 function gymWindow(log,sub,tier){
+  log=pruneLog(log);
   const days=Object.keys(log||{}).filter(d=>/^\d{4}-\d{2}-\d{2}$/.test(d)).sort();
   const tapeKey=sub+'|@|'+tier;
   const anyTape=days.some(d=>log[d]&&typeof log[d][tapeKey]==='string');
@@ -3935,7 +3953,7 @@ function gymWindow(log,sub,tier){
   }
   const right=(window.match(/1/g)||[]).length;
   const att=window.length;
-  return {pct:att?Math.round(100*right/att):0,att,days:dayCount};
+  return {pct:att?Math.floor(100*right/att):0,att,days:dayCount};
 }
 function gymLineHTML(kid){
   let h='';
@@ -3958,7 +3976,7 @@ function skillStatus(att,right,days){
   return 'Practicing';
 }
 function progressRows(kid){
-  const log=kid&&kid.data&&kid.data.log||{};
+  const log=pruneLog(kid&&kid.data&&kid.data.log);
   const today=localISO(new Date());
   const rows=new Map();
   function rowFor(sub,topic,tier,review){
@@ -4034,13 +4052,13 @@ function progressCardHTML(kid){
     const grade=gradeShort(r.tier)+(r.review?' · review':'');
     h+=`<div class="prog-row" role="row" data-skill="${escapeHtml(r.topic)}" data-tier="${r.tier}" data-review="${r.review?'1':'0'}">`;
     h+=`<div class="prog-skill" role="cell">${escapeHtml(r.topic)}<div class="prog-grade">${escapeHtml(grade)}</div></div>`;
-    h+=`<div class="prog-num" role="cell">${nums}</div>`;
+    h+=`<div class="prog-num" role="cell"><span class="prog-sr">7 days</span>${nums}</div>`;
     h+=`<div class="prog-status" role="cell"><span class="prog-chip prog-${r.status.toLowerCase()}">${r.status}</span></div>`;
-    h+=`<div class="prog-when" role="cell">${escapeHtml(lastPlayedLabel(r.last))}</div></div>`;
+    h+=`<div class="prog-when" role="cell"><span class="prog-sr">Last played</span>${escapeHtml(lastPlayedLabel(r.last))}</div></div>`;
   });
   h+=`</div>`;
   if(all.length>8)h+=`<button type="button" class="prog-more" data-progress-more="${escapeHtml(kid.id)}">${open?'Show less':'Show all'}</button>`;
-  h+=`<p class="prog-foot"><b>Solid</b> = 85%+ right over 2+ days · <b>Practicing</b> = under 85% · <b>New</b> = fewer than 10 tries</p>`;
+  h+=`<p class="prog-foot"><b>Solid</b> = 85%+ right, 10+ tries on 2+ days (last 14 days) · <b>Practicing</b> = 10+ tries, not solid yet · <b>New</b> = fewer than 10 tries</p>`;
   return h+`</div>`;
 }
 function parentKidHTML(kid){
@@ -4053,29 +4071,13 @@ function parentKidHTML(kid){
   if(score)h+=`<p class="parent-score">${escapeHtml(score)}</p>`;
   h+=`</div></div>`;
   if(!data||!Array.isArray(data.team)||!data.team.length)return h+`</div>`;
-  const practice=data.practice&&typeof data.practice==='object'?data.practice:freshPractice();
   const badges=[];
   enabledSubjects().forEach(sub=>{
     subjectSnap(data,sub).badges.forEach(t=>badges.push(badgeName(sub,t)));
   });
   // Hidden-subject badges stay out of this list. With nothing visible, skip
   // the line entirely: "No badges yet" is wrong when a hidden badge exists.
-  // An orange box with no misses is skipped in that same case. A real miss
-  // still gets the box, and a visible badge keeps the old empty box.
   if(badges.length)h+=`<p>Badges: ${escapeHtml(badges.join(', '))}</p>`;
-  const misses=missList(practice);
-  const overall=recentBits(practice,null);
-  const totalAtt=enabledSubjects().reduce((n,sub)=>n+subjectSnap(data,sub).att,0);
-  if(misses.length||(badges.length&&(overall||totalAtt>0))){
-    h+=`<div class="parent-focus">`;
-    if(misses.length){
-      misses.forEach(m=>{
-        h+=`<div class="parent-miss">${escapeHtml(m.topic)} — missed ${m.n} time${m.n===1?'':'s'}</div>`;
-        m.ex.forEach(ex=>{h+=`<p class="parent-ex">${escapeHtml(ex)}</p>`;});
-      });
-    }
-    h+=`</div>`;
-  }
   const again=liveRematches(data,'miss');
   if(again.length){
     h+=`<div class="parent-again"><h3>Trying these again</h3>`;
@@ -4301,6 +4303,9 @@ function openParent(){
   histPush('parent');
 }
 function renderParent(){
+  const scroller=document.getElementById('app-main');
+  const scrollTop=scroller?scroller.scrollTop:0;
+  const keepScroll=()=>{if(scroller)scroller.scrollTop=scrollTop;};
   shelterMute();
   view='parent';
   gameEl.style.display='none';
@@ -4324,6 +4329,7 @@ function renderParent(){
     document.getElementById('parent-go').addEventListener('click',submitParentQuiz);
     document.getElementById('parent-back').addEventListener('click',closeParent);
     dockMute();
+    keepScroll();
     return;
   }
   const timerOn=gymTimerEnabled();
@@ -4348,10 +4354,16 @@ function renderParent(){
     renderParent();
   }));
   parentEl.querySelectorAll('[data-progress-more]').forEach(b=>b.addEventListener('click',()=>{
+    const y=scroller?scroller.scrollTop:0;
     progressOpen[b.dataset.progressMore]=!progressOpen[b.dataset.progressMore];
     renderParent();
+    const main=document.getElementById('app-main');
+    if(main)main.scrollTop=y;
+    const again=parentEl.querySelector('[data-progress-more="'+b.dataset.progressMore+'"]');
+    if(again)again.focus({preventScroll:true});
   }));
   dockMute();
+  keepScroll();
 }
 
 let profiles={activeId:null,kids:[]};
