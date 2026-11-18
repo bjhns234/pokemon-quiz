@@ -181,9 +181,117 @@ test('a bonus the Pokémon leaves still shows the round, with no red cross',asyn
   await page.click('#nxt');
   await answer(page,false);
   await expect(page.locator('#round-done')).toBeVisible();
-  await expect(page.locator('#round-bonus')).toHaveText('Pidgey ran off. Good try!');
+  await expect(page.locator('#round-bonus')).toHaveText('Pidgey got away this time. Great work!');
   await expect(page.locator('#round-done')).not.toContainText('✗');
   expect(await state(page,()=>st.team.some(t=>PKM[t.pi].n==='Pidgey'))).toBe(false);
+  expect(errors).toEqual([]);
+});
+
+test('round checks are about 22px on a tablet and the card still fits',async({page})=>{
+  const errors=await boot(page);
+  await state(page,()=>{
+    st.phase='round';
+    st.round={n:10,right:8,len:10,marks:[1,1,1,1,1,1,1,1,0,0],xp:40,bonus:null,closed:true,endAfter:false,holdEvo:false};
+    render();
+  });
+  for(const size of [{width:768,height:1024},{width:1024,height:768},{width:390,height:844}]){
+    await page.setViewportSize(size);
+    const where=`${size.width}x${size.height}`;
+    const fit=await page.evaluate(()=>{
+      const main=document.getElementById('app-main');
+      const mark=document.querySelector('.round-mark');
+      return {scroll:main.scrollHeight-main.clientHeight,mark:parseFloat(getComputedStyle(mark).fontSize)};
+    });
+    expect(fit.scroll,where).toBeLessThanOrEqual(1);
+    if(size.width>=768){
+      expect(fit.mark,where).toBeGreaterThanOrEqual(20);
+      expect(fit.mark,where).toBeLessThanOrEqual(22);
+    }else{
+      expect(fit.mark,where).toBeGreaterThanOrEqual(14);
+    }
+  }
+  expect(errors).toEqual([]);
+});
+
+test('the Pokémon count sits on its own line under the partner',async({page})=>{
+  const errors=await boot(page);
+  await state(page,()=>{
+    st.team.push({pi:PKM.findIndex(p=>p.n==='Pidgey'),level:4,xp:0,shiny:false});
+    roundFarewell='Simon';
+    view='who';
+    renderWho();
+  });
+  const card=page.locator('[data-pick]').filter({hasText:'Simon'});
+  await expect(card.locator('.who-mon')).toHaveText('Bulbasaur · Lv 60');
+  await expect(card.locator('.who-count')).toHaveText('2 Pokémon');
+  await expect(card.locator('.who-mon')).not.toContainText('Pokémon');
+  const mon=await card.locator('.who-mon').boundingBox();
+  const count=await card.locator('.who-count').boundingBox();
+  expect(count.y).toBeGreaterThanOrEqual(mon.y+mon.height-1);
+  expect(errors).toEqual([]);
+});
+
+test('round XP is this round only, and a bonus catch does not add to it',async({page})=>{
+  test.setTimeout(60000);
+  const errors=await boot(page);
+  await state(page,()=>{
+    st.round=freshRound(10);
+    st.streak=0;
+    st.review=[];
+    st.warmup={sub:'math',home:1,tier:1,topic:'',queue:[0],at:0};
+    loadQuestion();
+  });
+  await answer(page,true);
+  expect(await state(page,()=>st.round.xp),'a warm-up pays the flat rate once').toBe(await state(page,()=>XP_BASE));
+  expect(await state(page,()=>st.round.xp)).not.toBe(await state(page,()=>xpForStreak(1)));
+
+  await state(page,()=>{
+    st.warmup=null;
+    st.review=[];
+    st.streak=0;
+    st.round=freshRound(10);
+    st.phase='play';
+    loadQuestion();
+  });
+  await playAnswers(page,10,10);
+  const ladder=await state(page,()=>{
+    let xp=0;
+    for(let s=1;s<=10;s++)xp+=xpForStreak(s)+milestoneBonus(s);
+    return xp;
+  });
+  expect(await state(page,()=>st.round.xp)).toBe(ladder);
+  await state(page,()=>{
+    const pi=PKM.findIndex(p=>p.n==='Pidgey');
+    st.wild.pi=pi;st.wild.shiny=false;st.wild.correctStreak=0;st.wild.misses=0;
+    refillQuestion();render();
+  });
+  for(let i=0;i<3;i++){
+    await answer(page,true);
+    if(await state(page,()=>st.wild&&st.wild.correctStreak<3))await page.click('#nxt');
+  }
+  await page.click('#nxt');
+  await expect(page.locator('#round-done')).toBeVisible({timeout:20000});
+  expect(await state(page,()=>st.round.xp),'the catch is not added again').toBe(ladder);
+  await expect(page.locator('#round-xp')).toHaveText(`${ladder} XP`);
+
+  await page.click('#round-again');
+  await answer(page,true);
+  const one=await state(page,()=>xpForStreak(st.streak)+milestoneBonus(st.streak));
+  expect(await state(page,()=>st.round.xp)).toBe(one);
+  expect(one).toBeLessThan(ladder);
+
+  const held=await state(page,()=>st.round.xp);
+  await state(page,()=>{
+    st.gymOffer.math={tier:1,cool:0};
+    st.stats.math.level=1;
+    st.badges.math=[];
+    st.cor=true;
+    st.phase='play';
+    render();
+  });
+  await page.click('[data-gym-start="math"]');
+  await answer(page,true);
+  expect(await state(page,()=>({n:st.round.n,xp:st.round.xp}))).toEqual({n:1,xp:held});
   expect(errors).toEqual([]);
 });
 
@@ -603,7 +711,7 @@ test('the round screen and the dotted question fit an iPad and a phone',async({p
     refillQuestion();render();
   });
   await bonusRunsOff(page);
-  await expect(page.locator('#round-bonus')).toHaveText('Pidgey ran off. Good try!');
+  await expect(page.locator('#round-bonus')).toHaveText('Pidgey got away this time. Great work!');
   await page.setViewportSize({width:768,height:1024});
   await page.screenshot({path:ART+'/round_done_ran_off_768x1024.png'});
 

@@ -473,6 +473,7 @@ button.mon-strip:focus{outline:3px solid #1D4ED8;outline-offset:2px}
 .who-ava img{width:72px;height:72px;object-fit:contain}
 .who-name{font-size:16px;font-weight:800;color:#1A1A2E;margin-top:4px}
 .who-sub{font-size:11px;color:#374151;font-weight:700;line-height:1.3;min-height:2.6em}
+.who-count{display:block}
 .who-edit{margin-top:12px;background:#fff;border:2px solid #D1D5DB;color:#1A1A2E;font-weight:800;font-size:14px;border-radius:10px;padding:8px 16px;font-family:inherit;cursor:pointer}
 .who-new{grid-column:1/-1;display:flex;align-items:center;justify-content:center;gap:8px;background:#F5F3FF;border:2px dashed #7C3AED;color:#4C1D95;border-radius:16px;padding:14px;font-size:16px;font-weight:800;cursor:pointer;font-family:inherit}
 .who-new img{width:40px;height:40px;object-fit:contain}
@@ -563,7 +564,7 @@ button.mon-strip:focus{outline:3px solid #1D4ED8;outline-offset:2px}
 @keyframes round-pop{0%{transform:scale(.9)}55%{transform:scale(1.04)}100%{transform:scale(1)}}
 .round-title{font-size:28px;font-weight:800;color:#1A1A2E;margin:2px 0 6px;line-height:1.2}
 .round-marks{display:flex;flex-wrap:wrap;justify-content:center;gap:4px 6px;margin:0 0 6px}
-.round-mark{font-size:18px;line-height:1;font-weight:800;color:#6B7280}
+.round-mark{font-size:22px;line-height:1;font-weight:800;color:#6B7280}
 .round-mark[data-right="1"]{color:#065F46}
 .round-line{font-size:22px;font-weight:800;color:#1F2937;line-height:1.25;margin:0 0 4px}
 .round-xp,.round-bonus{font-size:18px;font-weight:700;color:#1F2937;margin:2px 0}
@@ -577,7 +578,8 @@ button.mon-strip:focus{outline:3px solid #1D4ED8;outline-offset:2px}
   .round-hero img{width:120px;height:120px}
   .round-title{font-size:24px}
   .round-line{font-size:20px}
-  .round-xp,.round-bonus,.round-mark{font-size:16px}
+  .round-xp,.round-bonus{font-size:16px}
+  .round-mark{font-size:20px}
 }
 @media (prefers-reduced-motion:reduce){
   #round-celebrate{animation:none}
@@ -3685,20 +3687,28 @@ function notePractice(tmpl,outcome){
     delete st.practice.topics[keys[0]];
   }
 }
-function kidBlurb(kid){
+function kidCardLines(kid){
   const d=kid&&kid.data;
   if(kid&&kid.id===profiles.activeId&&st.team.length){
     const t=st.team[Math.min(Math.max(0,st.activeIdx|0),st.team.length-1)]||st.team[0];
-    const extra=st.team.length>1?` · ${st.team.length} Pokémon`:'';
-    return `${t.shiny?'Shiny ':''}${PKM[t.pi].n} · Lv ${t.level|0}${extra}`;
+    return {
+      line:`${t.shiny?'Shiny ':''}${PKM[t.pi].n} · Lv ${t.level|0}`,
+      count:st.team.length>1?`${st.team.length} Pokémon`:'',
+    };
   }
-  if(!d||!Array.isArray(d.team)||!d.team.length)return 'Ready to start';
+  if(!d||!Array.isArray(d.team)||!d.team.length)return {line:'Ready to start',count:''};
   const idx=Math.min(Math.max(0,d.activeIdx|0),d.team.length-1);
   const t=d.team[idx]||d.team[0];
   const pk=PKM[NUM_TO_PI[t.num]];
   const name=pk?pk.n:'Pokémon';
-  const extra=d.team.length>1?` · ${d.team.length} Pokémon`:'';
-  return `${t.shiny?'Shiny ':''}${name} · Lv ${t.level|0}${extra}`;
+  return {
+    line:`${t.shiny?'Shiny ':''}${name} · Lv ${t.level|0}`,
+    count:d.team.length>1?`${d.team.length} Pokémon`:'',
+  };
+}
+function kidBlurb(kid){
+  const p=kidCardLines(kid);
+  return p.count?`${p.line} · ${p.count}`:p.line;
 }
 // The picture a child looks for is the Pokémon they battle with, not a separate buddy.
 function faceForKid(kid){
@@ -4024,7 +4034,9 @@ function renderWho(){
   profiles.kids.forEach(kid=>{
     const now=kid.id===profiles.activeId?' now':'';
     const face=faceForKid(kid);
-    h+=`<div class="who-card"><button type="button" class="who-play${now}" data-pick="${escapeHtml(kid.id)}"><div class="who-ava">${pkSprite(face.pi,72,face.shiny)}</div><div class="who-name">${escapeHtml(kid.name)}</div><div class="who-sub">${escapeHtml(kidBlurb(kid))}</div></button><button type="button" class="who-edit" data-edit="${escapeHtml(kid.id)}" aria-label="Edit ${escapeHtml(kid.name)}">Edit</button></div>`;
+    const lines=kidCardLines(kid);
+    const count=lines.count?`<span class="who-count">${escapeHtml(lines.count)}</span>`:'';
+    h+=`<div class="who-card"><button type="button" class="who-play${now}" data-pick="${escapeHtml(kid.id)}"><div class="who-ava">${pkSprite(face.pi,72,face.shiny)}</div><div class="who-name">${escapeHtml(kid.name)}</div><div class="who-sub"><span class="who-mon">${escapeHtml(lines.line)}</span>${count}</div></button><button type="button" class="who-edit" data-edit="${escapeHtml(kid.id)}" aria-label="Edit ${escapeHtml(kid.name)}">Edit</button></div>`;
   });
   if(profiles.kids.length<PROFILE_MAX){
     h+=`<button type="button" class="who-new" id="profile-new">${pkSprite(avatarPi('#025'),40,false)}Add a trainer</button>`;
@@ -5913,7 +5925,7 @@ function roundScreenHTML(){
   const name=tm?PKM[tm.pi].n:'your Pokémon';
   const marks=(r.marks||[]).map(ok=>`<span class="round-mark" data-right="${ok?'1':'0'}">${ok?'✓':'○'}</span>`).join('');
   const bonus=r.bonus&&r.bonus.name
-    ?`<p id="round-bonus" class="round-bonus">${escapeHtml(r.bonus.caught?`${r.bonus.name} joined your team!`:`${r.bonus.name} ran off. Good try!`)}</p>`
+    ?`<p id="round-bonus" class="round-bonus">${escapeHtml(r.bonus.caught?`${r.bonus.name} joined your team!`:`${r.bonus.name} got away this time. Great work!`)}</p>`
     :'';
   const line=`${r.right|0} of ${r.n|0} right. You and ${name} kept going!`;
   return `<div class="card round-card" id="round-done"><div class="round-hero" id="round-celebrate">${tm?pkSprite(tm.pi,150,!!tm.shiny):''}</div><h2 id="round-title" class="round-title">Round done!</h2><div class="round-marks">${marks}</div><p id="round-line" class="round-line">${escapeHtml(line)}</p><p id="round-xp" class="round-xp">${r.xp|0} XP</p>${bonus}<button type="button" class="round-again" id="round-again">Play again</button><button type="button" class="round-leave" id="round-done-exit">Done</button></div>`;
