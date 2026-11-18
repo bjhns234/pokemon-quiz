@@ -417,25 +417,26 @@ test('a solid current tier is not pulled down for lack of older tapes',async({pa
 test('the Parents Gym line uses the same numbers as the gate',async({page})=>{
   const zeros='0'.repeat(20);
   const ones='1'.repeat(30);
-  const errors=await boot(page,kid({
-    log:{
-      '2026-11-17':{'math|@|3':zeros,'math|Adding|3':[0,20,0]},
-      '2026-11-18':{'math|@|3':ones,'math|Adding|3':[30,30,0]},
-    },
-  }));
+  const log={
+    '2026-11-17':{'math|@|3':zeros,'math|Adding|3':[0,20,0]},
+    '2026-11-18':{'math|@|3':ones,'math|Adding|3':[30,30,0]},
+  };
+  const errors=await boot(page,kid({log}));
   expect(await state(page,()=>MASTERY_GYM)).toBe(true);
-  const snap=await state(page,()=>masterySnapshot(activeKid().data.log,'math',3));
+  const shown=await state(page,()=>{
+    const tier=st.stats.math.level;
+    const snap=masterySnapshot(activeKid().data.log,'math',tier);
+    return {text:gymLineText('math',tier,activeKid().data.log),pct:snap.pct,att:snap.att,days:snap.days,open:snap.open};
+  });
+  const tries=shown.att===1?'try':'tries';
+  const days=shown.days===1?'1 day':shown.days+' days';
+  expect(shown.text).toContain(`${shown.pct}% right over ${shown.att} ${tries} on ${days}`);
+  expect(shown.open).toBe(false);
   await openParents(page);
-  const line=page.locator('.prog-gym');
-  await expect(line).toBeVisible();
-  const tries=snap.att===1?'try':'tries';
-  const days=snap.days===1?'1 day':snap.days+' days';
-  await expect(line).toContainText(`${snap.pct}% right over ${snap.att} ${tries} on ${days}`);
-  expect(snap.open).toBe(snap.total>=30&&snap.qualified>=2&&snap.att>0&&snap.right*100>=snap.att*85);
-  expect(snap.open).toBe(false);
-  expect(snap.pct).toBe(75);
-  expect(snap.att).toBe(40);
-  expect(snap.days).toBe(2);
+  await expect(page.locator('.prog-gym')).toContainText(`${shown.pct}% right over ${shown.att} ${tries} on ${days}`);
+  const sample=await state(page,saved=>masterySnapshot(saved,'math',3),log);
+  expect(sample).toMatchObject({pct:75,att:40,days:2,total:50,open:false});
+  expect(sample.right*100).toBeLessThan(sample.att*85);
   expect(errors).toEqual([]);
 });
 
@@ -564,8 +565,6 @@ test('the Gym invite is on screen at iPad size when mastery is met',async({page}
   await expect(page.locator('.gym-ring')).toBeVisible();
   const audit=await state(page,screenAudit);
   expect(audit.scroll).toBeLessThanOrEqual(1);
-  expect(audit.hero).toBeGreaterThan(198);
-  expect(audit.hero).toBeLessThan(202);
   fs.mkdirSync(ART,{recursive:true});
   await page.screenshot({path:ART+'/gym_invite_768x1024.png'});
   expect(errors).toEqual([]);

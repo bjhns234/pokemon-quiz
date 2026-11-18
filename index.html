@@ -227,6 +227,15 @@ button.mon-strip:focus{outline:3px solid #1D4ED8;outline-offset:2px}
 .bug-type{background:#ECFCCB;color:#3F6212}
 .fairy-type{background:#FCE7F3;color:#9D174D}
 .lvl-badge{display:inline-block;background:#1A1A2E;color:white;font-size:14px;font-weight:700;padding:3px 9px;border-radius:10px;margin-left:6px;letter-spacing:0.04em;vertical-align:middle}
+/* 24px, in the name line, so the tablet hero picture stays 200px. Not a control. */
+.gym-ring{display:inline-block;width:24px;height:24px;margin-left:6px;vertical-align:middle;pointer-events:none;line-height:0}
+.gym-ring svg{display:block;width:24px;height:24px}
+.gym-ring-track{fill:none;stroke:#E5E7EB;stroke-width:2.5}
+.gym-ring-val{fill:none;stroke:#7C3AED;stroke-width:2.5;stroke-linecap:round;transform:rotate(-90deg);transform-origin:12px 12px}
+.gym-ring-badge{fill:#FBBF24;stroke:#B45309;stroke-width:0.8}
+@keyframes gym-ring-glow{0%{filter:drop-shadow(0 0 0 rgba(251,191,36,0))}40%{filter:drop-shadow(0 0 5px #FBBF24)}100%{filter:drop-shadow(0 0 0 rgba(251,191,36,0))}}
+.gym-ring.glow{animation:gym-ring-glow .8s ease-out 1}
+@media (prefers-reduced-motion:reduce){.gym-ring.glow{animation:none}}
 /* A level-up lands on the pill that actually changed instead of a bar above the card.
    Green because the +XP badge just below it is green too, so the badge, the bar filling
    and the number lighting up read as one movement rather than three separate signals.
@@ -2982,6 +2991,20 @@ function parseGameSave(data){
       reviewCount[sub]=Math.max(0,raw|0);
     });
 
+    // A tier he is not solid on can sit below the grade lock. An empty log,
+    // a Gym in progress, and a saved invite stay where they are.
+    const placedLog=parseLog(data.log);
+    SUBS.forEach(sub=>{
+      if(gym&&gym.sub===sub)return;
+      if(gymOffer[sub])return;
+      const next=placementTarget(stats,placedLog,sub);
+      if(next<stats[sub].level){
+        stats[sub].level=next;
+        stats[sub].cs=0;
+        stats[sub].ws=0;
+      }
+    });
+
     return{
       starter:typeof data.starter==='number'?data.starter:null,
       activeIdx,
@@ -3006,7 +3029,7 @@ function parseGameSave(data){
       practice:parsePractice(data.practice),
       grade:mathLock,
       reviewCount,
-      log:parseLog(data.log),
+      log:placedLog,
       logSince:/^\d{4}-\d{2}-\d{2}$/.test(data.logSince)?data.logSince:LOG_EPOCH,
     };
   }catch(e){
@@ -3168,6 +3191,23 @@ function pruneLog(raw){
     if(age>30)return;
     const dest=age<0?today:day;
     out[dest]=mergeLogBucket(out[dest],src[day]);
+  });
+  // Eligible tapes: the last 14 days that tier was played. The accuracy
+  // window is still the last 40 results; the day strings stay so a day
+  // can show it had 5 or more even when those tries sit outside that window.
+  const tapes={};
+  Object.keys(out).sort().forEach(day=>{
+    Object.keys(out[day]||{}).forEach(key=>{
+      if(String(key).split('|')[1]!=='@')return;
+      (tapes[key]||(tapes[key]=[])).push(day);
+    });
+  });
+  Object.keys(tapes).forEach(key=>{
+    tapes[key].slice(0,Math.max(0,tapes[key].length-14)).forEach(day=>{
+      if(!out[day])return;
+      delete out[day][key];
+      if(!Object.keys(out[day]).length)delete out[day];
+    });
   });
   return out;
 }
@@ -3916,9 +3956,11 @@ function progressSubtitle(kid){
   const base='Last 7 days · first tries without a hint · saved on this iPad only';
   return note?base+' · '+note:base;
 }
-// Eligible tries for the Gym line: the tape when a day has one, otherwise the
-// skill totals for that tier (no review, no gym, no rematch). Last 40.
-function gymWindow(log,sub,tier){
+// Eligible tries: the tape when a day has one, otherwise the skill totals
+// for that tier (no review, no gym, no rematch). The Parents line and the
+// Gym gate both read this. `att`/`days`/`pct` are the last 40. `total` and
+// `qualified` are the whole stored tape (a day counts once it has 5+).
+function masterySnapshot(log,sub,tier){
   log=pruneLog(log);
   const days=Object.keys(log||{}).filter(d=>/^\d{4}-\d{2}-\d{2}$/.test(d)).sort();
   const tapeKey=sub+'|@|'+tier;
@@ -3953,11 +3995,67 @@ function gymWindow(log,sub,tier){
   }
   const right=(window.match(/1/g)||[]).length;
   const att=window.length;
-  return {pct:att?Math.floor(100*right/att):0,att,days:dayCount};
+  const qualified=parts.filter(p=>p.seq.length>=5).length;
+  const ratio=att?right/att:0;
+  // Skill totals fill the Parents line when a day has no tape. They are not
+  // eligible tries, so they cannot open a Gym or move him.
+  const fromTape=!!(anyTape&&parts.length);
+  const open=fromTape&&full.length>=30&&qualified>=2&&att>0&&right*100>=att*85;
+  return {pct:att?Math.floor(100*right/att):0,att,days:dayCount,total:full.length,qualified,right,ratio,open,window,fromTape};
 }
-// The Gym sentence uses the mastery rule. It stays off until that rule
-// is what opens a Gym. Flip this in the mastery change.
-const MASTERY_GYM=false;
+function gymWindow(log,sub,tier){
+  const s=masterySnapshot(log,sub,tier);
+  return {pct:s.pct,att:s.att,days:s.days};
+}
+// Accuracy under 85% once 30 tries exist is "not solid". Fewer than 30, or
+// 85% that still needs a second day, is not enough evidence to move him.
+function accuracyFailed(snap){
+  return !!(snap&&snap.fromTape&&snap.total>=30&&snap.att>0&&snap.right*100<snap.att*85);
+}
+function placementTarget(stats,log,sub){
+  const level=(stats[sub]&&stats[sub].level)|0;
+  if(level<1)return 1;
+  const cur=masterySnapshot(log,sub,level);
+  if(!accuracyFailed(cur))return level;
+  for(let t=1;t<=level;t++){
+    if(!masterySnapshot(log,sub,t).open)return t;
+  }
+  return level;
+}
+function applyPlacement(sub){
+  if(!sub||!st.stats[sub])return;
+  if(st.gym&&st.gym.sub===sub)return;
+  if(st.gymOffer[sub])return;
+  const next=placementTarget(st.stats,st.log,sub);
+  if(next<st.stats[sub].level){
+    st.stats[sub].level=next;
+    st.stats[sub].cs=0;
+    st.stats[sub].ws=0;
+  }
+}
+function ringFill(snap){
+  const attempts=Math.min(1,(snap.total||0)/30);
+  const days=Math.min(1,(snap.qualified||0)/2);
+  let acc=0;
+  if(snap.att>0){
+    if(snap.right*100>=snap.att*85)acc=1;
+    else if(snap.ratio>0.6)acc=(snap.ratio-0.6)/0.25;
+  }
+  return Math.max(0,Math.min(1,Math.min(attempts,days,acc)));
+}
+function masteryRingHTML(){
+  const sub=(st.q&&subjectOn(st.q.subject))?st.q.subject:(enabledSubjects()[0]||'math');
+  if(!st.stats[sub]||st.stats[sub].level>=maxLevel(sub))return '';
+  const snap=masterySnapshot(st.log,sub,st.stats[sub].level);
+  const fill=ringFill(snap);
+  const glow=st.masteryGlow===sub;
+  if(glow)st.masteryGlow='';
+  const circ=56.5487;
+  const dash=(fill*circ).toFixed(2);
+  return `<span class="gym-ring${glow?' glow':''}" role="img" aria-label="Gym badge: getting closer." data-fill="${fill.toFixed(3)}"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false"><circle class="gym-ring-track" cx="12" cy="12" r="9"/><circle class="gym-ring-val" cx="12" cy="12" r="9" stroke-dasharray="${dash} ${circ.toFixed(2)}"/><circle class="gym-ring-badge" cx="12" cy="12" r="3.2"/></svg></span>`;
+}
+// The Parents Gym line uses the same tally as the gate.
+const MASTERY_GYM=true;
 function gymLineText(sub,tier,log){
   if((tier|0)>=maxLevel(sub))return 'Top level reached.';
   const sum=gymWindow(log,sub,tier|0);
@@ -3998,8 +4096,8 @@ function skillDisplayName(topic,tier){
     if(t===3)return 'Counting by 2s, 5s, and 10s';
     return 'Counting by 3s, 4s, and 25s';
   }
-  if(topic==='Shapes')return t<=1?'Naming shapes':'Sides and corners';
-  if(topic==='Comparing')return t<=1?'Comparing numbers to 10':'Comparing numbers to 20';
+  if(topic==='Shapes')return t<=1?'Shapes, sides, and corners':'Sides and corners';
+  if(topic==='Comparing')return t<=1?'Comparing numbers and sizes':'Comparing numbers to 20';
   if(topic==='Place value')return t>=4?'Hundreds, tens, and ones':'Tens and ones';
   if(topic==='Word problems with more than one step'){
     if(t<=1)return 'Stories within 5';
@@ -4292,23 +4390,20 @@ function setKidGrade(kidId, raw){
     let deal=false;
     if(next&&prev!==next){
       const cap=Math.min(next,maxLevel('math'));
-      if(st.stats.math.level!==cap){
-        st.stats.math.level=cap;
-        st.stats.math.cs=0;
-        st.stats.math.ws=0;
-      }
+      // A lock is a ceiling. Raising it does not lift him, and the tally stays.
+      if(st.stats.math.level>cap)st.stats.math.level=cap;
       const off=st.gymOffer.math;
       if(off&&(off.tier!==st.stats.math.level||hasBadge('math',off.tier)))st.gymOffer.math=null;
       // A battle for a different tier cannot stay on screen. The leader card
       // is painted from the old DOM, so the game is marked stale until the
       // next time that screen is shown.
-      if(st.gym&&st.gym.sub==='math'&&st.gym.tier!==cap){
+      if(st.gym&&st.gym.sub==='math'&&st.gym.tier!==st.stats.math.level){
         if(gymTick){clearInterval(gymTick);gymTick=null;}
         st.gym=null;
         if(st.phase==='gym'||st.phase==='award')st.phase=st.team.length?'play':'starter';
         deal=st.phase==='play';
       }
-      const open=st.phase==='play'&&st.q&&!st.cor&&!st.q.rematch&&st.q.subject==='math'&&st.q.tmpl&&st.q.tmpl.lv!==cap;
+      const open=st.phase==='play'&&st.q&&!st.cor&&!st.q.rematch&&st.q.subject==='math'&&st.q.tmpl&&st.q.tmpl.lv!==st.stats.math.level;
       if(open)deal=true;
       if(deal)loadQuestion();
       if(view!=='game')gameStale=true;
@@ -4320,14 +4415,11 @@ function setKidGrade(kidId, raw){
     kid.data.settings=Object.assign({},kid.data.settings,{grade:stored});
     if(next){
       const cap=Math.min(next,maxLevel('math'));
-      if((kid.data.stats.math.level|0)!==cap){
-        kid.data.stats.math.level=cap;
-        kid.data.stats.math.cs=0;
-        kid.data.stats.math.ws=0;
-      }
-      const earned=kid.data.badges&&Array.isArray(kid.data.badges.math)&&kid.data.badges.math.indexOf(cap)>=0;
+      if((kid.data.stats.math.level|0)>cap)kid.data.stats.math.level=cap;
+      const now=kid.data.stats.math.level|0;
+      const earned=kid.data.badges&&Array.isArray(kid.data.badges.math)&&kid.data.badges.math.indexOf(now)>=0;
       const off=kid.data.gymOffer&&kid.data.gymOffer.math;
-      if(off&&((off.tier|0)!==cap||earned))kid.data.gymOffer.math=null;
+      if(off&&((off.tier|0)!==now||earned))kid.data.gymOffer.math=null;
       if(kid.data.gym&&kid.data.gym.sub==='math'&&(kid.data.gym.tier|0)>cap){
         kid.data.gym=undefined;
         if(kid.data.award&&kid.data.award.sub==='math')kid.data.award=undefined;
@@ -4519,54 +4611,48 @@ function mathLock(){
 // `skipStreak` is a review question from an earlier tier. It still counts as
 // an answer (and the caller still pays XP and queues a Rematch) but it does
 // not move the level-up or level-down run, and it does not wipe one either.
+// Five in a row is only the streak celebration. A Gym, or a quiet step
+// back onto a badge he already holds, waits for mastery on this tier.
+function maybeMasteryAdvance(sub){
+  const s=st.stats[sub];
+  if(!s||s.level>=maxLevel(sub))return;
+  const cur=st.gymOffer[sub];
+  if(cur&&cur.tier===s.level)return;
+  const snap=masterySnapshot(st.log,sub,s.level);
+  if(!snap.open)return;
+  const lock=sub==='math'?mathLock():0;
+  if(hasBadge(sub,s.level)){
+    if((lock&&s.level>=lock)||s.level+1>maxLevel(sub))return;
+    s.cs=0;
+    s.level++;
+    const off=st.gymOffer[sub];
+    if(off&&off.tier!==s.level)st.gymOffer[sub]=null;
+    return;
+  }
+  s.cs=0;
+  st.gymOffer[sub]={tier:s.level,cool:0};
+  st.masteryGlow=sub;
+}
 function updStats(sub,ok,skipStreak){
   const s=st.stats[sub];
   s.att++;
   if(ok)s.cor++;
   if(skipStreak)return;
+  const rematch=!!(st.q&&st.q.rematch);
   if(ok){
     s.cs++;s.ws=0;
-    if(s.cs<LEVEL_UP_STREAK)return;
-    const lock=sub==='math'?mathLock():0;
-    if(lock&&s.level>=lock){
-      s.cs=0;
-      // The badge for this tier is already theirs, or this is the top of the
-      // bank and there is no Gym above it. Five in a row is only the streak.
-      if(hasBadge(sub,s.level)||s.level>=maxLevel(sub))return;
-      const cur=st.gymOffer[sub];
-      if(cur&&cur.tier===s.level)return;
-      st.gymOffer[sub]={tier:s.level,cool:0};
-      return;
-    }
-    // Below a lock, five in a row climbs one tier and stops at the lock.
-    // It does not open a Gym the child would only use to get back.
-    if(lock&&s.level<lock){
-      s.cs=0;
-      s.level++;
-      const off=st.gymOffer[sub];
-      if(off&&off.tier!==s.level)st.gymOffer[sub]=null;
-      return;
-    }
-    if(s.level<maxLevel(sub)){
-      s.cs=0;
-      const tier=s.level;
-      // Already cleared this tier (an old save, or a badge kept ahead of the
-      // counter). Step up quietly instead of asking for the same battle again.
-      if(hasBadge(sub,tier)){s.level++;return;}
-      const cur=st.gymOffer[sub];
-      if(cur&&cur.tier===tier)return; // a cooldown already running stays put
-      st.gymOffer[sub]={tier,cool:0};
-    }
   } else {
     s.ws++;s.cs=0;
     if(s.ws>=LEVEL_DOWN_STREAK&&s.level>1){
       s.level--;s.ws=0;
-      // A lock is a ceiling, not a reason to take badges away.
-      if(!(sub==='math'&&mathLock()))st.badges[sub]=(st.badges[sub]||[]).filter(t=>t<s.level);
+      // A badge is earned history. A drop does not take it away.
       const off=st.gymOffer[sub];
       if(off&&off.tier!==s.level)st.gymOffer[sub]=null;
     }
   }
+  if(rematch||st.phase==='gym')return;
+  if(ok)maybeMasteryAdvance(sub);
+  applyPlacement(sub);
 }
 function gymQueue(sub,tier){
   const bank=QB[sub]&&QB[sub][tier];
@@ -5429,7 +5515,7 @@ function render(){
     // Pokémon, no evolution waiting, and a practice question. The strip is the
     // button then. Otherwise it is just the picture and the name.
     const offerSwitch=canOfferSwitch();
-    const strip=`<div class="psvg ${st.anim}">${offerSwitch?'<span class="switch-mark" aria-hidden="true">&#128260;</span>':''}${pkSprite(tm.pi,96,tm.shiny)}</div><div class="mon-meta"><div class="pname">${p.n}${tm.shiny?` <span class="shiny-badge">${SHINY_STAR} Shiny</span>`:''} <span class="lvl-badge${st.lvlUpMsg?' lvl-up':''}">Lv ${tm.level}</span></div><div class="xp-track" aria-hidden="true"><div class="xp-fill" style="width:${pct}%"></div></div></div>`;
+    const strip=`<div class="psvg ${st.anim}">${offerSwitch?'<span class="switch-mark" aria-hidden="true">&#128260;</span>':''}${pkSprite(tm.pi,96,tm.shiny)}</div><div class="mon-meta"><div class="pname">${p.n}${tm.shiny?` <span class="shiny-badge">${SHINY_STAR} Shiny</span>`:''} <span class="lvl-badge${st.lvlUpMsg?' lvl-up':''}">Lv ${tm.level}</span>${masteryRingHTML()}</div><div class="xp-track" aria-hidden="true"><div class="xp-fill" style="width:${pct}%"></div></div></div>`;
     h+=offerSwitch
       ?`<button type="button" class="card pcard mon-strip" id="mon-switch" aria-label="Switch Pokémon">${strip}</button>`
       :`<div class="card pcard mon-strip">${strip}</div>`;
@@ -6648,6 +6734,7 @@ function commitAttempt(ok,choice,nextDraft){
         const tm=activeTM();
         if(tm){st.lastXp=XP_WITH_HELP;tm.xp+=st.lastXp;applyLevelUps();}
       }
+      if(st.phase!=='gym'&&!(st.q&&st.q.bankReview)&&!(st.q&&st.q.rematch))applyPlacement(st.q.subject);
     } else if(st.phase==='gym'){
       // Gym answers count toward the subject totals, and nothing else.
       // Misses must not drop a tier, strip a badge, or arm another invite.

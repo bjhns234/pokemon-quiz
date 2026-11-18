@@ -331,7 +331,7 @@ test('a Rare Candy levels the active Pokémon, and a Great Ball starts the next 
   await expect(page.locator('.catch-pip.filled')).toHaveCount(1);
 });
 
-test('dropping a tier gives back the badge for that tier',async({page})=>{
+test('dropping a tier keeps the badge and clears the old invite',async({page})=>{
   await state(page,()=>{
     st.stats.math.level=2;
     st.stats.math.ws=LEVEL_DOWN_STREAK-1;
@@ -340,7 +340,7 @@ test('dropping a tier gives back the badge for that tier',async({page})=>{
   });
   await serveMathMiss(page);
   expect(await state(page,()=>({level:st.stats.math.level,badges:[...st.badges.math],offer:st.gymOffer.math}))).toEqual({
-    level:1,badges:[],offer:null,
+    level:1,badges:[1],offer:null,
   });
 });
 
