@@ -3139,6 +3139,10 @@ function parsePractice(raw){
 // and hinted, never right. Rematches are not stored. Days older than 30 drop
 // on save. The tape is what the Gym line and a later mastery check both read.
 const LOG_EPOCH='2026-11-17';
+// One cap for the eligible tape. noteProgress and parseLog both keep this
+// tail, and the Gym window reads the same number, so a long day cannot be
+// dropped whole while its count survives.
+const TAPE_KEEP=40;
 function localISO(d){
   const y=d.getFullYear();
   const m=String(d.getMonth()+1).padStart(2,'0');
@@ -3182,7 +3186,7 @@ function parseLog(raw){
           if(n>0&&n<=10000)next[key]=n;
           return;
         }
-        if(typeof v==='string'&&/^[01]{0,80}$/.test(v)&&v)next[key]=v.slice(-80);
+        if(typeof v==='string'&&/^[01]+$/.test(v))next[key]=v.slice(-TAPE_KEEP);
         return;
       }
       if(!Array.isArray(v))return;
@@ -3244,7 +3248,7 @@ function pruneLog(raw){
       all+=seq;
       return span;
     });
-    const cut=Math.max(0,all.length-40);
+    const cut=Math.max(0,all.length-TAPE_KEEP);
     spans.forEach(s=>{
       const from=Math.max(s.start,cut);
       const to=Math.min(s.start+s.len,all.length);
@@ -3458,7 +3462,7 @@ function noteProgress(tmpl,outcome){
     const countKey=tape+'|n';
     const prevN=typeof day[countKey]==='number'?day[countKey]:prev.length;
     day[countKey]=prevN+1;
-    day[tape]=(prev+(outcome==='right'?'1':'0')).slice(-200);
+    day[tape]=(prev+(outcome==='right'?'1':'0')).slice(-TAPE_KEEP);
   }
 }
 function notePractice(tmpl,outcome){
@@ -4048,7 +4052,7 @@ function masterySnapshot(log,sub,tier){
     if(seq){parts.push({d,seq});dayCounts.push(seq.length);}
   });
   const full=parts.map(p=>p.seq).join('');
-  const window=full.slice(-40);
+  const window=full.slice(-TAPE_KEEP);
   let need=window.length;
   let dayCount=0;
   for(let i=parts.length-1;i>=0&&need>0;i--){

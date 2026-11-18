@@ -610,6 +610,35 @@ test('results inside the last 40 survive a 14-day prune and still open the gate'
   expect(errors).toEqual([]);
 });
 
+test('81 results on one day stay in the last 40',async({page})=>{
+  const errors=await boot(page);
+  const snap=await state(page,()=>{
+    st.stats.math.level=1;
+    st.log={'2026-11-17':{'math|@|1':'1'.repeat(81),'math|@|1|n':81}};
+    return masterySnapshot(st.log,'math',1);
+  });
+  expect(snap.total).toBe(40);
+  expect(snap.total).not.toBe(0);
+  expect(errors).toEqual([]);
+});
+
+test('81 misses are not thrown away before the next day opens the Gym',async({page})=>{
+  const errors=await boot(page);
+  const snap=await state(page,()=>{
+    st.stats.math.level=1;
+    st.badges.math=[];
+    st.gymOffer.math=null;
+    st.log={
+      '2026-11-16':{'math|@|1':'0'.repeat(81),'math|@|1|n':81},
+      '2026-11-17':{'math|@|1':'1'.repeat(30),'math|@|1|n':30},
+    };
+    return masterySnapshot(st.log,'math',1);
+  });
+  expect(snap.open).toBe(false);
+  expect(snap.right).toBeLessThan(snap.att);
+  expect(errors).toEqual([]);
+});
+
 test('a day with 5 tries still qualifies when only some of them remain in the last 40',async({page})=>{
   const errors=await boot(page);
   const snap=await state(page,()=>{
