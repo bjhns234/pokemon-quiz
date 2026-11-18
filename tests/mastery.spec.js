@@ -469,10 +469,14 @@ test('the Parents Gym line uses the same numbers as the gate',async({page})=>{
   });
   const tries=shown.att===1?'try':'tries';
   const days=shown.days===1?'1 day':shown.days+' days';
-  expect(shown.text).toContain(`${shown.pct}% right over ${shown.att} ${tries} on ${days}`);
+  // No tries yet is "just started" instead of "0% over 0 tries". Any real
+  // tally is still the gate's own numbers.
+  if(shown.att===0)expect(shown.text).toContain('just started');
+  else expect(shown.text).toContain(`${shown.pct}% right over ${shown.att} ${tries} on ${days}`);
   expect(shown.open).toBe(false);
   await openParents(page);
-  await expect(page.locator('.prog-gym')).toContainText(`${shown.pct}% right over ${shown.att} ${tries} on ${days}`);
+  if(shown.att===0)await expect(page.locator('.prog-gym')).toContainText('just started');
+  else await expect(page.locator('.prog-gym')).toContainText(`${shown.pct}% right over ${shown.att} ${tries} on ${days}`);
   const sample=await state(page,saved=>masterySnapshot(saved,'math',3),log);
   expect(sample).toMatchObject({pct:75,att:40,days:2,total:40,open:false});
   expect(sample.right*100).toBeLessThan(sample.att*85);

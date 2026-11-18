@@ -336,13 +336,11 @@ test('under 60% over 20 tries on 2 days drops one tier, silently, with a Parents
   });
   expect(gate.open).toBe(false);
   expect(gate.att).toBe(0);
-  const tries=gate.att===1?'try':'tries';
-  const days=gate.days===1?'1 day':gate.days+' days';
-  expect(gym).toContain(`${gate.pct}% right over ${gate.att} ${tries} on ${days}`);
+  expect(gym).toContain('Kindergarten: just started. Back to 1st grade at 85% right');
+  expect(gym).not.toContain('0%');
   expect(gym).not.toContain('100%');
   expect(gym).not.toContain('Opens at 85%');
   expect(gym).not.toMatch(/\bGym\b/);
-  expect(gym).toContain('Back to 1st grade');
   await line.scrollIntoViewIfNeeded();
   fs.mkdirSync(ART,{recursive:true});
   await page.screenshot({path:ART+'/parents_drop_log_768x1024.png'});
@@ -525,6 +523,60 @@ test('a badge he already holds does not promise another Gym',async({page})=>{
   const locked=await state(page,log=>gymLineText('math',1,log,{badge:true,lock:1}),solid);
   expect(locked).toBe('Kindergarten: solid!');
   expect(locked).not.toContain('1st grade');
+  expect(errors).toEqual([]);
+});
+
+test('zero tries on a refill says just started, and one try shows the numbers',async({page})=>{
+  const errors=await boot(page);
+  const none={};
+  const one={'2026-11-18':{'math|@|1':'1'}};
+  const single=await state(page,log=>gymLineText('math',1,log,{badge:true}),one);
+  expect(single).toBe('Kindergarten: 100% right over 1 try on 1 day. Back to 1st grade at 85% (needs 30+ tries on 2+ days).');
+  expect(single).not.toContain('just started');
+  const empty=await state(page,log=>gymLineText('math',1,log,{badge:true,redo:{tier:1,fresh:0}}),none);
+  expect(empty).toBe('Kindergarten: just started. Back to 1st grade at 85% right (needs 30+ tries on 2+ days).');
+  const locked=await state(page,log=>gymLineText('math',1,log,{badge:true,lock:1,redo:{tier:1,fresh:0}}),none);
+  expect(locked).toBe('Kindergarten: just started.');
+  expect(locked).not.toContain('Back to');
+  expect(errors).toEqual([]);
+});
+
+test('a Gym with no tries yet says just started, and one try shows the numbers',async({page})=>{
+  const errors=await boot(page);
+  const none={};
+  const one={'2026-11-18':{'math|@|1':'0'}};
+  const single=await state(page,log=>gymLineText('math',1,log),one);
+  expect(single).toBe('Kindergarten Gym: 0% right over 1 try on 1 day. Opens at 85% (needs 30+ tries on 2+ days).');
+  expect(single).not.toContain('just started');
+  const empty=await state(page,log=>gymLineText('math',1,log),none);
+  expect(empty).toBe('Kindergarten Gym: just started. Opens at 85% right (needs 30+ tries on 2+ days).');
+  expect(errors).toEqual([]);
+});
+
+test('2nd grade with the badge names the climb back to 3rd grade',async({page})=>{
+  const errors=await boot(page);
+  const one={'2026-11-18':{'math|@|3':'1'}};
+  const line=await state(page,log=>gymLineText('math',3,log,{badge:true}),one);
+  expect(line).toContain('Back to 3rd grade');
+  expect(line).toContain('100% right over 1 try');
+  expect(errors).toEqual([]);
+});
+
+test('2nd grade with the badge and the bar met says solid and back to 3rd grade',async({page})=>{
+  const errors=await boot(page);
+  const solid={
+    '2026-11-17':{'math|@|3':'1'.repeat(20)},
+    '2026-11-18':{'math|@|3':'1'.repeat(20)},
+  };
+  const line=await state(page,log=>gymLineText('math',3,log,{badge:true}),solid);
+  expect(line).toBe('2nd grade: solid! Back to 3rd grade next.');
+  expect(errors).toEqual([]);
+});
+
+test('2nd grade with no tries yet still names the climb back to 3rd grade',async({page})=>{
+  const errors=await boot(page);
+  const line=await state(page,log=>gymLineText('math',3,log,{badge:true}),{});
+  expect(line).toBe('2nd grade: just started. Back to 3rd grade at 85% right (needs 30+ tries on 2+ days).');
   expect(errors).toEqual([]);
 });
 

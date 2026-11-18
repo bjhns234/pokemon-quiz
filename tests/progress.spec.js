@@ -252,9 +252,9 @@ test('an Auto save at tier 3 with no tape starts at Kindergarten and keeps the t
   // Saved level 3 fills in the badges under it, then placement starts him
   // at Kindergarten. He already holds that badge, so this is a climb back,
   // not a Gym.
-  await expect(card.locator('.prog-gym')).toContainText('Kindergarten');
-  await expect(card.locator('.prog-gym')).toContainText('0 tries');
-  await expect(card.locator('.prog-gym')).toContainText('Back to 1st grade');
+  await expect(card.locator('.prog-gym')).toContainText('Kindergarten: just started.');
+  await expect(card.locator('.prog-gym')).toContainText('Back to 1st grade at 85% right');
+  await expect(card.locator('.prog-gym')).not.toContainText('0 tries');
   await expect(card.locator('.prog-gym')).not.toContainText('Gym');
   await expect(card.locator('.prog-gym')).not.toContainText('2nd-grade');
   await expect(card.locator('.prog-chip').first()).toHaveText('New');

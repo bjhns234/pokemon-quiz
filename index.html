@@ -4273,13 +4273,19 @@ function gymLineText(sub,tier,log,extra){
   const here=practiceGradeName(tier);
   const next=practiceGradeName((tier|0)+1);
   const lock=extra.lock|0;
-  const canClimb=(tier|0)+1<maxLevel(sub)&&!(lock&&(tier|0)>=lock);
+  // The tier at the ceiling already returned above. The one just under it
+  // still climbs, same as maybeMasteryAdvance. Only a grade lock holds him.
+  const canClimb=!(lock&&(tier|0)>=lock);
   const bar='at 85% (needs 30+ tries on 2+ days)';
+  const fresh=(sum.att|0)===0;
   if(extra.badge&&sum.open&&canClimb)return `${here}: solid! Back to ${next} next.`;
   if(extra.badge&&sum.open)return `${here}: solid!`;
+  if(extra.badge&&fresh&&canClimb)return `${here}: just started. Back to ${next} at 85% right (needs 30+ tries on 2+ days).`;
+  if(extra.badge&&fresh)return `${here}: just started.`;
   if(extra.badge&&canClimb)return `${here}: ${phrase}. Back to ${next} ${bar}.`;
   if(extra.badge)return `${here}: ${phrase}.`;
   if(sum.open)return `${gymGradeLabel(tier)} Gym: ready! ${phrase}.`;
+  if(fresh)return `${gymGradeLabel(tier)} Gym: just started. Opens at 85% right (needs 30+ tries on 2+ days).`;
   return `${gymGradeLabel(tier)} Gym: ${phrase}. Opens at 85% (needs 30+ tries on 2+ days).`;
 }
 function gymLineHTML(kid){
