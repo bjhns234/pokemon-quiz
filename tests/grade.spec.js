@@ -1,4 +1,5 @@
-// A parent can hold a child at a grade. Auto is the old move-up rule.
+// A parent can hold a child at a grade. The lock is a ceiling: it does not
+// lift a child who is still on an earlier tier.
 // Past kindergarten, every 5th regular question is earlier work, and that
 // answer does not move the level-up or level-down streak.
 const {test,expect}=require('@playwright/test');
@@ -54,7 +55,7 @@ async function fresh(page){
   return errors;
 }
 
-test('an old save loads as Auto and a Gym win still moves up',async({page})=>{
+test('an old save loads as Auto, five in a row does not open a Gym, and a Gym win still moves up',async({page})=>{
   const errors=await openGame(page,{save:oldSave});
   expect(await state(page,()=>st.grade)).toBe(0);
   expect(await state(page,()=>st.stats.math.level)).toBe(1);
@@ -68,7 +69,9 @@ test('an old save loads as Auto and a Gym win still moves up',async({page})=>{
     await serve(page,{sub:'math',lv:1,idx:i});
     await answer(page,true);
   }
-  expect(await state(page,()=>({level:st.stats.math.level,offer:st.gymOffer.math}))).toEqual({level:1,offer:{tier:1,cool:0}});
+  expect(await state(page,()=>st.stats.math.level)).toBe(1);
+  expect(await state(page,()=>st.gymOffer.math)).toBeNull();
+  await state(page,()=>{st.gymOffer.math={tier:1,cool:0};st.cor=true;render();});
   await page.click('[data-gym-start="math"]');
   await state(page,()=>{st.gym.lead=1;});
   await answer(page,true);
@@ -124,8 +127,9 @@ test('locking kindergarten stays in tier 1, and a Gym win gives the badge only',
   });
   expect(dealt.every(lv=>lv===1)).toBe(true);
   expect(await state(page,()=>st.stats.math.level)).toBe(1);
-  expect(await state(page,()=>st.gymOffer.math)).toEqual({tier:1,cool:0});
+  expect(await state(page,()=>st.gymOffer.math)).toBeNull();
 
+  await state(page,()=>{st.gymOffer.math={tier:1,cool:0};st.cor=true;render();});
   await page.click('[data-gym-start="math"]');
   await state(page,()=>{st.gym.lead=1;});
   await answer(page,true);
@@ -146,58 +150,44 @@ test('locking kindergarten stays in tier 1, and a Gym win gives the badge only',
   expect(errors).toEqual([]);
 });
 
-test('locking 1st grade moves to tier 2, drops to kindergarten, and climbs back without reaching tier 3',async({page})=>{
+test('locking 1st grade does not lift kindergarten, and lowering the lock keeps the tally',async({page})=>{
   const errors=await fresh(page);
   await parkPastEvolution(page);
-  await state(page,()=>{st.stats.math.level=1;st.stats.math.cs=0;st.badges.math=[1];st.gymOffer.math=null;});
+  const day=await state(page,()=>{
+    st.stats.math.level=1;
+    st.stats.math.cs=4;
+    st.stats.math.ws=2;
+    st.badges.math=[1];
+    st.gymOffer.math=null;
+    const today=localISO(new Date());
+    st.log={[today]:{'math|@|1':'11111'}};
+    return today;
+  });
   await openParents(page);
-  // 1st grade is tier 2. The button label is taken from TIER_PLAIN.
+  // 1st grade is tier 2. The lock is a ceiling, so a kindergarten child stays there.
   await page.locator('#grade-setting .grade-choice[data-grade="2"]').click();
   await expect(page.locator('#grade-setting .grade-choice[data-grade="2"]')).toHaveAttribute('aria-pressed','true');
-  expect(await state(page,()=>st.stats.math.level)).toBe(2);
+  expect(await state(page,d=>({level:st.stats.math.level,cs:st.stats.math.cs,ws:st.stats.math.ws,tape:st.log[d]['math|@|1']}),day)).toEqual({
+    level:1,cs:4,ws:2,tape:'11111',
+  });
   await backToGame(page);
   await nextQuestion(page);
-  expect(await state(page,()=>st.q.tmpl.lv)).toBe(2);
-
-  for(let i=0;i<3;i++){
-    await serve(page,{sub:'math',lv:2,idx:i});
-    await answer(page,false);
-  }
-  expect(await state(page,()=>({level:st.stats.math.level,badges:[...st.badges.math]}))).toEqual({level:1,badges:[1]});
+  expect(await state(page,()=>st.q.tmpl.lv)).toBe(1);
 
   for(let i=0;i<5;i++){
-    await serve(page,{sub:'math',lv:1,idx:10+i});
+    await serve(page,{sub:'math',lv:1,idx:i});
     await answer(page,true);
   }
-  expect(await state(page,()=>st.stats.math.level)).toBe(2);
+  expect(await state(page,()=>st.stats.math.level)).toBe(1);
+  expect(await state(page,()=>st.gymOffer.math)).toBeNull();
+  const tape=await state(page,d=>st.log[d]['math|@|1'],day);
 
-  for(let i=0;i<5;i++){
-    await serve(page,{sub:'math',lv:2,idx:10+i});
-    await answer(page,true);
-  }
-  expect(await state(page,()=>({level:st.stats.math.level,offer:st.gymOffer.math}))).toEqual({level:2,offer:{tier:2,cool:0}});
-  await page.click('[data-gym-start="math"]');
-  await state(page,()=>{st.gym.lead=1;});
-  await answer(page,true);
-  await expect(page.locator('.award-card')).toBeVisible();
-  expect(await state(page,()=>({level:st.stats.math.level,badges:[...st.badges.math].sort()}))).toEqual({level:2,badges:[1,2]});
-  await page.click('#award-go');
-
-  for(let i=0;i<5;i++){
-    await serve(page,{sub:'math',lv:2,idx:20+i});
-    await answer(page,true);
-  }
-  expect(await state(page,()=>({level:st.stats.math.level,offer:st.gymOffer.math}))).toEqual({level:2,offer:null});
-
+  await state(page,()=>{st.stats.math.level=3;});
   await openParents(page);
-  await page.locator('#grade-setting .grade-choice[data-grade="auto"]').click();
-  await backToGame(page);
-  expect(await state(page,()=>st.grade)).toBe(0);
-  for(let i=0;i<5;i++){
-    await serve(page,{sub:'math',lv:2,idx:30+i});
-    await answer(page,true);
-  }
-  expect(await state(page,()=>st.stats.math.level)).toBe(3);
+  await page.locator('#grade-setting .grade-choice[data-grade="1"]').click();
+  expect(await state(page,arg=>({level:st.stats.math.level,grade:st.grade,tape:st.log[arg.day]['math|@|1'],want:arg.tape}),{day,tape})).toEqual({
+    level:1,grade:1,tape,want:tape,
+  });
   expect(errors).toEqual([]);
 });
 
@@ -371,7 +361,7 @@ test('a grade is saved per child and still selected after a reload',async({page}
   });
   expect(saved).toEqual([
     {name:'Maya',grade:1,level:1},
-    {name:'Leo',grade:3,level:3},
+    {name:'Leo',grade:3,level:1},
   ]);
 
   await page.reload();
@@ -387,7 +377,7 @@ test('a grade is saved per child and still selected after a reload',async({page}
   expect(await state(page,()=>({grade:st.grade,level:st.stats.math.level,name:activeKid().name}))).toEqual({grade:1,level:1,name:'Maya'});
   await page.click('#who-btn');
   await page.locator('[data-pick]').filter({hasText:'Leo'}).click();
-  expect(await state(page,()=>({grade:st.grade,level:st.stats.math.level,name:activeKid().name}))).toEqual({grade:3,level:3,name:'Leo'});
+  expect(await state(page,()=>({grade:st.grade,level:st.stats.math.level,name:activeKid().name}))).toEqual({grade:3,level:1,name:'Leo'});
   expect(errors).toEqual([]);
 });
 
@@ -440,9 +430,10 @@ test('a grade change replaces an open question and clears a Gym from the screen'
   await openParents(page);
   await page.locator('#grade-setting .grade-choice[data-grade="2"]').click();
   await backToGame(page);
-  const after=await state(page,()=>({lv:st.q.tmpl.lv,key:reviewKey(st.q.tmpl),cor:st.cor,phase:st.phase,gym:st.gym}));
-  expect(after).toMatchObject({lv:2,cor:false,phase:'play',gym:null});
-  expect(after.key).not.toBe(before.key);
+  const after=await state(page,()=>({lv:st.q.tmpl.lv,key:reviewKey(st.q.tmpl),cor:st.cor,phase:st.phase,gym:st.gym,level:st.stats.math.level}));
+  // Raising the lock does not move the question or the tier.
+  expect(after).toMatchObject({lv:1,cor:false,phase:'play',gym:null,level:1});
+  expect(after.key).toBe(before.key);
   await expect(page.locator('.gym-card, .gym-name, .gym-role')).toHaveCount(0);
 
   await answer(page,true);

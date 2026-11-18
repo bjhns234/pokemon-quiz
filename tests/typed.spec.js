@@ -285,15 +285,15 @@ test('a typed catch fills a pip, a miss spends a ball, and help fills nothing',a
   expect(await state(page,()=>({cs:st.wild.correctStreak,misses:st.wild.misses}))).toEqual({cs:0,misses:0});
 });
 
-test('typed first-tries unlock a math Gym instead of stepping the tier up',async({page})=>{
-  await state(page,()=>{st.stats.math.level=3;st.stats.math.cs=0;});
-  const need=await state(page,()=>LEVEL_UP_STREAK);
-  for(let i=0;i<need;i++){
-    await serve(page,{sub:'math',lv:3,idx:i});
-    expect(await state(page,()=>isTypedQuestion(st.q))).toBe(true);
-    await state(page,()=>{st.armAt=0;submitTyped(st.q.answers[st.q.correctIndex]);});
-  }
-  expect(await state(page,()=>({level:st.stats.math.level,offer:st.gymOffer.math}))).toEqual({level:3,offer:{tier:3,cool:0}});
+test('typed first-tries still pay the streak and do not open a Gym',async({page})=>{
+  await state(page,()=>{st.stats.math.level=3;st.stats.math.cs=4;st.streak=4;});
+  await serve(page,{sub:'math',lv:3,idx:0});
+  expect(await state(page,()=>isTypedQuestion(st.q))).toBe(true);
+  await state(page,()=>{st.armAt=0;submitTyped(st.q.answers[st.q.correctIndex]);});
+  const got=await state(page,()=>({level:st.stats.math.level,offer:st.gymOffer.math,msg:st.streakMsg}));
+  expect(got.level).toBe(3);
+  expect(got.offer).toBeNull();
+  expect(got.msg).toContain('5 in a row');
 });
 
 test('a typed correct is saved like any other answer, and the pad draft is not',async({page})=>{

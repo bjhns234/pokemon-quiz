@@ -622,7 +622,7 @@ test('winning a tier again does not pay the prize a second time',async({page})=>
   });
   await serveMathMiss(page);
   expect(await state(page,()=>({level:st.stats.math.level,badges:[...st.badges.math],prizes:[...st.prizes.math]}))).toEqual({
-    level:1,badges:[],prizes:[1],
+    level:1,badges:[1],prizes:[1],
   });
   await offerGym(page,'math',1);
   await page.click('[data-gym-start="math"]');
