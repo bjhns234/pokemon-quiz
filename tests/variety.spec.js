@@ -24,8 +24,10 @@ function spacing(keys){
 }
 
 // `miss` is a first-try wrong answer, then the right one, the way a child
-// actually gets to the next question. Level is pinned because three misses
-// would otherwise step a 1st-grade player back to kindergarten.
+// actually gets to the next question. Level is pinned because a miss can still
+// move the tier: placement sends an unproved tier down to the lowest one that
+// is not solid, and a slow accuracy drop moves one tier. Three misses in a row
+// no longer do that on their own. The pin keeps this check on the tier it asked for.
 function dealRun(page,level,miss){
   return state(page,({level,miss})=>{
     st.stats.math.level=level;

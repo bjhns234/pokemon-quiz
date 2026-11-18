@@ -292,7 +292,11 @@ test('answering inside a Gym still grows a streak',async({page})=>{
   expect(await state(page,()=>st.gym.lead)).toBe(await state(page,()=>GYM_LEAD_HP-1));
 });
 
-test('a 3-miss drop on Auto stays down after a reload and keeps the badges',async({page})=>{
+test('three current-tier misses on Auto do not drop the level',async({page})=>{
+  // Was "a 3-miss drop on Auto stays down after a reload". An empty log used
+  // to make those misses (and placement) land on Kindergarten. Kindergarten
+  // is solid here, so the only old reason to move was the 3-miss drop.
+  // The level and the badges stay. The warm-up is what those misses start.
   await state(page,()=>{
     st.grade=0;
     st.stats.math.level=2;
@@ -300,17 +304,24 @@ test('a 3-miss drop on Auto stays down after a reload and keeps the badges',asyn
     st.stats.math.cs=0;
     st.badges.math=[1,2];
     st.gymOffer.math=null;
-    st.log={};
+    const today=new Date();
+    const a=new Date(today);a.setDate(today.getDate()-2);
+    const b=new Date(today);b.setDate(today.getDate()-1);
+    st.log={
+      [localISO(a)]:{'math|@|1':'1'.repeat(20)},
+      [localISO(b)]:{'math|@|1':'1'.repeat(20)},
+    };
   });
-  await serveMathMiss(page);
-  await serveMathMiss(page);
-  await serveMathMiss(page);
-  expect(await state(page,()=>({level:st.stats.math.level,badges:[...st.badges.math].sort(),grade:st.grade}))).toEqual({
-    level:1,badges:[1,2],grade:0,
-  });
-  await page.reload();
-  expect(await state(page,()=>({level:st.stats.math.level,badges:[...st.badges.math].sort(),grade:st.grade}))).toEqual({
-    level:1,badges:[1,2],grade:0,
+  for(let i=0;i<3;i++){
+    await state(page,i=>{
+      st.phase='play';st.gym=null;
+      st.q=serveQuestion('math',2,i,questionPname());
+      st.tries=0;st.wrong=[];st.helped=false;st.armAt=0;st.cor=false;
+      commitAttempt(false,st.q.answers.findIndex((_,j)=>j!==st.q.correctIndex));
+    },i);
+  }
+  expect(await state(page,()=>({level:st.stats.math.level,badges:[...st.badges.math].sort(),grade:st.grade,warm:!!st.warmup}))).toEqual({
+    level:2,badges:[1,2],grade:0,warm:true,
   });
 });
 
@@ -359,16 +370,31 @@ test('a Rare Candy levels the active Pokémon, and a Great Ball starts the next 
   await expect(page.locator('.catch-pip.filled')).toHaveCount(1);
 });
 
-test('dropping a tier keeps the badge and clears the old invite',async({page})=>{
+test('a third current-tier miss starts a warm-up and keeps the Gym invite',async({page})=>{
+  // Was "dropping a tier keeps the badge and clears the old invite". The
+  // invite was cleared because the level had left that tier. The level no
+  // longer leaves, so the invite stays with the badge.
   await state(page,()=>{
     st.stats.math.level=2;
     st.stats.math.ws=LEVEL_DOWN_STREAK-1;
     st.badges.math=[1];
     st.gymOffer.math={tier:2,cool:0};
+    const today=new Date();
+    const a=new Date(today);a.setDate(today.getDate()-2);
+    const b=new Date(today);b.setDate(today.getDate()-1);
+    st.log={
+      [localISO(a)]:{'math|@|1':'1'.repeat(20)},
+      [localISO(b)]:{'math|@|1':'1'.repeat(20)},
+    };
   });
-  await serveMathMiss(page);
-  expect(await state(page,()=>({level:st.stats.math.level,badges:[...st.badges.math],offer:st.gymOffer.math}))).toEqual({
-    level:1,badges:[1],offer:null,
+  await state(page,()=>{
+    st.phase='play';st.gym=null;
+    st.q=serveQuestion('math',2,3,questionPname());
+    st.tries=0;st.wrong=[];st.helped=false;st.armAt=0;st.cor=false;
+    commitAttempt(false,st.q.answers.findIndex((_,i)=>i!==st.q.correctIndex));
+  });
+  expect(await state(page,()=>({level:st.stats.math.level,badges:[...st.badges.math],offer:st.gymOffer.math,warm:!!st.warmup}))).toEqual({
+    level:2,badges:[1],offer:{tier:2,cool:0},warm:true,
   });
 });
 
@@ -644,12 +670,14 @@ test('winning a tier again does not pay the prize a second time',async({page})=>
   await page.click('#award-go');
   const first=await state(page,()=>({candy:st.items.candy,great:st.items.great,team:st.team.length,prizes:[...st.prizes.math]}));
   expect(first.prizes).toEqual([1]);
+  // Back on the tier he already won. The old setup used a 3-miss drop to
+  // get here, and that miss also cleared the streak. The drop is gone;
+  // the prize rule is what this test is for.
   await state(page,()=>{
-    st.stats.math.level=2;
-    st.stats.math.ws=LEVEL_DOWN_STREAK-1;
+    st.stats.math.level=1;
     st.badges.math=[1];
+    st.streak=0;
   });
-  await serveMathMiss(page);
   expect(await state(page,()=>({level:st.stats.math.level,badges:[...st.badges.math],prizes:[...st.prizes.math]}))).toEqual({
     level:1,badges:[1],prizes:[1],
   });
