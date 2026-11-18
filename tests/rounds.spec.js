@@ -389,6 +389,81 @@ test('a milestone on a wild question is counted in the round XP',async({page})=>
   expect(errors).toEqual([]);
 });
 
+test('a flee that fills a qualified round still starts the bonus',async({page})=>{
+  const errors=await boot(page);
+  await state(page,()=>{
+    st.round=freshRound(10);
+    st.round.n=9;
+    st.round.right=8;
+    st.round.marks=[1,1,1,1,1,1,1,1,0];
+    st.streak=0;
+  });
+  await forceWild(page,'Pidgey',0);
+  await state(page,()=>{st.wild.misses=1;});
+  await answer(page,false);
+  await expect(page.locator('.wild-card')).toBeVisible();
+  await expect(page.locator('#round-done')).toHaveCount(0);
+  expect(await state(page,()=>({
+    n:st.round.n,
+    right:st.round.right,
+    bonus:!!st.bonusWild,
+    phase:st.phase,
+  }))).toEqual({n:10,right:8,bonus:true,phase:'wild'});
+  expect(errors).toEqual([]);
+});
+
+test('reloading during a held catch still starts the bonus',async({page})=>{
+  const errors=await boot(page);
+  await state(page,()=>{
+    st.round=freshRound(10);
+    st.round.n=9;
+    st.round.right=9;
+    st.round.marks=Array(9).fill(1);
+    st.streak=0;
+  });
+  await forceWild(page,'Pidgey',2);
+  await answer(page,true);
+  expect(await state(page,()=>!!(st.round&&st.round.holdWild))).toBe(true);
+  expect(await state(page,()=>st.team.some(t=>PKM[t.pi].n==='Pidgey'))).toBe(false);
+  await page.reload();
+  await expect(page.locator('.wild-card')).toBeVisible();
+  await expect(page.locator('#round-done')).toHaveCount(0);
+  expect(await state(page,()=>({
+    n:st.round.n,
+    bonus:!!st.bonusWild,
+    phase:st.phase,
+    caught:st.team.some(t=>PKM[t.pi].n==='Pidgey'),
+  }))).toEqual({n:10,bonus:true,phase:'wild',caught:false});
+  expect(errors).toEqual([]);
+});
+
+test('an exhausted wild pool still finishes the round',async({page})=>{
+  const errors=await boot(page);
+  await state(page,()=>{
+    const bases=WILD_BY_GEN.reduce((a,g)=>a.concat(g),[]);
+    bases.forEach(pi=>{
+      st.team.push({pi,level:5,xp:0,shiny:false});
+      st.team.push({pi,level:5,xp:0,shiny:true});
+    });
+    st.round=freshRound(10);
+    st.round.n=10;
+    st.round.right=8;
+    st.round.closed=true;
+    st.round.bonusPending=true;
+    st.round.bonus=null;
+    st.bonusWild=false;
+    st.phase='play';
+    st.q=null;
+    bootInto();
+  });
+  await expect(page.locator('#round-done')).toBeVisible();
+  await expect(page.locator('.wild-card')).toHaveCount(0);
+  expect(await state(page,()=>({phase:st.phase,bonus:!!st.bonusWild,pending:!!(st.round&&st.round.bonusPending)}))).toEqual({
+    phase:'round',bonus:false,pending:false,
+  });
+  expect(errors).toEqual([]);
+});
+
 test('round checks are about 22px on a tablet and the card still fits',async({page})=>{
   const errors=await boot(page);
   await state(page,()=>{

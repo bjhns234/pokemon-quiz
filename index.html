@@ -3043,7 +3043,9 @@ function parseRound(raw,pref){
     closed:n>=len?true:!!raw.closed,
     holdEvo:false,
     holdWild:false,
-    bonusPending:!!raw.bonusPending&&!bonus,
+    // A held catch is not saved. Once the count is full and the line was met,
+    // the bonus is still owed, so a reload starts it instead of skipping it.
+    bonusPending:!bonus&&(!!raw.bonusPending||((n>=len||!!raw.closed)&&right>=roundGoal(!!raw.endAfter&&n<len?len0:len))),
     bonus,
   };
 }
@@ -3778,6 +3780,13 @@ function bootInto(){
     st.bonusWild=true;
     st.round.closed=true;
     triggerWildEncounter(rollShiny());
+    if(st.phase==='wild'&&st.wild)return;
+    st.bonusWild=false;
+    st.round.bonusPending=false;
+    st.wild=null;
+    st.wildEscape=false;
+    enterRoundScreen();
+    render();
     return;
   }
   if(st.phase==='gym'&&st.gym){
@@ -5871,6 +5880,13 @@ function enterRoundScreen(){
 }
 function openRoundFinale(){
   if(st.phase==='wild'&&st.wild&&!st.wildEscape)return;
+  // The flee already ended this fight. Clear it before the goal check, or a
+  // round that earned a bonus would see a wild still on screen and skip it.
+  if(st.wildEscape){
+    st.wild=null;
+    st.wildEscape=false;
+    if(st.phase==='wild')st.phase='play';
+  }
   const r=activeRound();
   r.closed=true;
   r.holdEvo=false;
