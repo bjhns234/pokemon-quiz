@@ -552,7 +552,7 @@ test('round XP is this round only, and a bonus catch does not add to it',async({
   await page.click('#nxt');
   await expect(page.locator('#round-done')).toBeVisible({timeout:20000});
   expect(await state(page,()=>st.round.xp),'the catch is not added again').toBe(ladder);
-  await expect(page.locator('#round-xp')).toHaveText(`${ladder} XP`);
+  await expect(page.locator('#round-xp')).toHaveText(`+${ladder} XP`);
 
   await releaseRound(page);
   await page.click('#round-again');
@@ -1064,8 +1064,8 @@ test('the round screen and the dotted question fit an iPad and a phone',async({p
     expect(fit.line,where).toBeGreaterThanOrEqual(20);
     expect(fit.title,where).toBeGreaterThanOrEqual(20);
     expect(fit.small,where).toEqual([]);
-    expect(fit.hero,where).toBeGreaterThanOrEqual(size.width>=768?92:52);
-    expect(fit.hero,where).toBeLessThanOrEqual(size.width>=768?100:60);
+    expect(fit.hero,where).toBeGreaterThanOrEqual(size.width>=768?68:44);
+    expect(fit.hero,where).toBeLessThanOrEqual(size.width>=768?76:52);
     for(const id of ['#round-again','#round-done-exit']){
       const b=await page.locator(id).boundingBox();
       expect(b.height,`${where} ${id}`).toBeGreaterThanOrEqual(64);

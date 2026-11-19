@@ -710,12 +710,15 @@ button.mon-strip:focus{outline:3px solid #1D4ED8;outline-offset:2px}
 /* The route is display only. Nothing on it takes a tap. */
 .route-map{pointer-events:none;display:flex;flex-direction:column;align-items:center;background:#ECFDF5;border:3px solid #86EFAC;border-radius:16px;padding:8px 10px 10px;margin:8px 0;box-sizing:border-box;width:100%}
 .route-label{font-size:20px;font-weight:800;color:#14532D;margin:0 0 4px;line-height:1.2}
-.route-caption{font-size:24px;font-weight:800;color:#1A1A2E;line-height:1.2;margin:6px 0 0;white-space:nowrap}
+.route-caption{font-size:24px;font-weight:800;color:#1A1A2E;line-height:1.2;margin:16px 0 0;text-align:center;max-width:100%}
 .route-track{position:relative;flex:1 1 auto;width:100%;min-height:0;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);align-items:center;justify-items:center}
-.route-node{position:relative;width:60px;height:60px;border-radius:50%;display:flex;align-items:center;justify-content:center;box-sizing:border-box}
+#route-path{position:absolute;inset:0;width:100%;height:100%;overflow:visible;z-index:0}
+#route-path path{fill:none;stroke:#166534;stroke-width:3;stroke-dasharray:2 8;stroke-linecap:round}
+.route-node{position:relative;z-index:1;width:60px;height:60px;border-radius:50%;display:flex;align-items:center;justify-content:center;box-sizing:border-box}
 .route-node[data-on="0"]{opacity:.38}
+.route-gym-node,.route-gym-node[data-on="0"]{opacity:1}
 .route-house{background:#FDE68A;border:3px solid #D97706}
-.route-roof{width:0;height:0;border-left:14px solid transparent;border-right:14px solid transparent;border-bottom:16px solid #B45309}
+.route-home{font-size:28px;line-height:1}
 .route-grass{background:#4ADE80;border:3px solid #166534}
 .route-trainer{background:#C2410C;border:3px solid #7C2D12;color:#fff}
 .route-cap{font-size:22px;line-height:1}
@@ -724,8 +727,8 @@ button.mon-strip:focus{outline:3px solid #1D4ED8;outline-offset:2px}
 .route-gym-label{font-size:18px;font-weight:800;color:#5B21B6;line-height:1}
 #route-map .gym-ring{width:110px;height:110px;margin:0}
 .route-badge{font-size:18px;font-weight:800;color:#5B21B6;line-height:1.1;text-align:center}
-.route-token{position:absolute;left:50%;bottom:calc(100% - 8px);width:96px;height:96px;transform:translateX(-50%);z-index:2}
-.route-token img{width:96px;height:96px;object-fit:contain;display:block}
+.route-token{position:absolute;left:50%;bottom:0;width:72px;height:72px;transform:translateX(-50%);z-index:2}
+.route-token img{width:72px;height:72px;object-fit:contain;display:block}
 .route-node[data-step="0"]{grid-area:1/1}
 .route-node[data-step="1"]{grid-area:1/2}
 .route-node[data-step="2"]{grid-area:1/3}
@@ -733,7 +736,7 @@ button.mon-strip:focus{outline:3px solid #1D4ED8;outline-offset:2px}
 .route-node[data-step="4"]{grid-area:2/2}
 .route-node[data-step="5"]{grid-area:2/1}
 .route-node[data-step="6"]{grid-area:3/2}
-@keyframes route-arc{0%{transform:translateX(-50%) translateY(0)}40%{transform:translateX(-50%) translateY(-16px)}100%{transform:translateX(-50%) translateY(0)}}
+@keyframes route-arc{0%{transform:translateX(-50%) translateY(0)}40%{transform:translateX(-50%) translateY(-14px)}100%{transform:translateX(-50%) translateY(0)}}
 @keyframes route-halo{0%,100%{filter:none}50%{filter:drop-shadow(0 0 8px #7C3AED)}}
 .route-token.hop{animation:route-arc 600ms ease-out}
 .route-token.hop-chain{animation-duration:250ms}
@@ -752,21 +755,24 @@ button.mon-strip:focus{outline:3px solid #1D4ED8;outline-offset:2px}
   #round-done{flex:1 1 auto;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) 460px;grid-template-areas:"summary map" "actions actions";align-items:center;column-gap:12px;padding:6px 8px;margin:0;overflow:hidden}
   #round-done .round-summary{grid-area:summary}
   #round-done .route-map{grid-area:map;width:460px;height:440px;flex:0 0 auto;margin:0}
+  #round-done .route-track{padding-bottom:8px}
+  #round-done .route-gym-node{margin-top:28px}
+  #round-done .route-caption{margin-top:18px}
   #round-done .round-actions{grid-area:actions}
 }
 @media (max-width:700px){
-  .route-map{height:auto;padding:6px 8px 8px;margin:6px 0}
-  .route-track{display:flex;flex-direction:row;align-items:flex-end;justify-content:space-between;min-height:120px;padding:58px 10px 26px}
+  .route-map{height:auto;padding:6px 10px 8px;margin:6px 0;max-width:100%}
+  .route-track{display:flex;flex-direction:row;align-items:flex-end;justify-content:space-between;min-height:64px;padding:4px 2px 22px}
   .route-node{width:36px;height:36px;grid-area:auto}
-  .route-gym-node{width:36px;height:36px}
+  .route-gym-node{width:36px;height:36px;margin-top:0}
   #route-map .gym-ring{width:36px;height:36px}
   .route-cap{font-size:18px}
   .route-star{font-size:18px;top:-10px;right:-6px}
-  .route-roof{border-left-width:8px;border-right-width:8px;border-bottom-width:10px}
-  .route-token,.route-token img{width:56px;height:56px}
+  .route-home{font-size:20px}
+  .route-token,.route-token img{width:48px;height:48px}
   .route-gym-label{position:absolute;top:38px;left:50%;transform:translateX(-50%);font-size:18px;white-space:nowrap}
   .route-badge{font-size:18px}
-  .route-caption{margin-top:2px}
+  .route-caption{margin-top:4px}
 }
 @media (prefers-reduced-motion:reduce){
   .route-token.hop,#route-map .gym-ring.ready{animation:none}
@@ -4936,8 +4942,7 @@ function routeReportLine(kid){
     }
   }
   const n=stars.length;
-  const word=n===1?'trainer':'trainers';
-  return `Route ${route.tier|0||1}: step ${route.step|0} of 6 · ${n} ${word} beaten.`;
+  return `Route ${route.tier|0||1}: step ${route.step|0} of 6. Trainers beaten: ${n} so far.`;
 }
 function gymLineHTML(kid){
   if(!MASTERY_GYM)return '';
@@ -6736,7 +6741,7 @@ function routeMapHTML(){
   const dist=from==null?0:Math.abs(step-from);
   const hop=dist>1?' hop hop-chain':dist===1?' hop':'';
   if(from!=null)st.route.hopFrom=null;
-  const token=tm?`<div id="route-token" class="route-token${hop}" data-step="${step}" data-from="${from==null?'':from}"><span id="round-celebrate">${pkSprite(tm.pi,96,!!tm.shiny)}</span></div>`:'';
+  const token=tm?`<div id="route-token" class="route-token${hop}" data-step="${step}" data-from="${from==null?'':from}"><span id="round-celebrate">${pkSprite(tm.pi,72,!!tm.shiny)}</span></div>`:'';
   const kinds=['house','grass','trainer','grass','grass','trainer','gym'];
   let nodes='';
   for(let i=0;i<7;i++){
@@ -6755,12 +6760,33 @@ function routeMapHTML(){
         :ringMarkup(mathGate(),ready?' ready':'');
       nodes+=`<div class="route-node route-gym-node" data-step="6" data-kind="gym" data-on="${on}">${body}<span class="route-gym-label">Gym</span>${here}</div>`;
     }else if(kind==='house'){
-      nodes+=`<div class="route-node route-house" data-step="0" data-kind="house" data-on="${on}"><span class="route-roof" aria-hidden="true"></span>${here}</div>`;
+      nodes+=`<div class="route-node route-house" data-step="0" data-kind="house" data-on="${on}"><span class="route-home" aria-hidden="true">&#127968;</span>${here}</div>`;
     }else{
       nodes+=`<div class="route-node route-grass" data-step="${i}" data-kind="grass" data-on="${on}">${here}</div>`;
     }
   }
-  return `<div id="route-map" class="route-map" data-step="${step}" data-route="${tier}"><p class="route-label" id="route-label">Route ${tier}</p><div class="route-track">${nodes}</div><p id="route-caption" class="route-caption">${escapeHtml(routeCaptionText())}</p></div>`;
+  return `<div id="route-map" class="route-map" data-step="${step}" data-route="${tier}"><p class="route-label" id="route-label">Route ${tier}</p><div class="route-track"><svg id="route-path" aria-hidden="true"><path d=""></path></svg>${nodes}</div><p id="route-caption" class="route-caption">${escapeHtml(routeCaptionText())}</p></div>`;
+}
+function drawRoutePath(){
+  const track=document.querySelector('.route-track');
+  const svg=document.getElementById('route-path');
+  const path=svg&&svg.querySelector('path');
+  if(!track||!path)return;
+  const tr=track.getBoundingClientRect();
+  if(tr.width<2||tr.height<2)return;
+  svg.setAttribute('viewBox',`0 0 ${tr.width.toFixed(1)} ${tr.height.toFixed(1)}`);
+  const nodes=[...track.querySelectorAll('.route-node')].sort((a,b)=>(a.dataset.step|0)-(b.dataset.step|0));
+  const d=nodes.map((el,i)=>{
+    const r=el.getBoundingClientRect();
+    const x=(r.left+r.width/2-tr.left).toFixed(1);
+    const y=(r.top+r.height/2-tr.top).toFixed(1);
+    return `${i?'L':'M'}${x} ${y}`;
+  }).join(' ');
+  path.setAttribute('d',d);
+}
+if(!window.__routePathResize){
+  window.__routePathResize=true;
+  window.addEventListener('resize',()=>drawRoutePath());
 }
 function battleGymFromMap(){
   if(Date.now()<(st.armAt||0))return;
@@ -6784,12 +6810,12 @@ function roundScreenHTML(){
   const r=activeRound();
   const tm=activeTM();
   const name=tm?PKM[tm.pi].n:'your Pokémon';
-  const marks=(r.marks||[]).map(ok=>`<span class="round-mark" data-right="${ok?'1':'0'}">${ok?'✓':'○'}</span>`).join('');
+  const marks=(r.marks||[]).map(ok=>ok?1:0).sort((a,b)=>b-a).map(ok=>`<span class="round-mark" data-right="${ok?'1':'0'}">${ok?'✓':'○'}</span>`).join('');
   const bonus=r.bonus&&r.bonus.name
     ?`<p id="round-bonus" class="round-bonus">${escapeHtml(r.bonus.caught?`${r.bonus.name} joined your team!`:`${r.bonus.name} got away this time. Great work!`)}</p>`
     :'';
   const line=`${r.right|0} of ${r.n|0} right. You and ${name} kept going!`;
-  const xpLine=r.settled?`+${r.xp|0} XP`:`${r.xp|0} XP`;
+  const xpLine=`+${r.xp|0} XP`;
   const gym=routeCanOpenGym()&&(ensureRoute().step|0)>=6;
   const gymBtn=gym?'<button type="button" class="round-gym" id="route-gym">Battle the Gym!</button>':'';
   return `<div class="card round-card" id="round-done"><div class="round-summary"><h2 id="round-title" class="round-title">Round done!</h2><div class="round-marks">${marks}</div><p id="round-line" class="round-line">${escapeHtml(line)}</p><p id="round-xp" class="round-xp">${xpLine}</p>${bonus}</div>${routeMapHTML()}<div class="round-actions${gym?' has-gym':''}">${gymBtn}<div class="round-split"><button type="button" class="round-again" id="round-again">Play again</button><button type="button" class="round-leave" id="round-done-exit">Done</button></div></div></div>`;
@@ -6980,6 +7006,7 @@ function render(){
     if(leave)leave.addEventListener('click',doneForNow);
     const gymGo=gameEl.querySelector('#route-gym');
     if(gymGo)gymGo.addEventListener('click',battleGymFromMap);
+    drawRoutePath();
     const whoRound=gameEl.querySelector('#who-btn');
     if(whoRound)whoRound.addEventListener('click',openProfiles);
     dockMute();

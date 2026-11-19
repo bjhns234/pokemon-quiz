@@ -625,7 +625,7 @@ test('the Parents report has one read-only route line under the Gym line',async(
   await openParents(page);
   const gym=page.locator('.prog-gym');
   const line=page.locator('.prog-route');
-  await expect(line).toHaveText('Route 1: step 4 of 6 · 3 trainers beaten.');
+  await expect(line).toHaveText('Route 1: step 4 of 6. Trainers beaten: 3 so far.');
   const gymBox=await gym.boundingBox();
   const lineBox=await line.boundingBox();
   expect(lineBox.y).toBeGreaterThanOrEqual(gymBox.y+gymBox.height-2);
@@ -664,13 +664,13 @@ test('reduced motion draws the token and the ring in their final place',async({p
     const tr=token.getBoundingClientRect();
     const node=document.querySelector('.route-node[data-step="4"]').getBoundingClientRect();
     const start=document.querySelector('.route-node[data-step="1"]').getBoundingClientRect();
-    const above=(box,gap)=>Math.abs((tr.x+tr.width/2)-(box.x+box.width/2))<20&&Math.abs((tr.y+tr.height)-box.y)<28;
+    const onNode=(box)=>Math.abs((tr.x+tr.width/2)-(box.x+box.width/2))<12&&Math.abs(tr.bottom-box.bottom)<10;
     return {
       tokenAnim:ts.animationName,
       ringAnim:rs?rs.animationName:'missing',
       dash:vs?vs.transitionDuration:'missing',
-      nearEnd:above(node),
-      nearStart:above(start),
+      nearEnd:onNode(node),
+      nearStart:onNode(start),
     };
   });
   expect(motion.tokenAnim).toBe('none');
@@ -806,8 +806,8 @@ test('the map fits an iPad and a phone without scrolling',async({page})=>{
       const ring=await page.locator('#route-map .gym-ring').boundingBox();
       expect(ring.width,where).toBeGreaterThanOrEqual(106);
       expect(ring.width,where).toBeLessThanOrEqual(114);
-      expect(fit.token.width,where).toBeGreaterThanOrEqual(92);
-      expect(fit.token.width,where).toBeLessThanOrEqual(100);
+      expect(fit.token.width,where).toBeGreaterThanOrEqual(68);
+      expect(fit.token.width,where).toBeLessThanOrEqual(76);
     }
     if(size.width>=1000&&size.height<size.width){
       expect(fit.map.x,where).toBeGreaterThan(fit.summary.x+fit.summary.width-8);
@@ -819,13 +819,227 @@ test('the map fits an iPad and a phone without scrolling',async({page})=>{
     if(size.width<500){
       expect(fit.nodes[0].width,where).toBeGreaterThanOrEqual(34);
       expect(fit.nodes[0].width,where).toBeLessThanOrEqual(40);
-      expect(fit.token.width,where).toBeGreaterThanOrEqual(52);
-      expect(fit.token.width,where).toBeLessThanOrEqual(60);
+      expect(fit.token.width,where).toBeGreaterThanOrEqual(44);
+      expect(fit.token.width,where).toBeLessThanOrEqual(52);
       const ys=fit.nodes.map(n=>n.y);
       expect(Math.max(...ys)-Math.min(...ys),where).toBeLessThan(6);
       expect(fit.map.y,where).toBeGreaterThan(fit.summary.y);
     }
   }
+  expect(errors).toEqual([]);
+});
+
+test('a dotted path joins the nodes in walking order',async({page})=>{
+  const errors=await boot(page);
+  await state(page,()=>{st.route={tier:1,step:4};});
+  await showRound(page);
+  await page.setViewportSize({width:768,height:1024});
+  const order=await page.locator('.route-node').evaluateAll(els=>els.map(el=>el.dataset.step));
+  expect(order).toEqual(['0','1','2','3','4','5','6']);
+  await expect(page.locator('#route-path')).toBeVisible();
+  await expect(page.locator('.route-house')).toContainText('🏠');
+  await expect(page.locator('.route-roof')).toHaveCount(0);
+  const walk=await page.evaluate(()=>{
+    const path=document.querySelector('#route-path path');
+    if(!path||typeof path.getTotalLength!=='function')return {missing:true};
+    const len=path.getTotalLength();
+    const ctm=path.getScreenCTM();
+    const nodes=[...document.querySelectorAll('.route-node')].map(el=>{
+      const r=el.getBoundingClientRect();
+      return {step:+el.dataset.step,on:el.dataset.on,x:r.x+r.width/2,y:r.y+r.height/2};
+    }).sort((a,b)=>a.step-b.step);
+    let prev=-0.02;
+    const hits=[];
+    for(const node of nodes){
+      let best=Infinity,t=0;
+      const steps=100;
+      for(let i=0;i<=steps;i++){
+        const p=path.getPointAtLength(len*i/steps);
+        const pt=new DOMPoint(p.x,p.y).matrixTransform(ctm);
+        const d=Math.hypot(pt.x-node.x,pt.y-node.y);
+        if(d<best){best=d;t=i/steps;}
+      }
+      hits.push({step:node.step,best,t,on:node.on,forward:t>prev});
+      prev=t;
+    }
+    const dash=getComputedStyle(path).strokeDasharray;
+    return {len,dash,hits};
+  });
+  expect(walk.missing).toBeFalsy();
+  expect(walk.len).toBeGreaterThan(40);
+  expect(walk.dash==='none'||walk.dash==='0px').toBe(false);
+  for(const hit of walk.hits){
+    expect(hit.best,`step ${hit.step} on the path`).toBeLessThan(36);
+    expect(hit.forward,`step ${hit.step} follows the previous`).toBe(true);
+    expect(hit.on).toBe(hit.step<=4?'1':'0');
+  }
+  expect(errors).toEqual([]);
+});
+
+test('the partner stands on its node and does not cover the others',async({page})=>{
+  const errors=await boot(page);
+  await page.emulateMedia({reducedMotion:'reduce'});
+  for(const step of [4,6]){
+    await state(page,s=>{
+      st.route={tier:1,step:s};
+      st.phase='round';
+      if(!st.round)st.round=freshRound(10);
+      st.round.n=10;st.round.right=8;st.round.closed=true;
+      st.round.marks=[1,1,1,1,1,1,1,1,0,0];
+      render();
+    },step);
+    for(const size of [{width:768,height:1024},{width:1024,height:768},{width:390,height:844}]){
+      await page.setViewportSize(size);
+      const where=`step ${step} ${size.width}x${size.height}`;
+      const fit=await page.evaluate(()=>{
+        const token=document.getElementById('route-token').getBoundingClientRect();
+        const nodes=[...document.querySelectorAll('.route-node')].map(el=>({
+          step:+el.dataset.step,
+          box:el.getBoundingClientRect(),
+        }));
+        const mine=nodes.find(n=>n.step===(+document.getElementById('route-token').dataset.step));
+        const others=nodes.filter(n=>n.step!==mine.step).map(n=>n.box);
+        function hit(a,b){
+          const ix=Math.min(a.right,b.right)-Math.max(a.left,b.left);
+          const iy=Math.min(a.bottom,b.bottom)-Math.max(a.top,b.top);
+          return ix>1&&iy>1;
+        }
+        return {
+          w:token.width,
+          covered:others.some(b=>hit(token,b)),
+          dx:Math.abs((token.x+token.width/2)-(mine.box.x+mine.box.width/2)),
+          db:Math.abs(token.bottom-mine.box.bottom),
+        };
+      });
+      const phone=size.width<500;
+      expect(fit.w,where).toBeGreaterThanOrEqual(phone?44:68);
+      expect(fit.w,where).toBeLessThanOrEqual(phone?52:76);
+      expect(fit.covered,where).toBe(false);
+      expect(fit.dx,where).toBeLessThan(12);
+      expect(fit.db,where).toBeLessThan(10);
+    }
+  }
+  expect(errors).toEqual([]);
+});
+
+test('a phone route does not scroll sideways',async({page})=>{
+  const errors=await boot(page);
+  await state(page,()=>{st.route={tier:1,step:6};st.badges.math=[];st.gymOffer.math=null;st.log={};});
+  await showRound(page);
+  for(const size of [{width:390,height:844},{width:375,height:667}]){
+    await page.setViewportSize(size);
+    const where=`${size.width}x${size.height}`;
+    const fit=await page.evaluate(()=>{
+      const map=document.getElementById('route-map').getBoundingClientRect();
+      const cap=document.getElementById('route-caption').getBoundingClientRect();
+      const main=document.getElementById('app-main');
+      return {
+        scrollW:document.documentElement.scrollWidth,
+        inner:window.innerWidth,
+        mapL:map.left,mapR:map.right,
+        capL:cap.left,capR:cap.right,
+        vscroll:main.scrollHeight-main.clientHeight,
+      };
+    });
+    expect(fit.scrollW,where).toBeLessThanOrEqual(fit.inner+1);
+    expect(fit.mapL,where).toBeGreaterThanOrEqual(-1);
+    expect(fit.mapR,where).toBeLessThanOrEqual(fit.inner+1);
+    expect(fit.capL,where).toBeGreaterThanOrEqual(-1);
+    expect(fit.capR,where).toBeLessThanOrEqual(fit.inner+1);
+    expect(fit.vscroll,where).toBeLessThanOrEqual(4);
+  }
+  expect(errors).toEqual([]);
+});
+
+test('a partly filled Gym ring matches the ring in the question',async({page})=>{
+  const errors=await boot(page);
+  await state(page,()=>{
+    st.stats.math.level=1;
+    st.badges.math=[];
+    st.log={'2026-11-17':{'math|@|1':'1'.repeat(15)}};
+    st.route={tier:1,step:4};
+    loadQuestion();
+  });
+  const live=await page.locator('.mon-strip .gym-ring').evaluate(el=>{
+    const val=el.querySelector('.gym-ring-val');
+    const s=getComputedStyle(val);
+    return {
+      fill:el.getAttribute('data-fill'),
+      state:el.getAttribute('data-state'),
+      stroke:s.stroke,
+      display:s.display,
+      dash:s.strokeDasharray,
+    };
+  });
+  expect(live.fill).toBe('0.500');
+  expect(live.state).toBe('partial');
+  await showRound(page);
+  const map=await page.locator('#route-map .gym-ring').evaluate(el=>{
+    const val=el.querySelector('.gym-ring-val');
+    const s=getComputedStyle(val);
+    const node=el.closest('.route-node');
+    return {
+      fill:el.getAttribute('data-fill'),
+      state:el.getAttribute('data-state'),
+      stroke:s.stroke,
+      display:s.display,
+      dash:s.strokeDasharray,
+      opacity:getComputedStyle(node).opacity,
+    };
+  });
+  expect(map).toEqual({
+    fill:live.fill,
+    state:'partial',
+    stroke:live.stroke,
+    display:live.display,
+    dash:live.dash,
+    opacity:'1',
+  });
+  expect(errors).toEqual([]);
+});
+
+test('landscape leaves space between the Gym and the caption and token',async({page})=>{
+  const errors=await boot(page);
+  await state(page,()=>{st.route={tier:1,step:4};});
+  await showRound(page);
+  await page.setViewportSize({width:1024,height:768});
+  const gap=await page.evaluate(()=>{
+    const gym=document.querySelector('.route-gym-node').getBoundingClientRect();
+    const label=document.querySelector('.route-gym-label').getBoundingClientRect();
+    const box={
+      left:Math.min(gym.left,label.left),
+      right:Math.max(gym.right,label.right),
+      top:Math.min(gym.top,label.top),
+      bottom:Math.max(gym.bottom,label.bottom),
+    };
+    function space(a,b){
+      const ix=Math.min(a.right,b.right)-Math.max(a.left,b.left);
+      const iy=Math.min(a.bottom,b.bottom)-Math.max(a.top,b.top);
+      if(ix>0&&iy>0)return -Math.min(ix,iy);
+      if(iy>0)return Math.max(a.left-b.right,b.left-a.right);
+      if(ix>0)return Math.max(a.top-b.bottom,b.top-a.bottom);
+      return Math.hypot(Math.max(a.left-b.right,b.left-a.right),Math.max(a.top-b.bottom,b.top-a.bottom));
+    }
+    const cap=document.getElementById('route-caption').getBoundingClientRect();
+    const token=document.getElementById('route-token').getBoundingClientRect();
+    return {caption:space(box,cap),token:space(box,token)};
+  });
+  expect(gap.caption).toBeGreaterThanOrEqual(16);
+  expect(gap.token).toBeGreaterThanOrEqual(16);
+  expect(errors).toEqual([]);
+});
+
+test('round done leads with the checks and a plus on the XP',async({page})=>{
+  const errors=await boot(page);
+  await state(page,()=>{
+    st.route={tier:1,step:1};
+    st.round={n:10,right:6,len:10,marks:[1,0,1,0,1,1,0,1,1,0],xp:40,closed:true};
+    st.phase='round';
+    render();
+  });
+  const shown=await page.locator('.round-mark').evaluateAll(els=>els.map(el=>el.textContent.trim()));
+  expect(shown).toEqual(['✓','✓','✓','✓','✓','✓','○','○','○','○']);
+  await expect(page.locator('#round-xp')).toHaveText('+40 XP');
   expect(errors).toEqual([]);
 });
 
@@ -837,24 +1051,30 @@ test('route screenshots at tablet and phone sizes',async({page})=>{
   async function shots(name){
     for(const size of sizes){
       await page.setViewportSize(size);
-      await page.screenshot({path:`${ART}/${name}_${size.width}x${size.height}.png`});
+      await page.screenshot({path:`${ART}/v2_${name}_${size.width}x${size.height}.png`});
     }
   }
 
-  await state(page,()=>{st.route={tier:1,step:4};st.trainerStars=['joey'];});
+  await state(page,()=>{
+    st.route={tier:1,step:4};
+    st.trainerStars=['joey'];
+    st.log={'2026-11-17':{'math|@|1':'1'.repeat(15)}};
+  });
   await showRound(page);
   await expect(page.locator('#route-caption')).toHaveText('Next stop: Lass Mia!');
-  await shots('route_mid');
+  await shots('mid');
 
   await state(page,()=>{
     st.route={tier:1,step:6};
-    st.log={};
+    st.log={'2026-11-17':{'math|@|1':'1'.repeat(15)}};
     st.badges.math=[];
     st.gymOffer.math=null;
     render();
   });
   await expect(page.locator('#route-caption')).toHaveText('The Gym opens when the star is full.');
-  await shots('route_door');
+  await shots('door');
+  await page.setViewportSize({width:375,height:667});
+  await page.screenshot({path:`${ART}/v2_door_375x667.png`});
 
   await state(page,()=>{
     st.route={tier:1,step:6};
@@ -864,7 +1084,7 @@ test('route screenshots at tablet and phone sizes',async({page})=>{
     render();
   });
   await expect(page.locator('#route-caption')).toHaveText('The Gym is open!');
-  await shots('route_gym_open');
+  await shots('gym_open');
 
   await state(page,()=>{
     st.route={tier:1,step:3};
@@ -876,7 +1096,7 @@ test('route screenshots at tablet and phone sizes',async({page})=>{
   });
   await finishRound(page);
   await expect(page.locator('#route-caption')).toHaveText('Shortcut! The Gym is open!');
-  await shots('route_shortcut');
+  await shots('shortcut');
 
   await state(page,()=>{
     st.stats.math.level=2;
@@ -886,7 +1106,7 @@ test('route screenshots at tablet and phone sizes',async({page})=>{
     render();
   });
   await expect(page.locator('#route-caption')).toHaveText('New route! Route 2');
-  await shots('route_new');
+  await shots('new');
 
   await state(page,()=>{
     st.route={tier:1,step:1,announce:null};
@@ -899,7 +1119,7 @@ test('route screenshots at tablet and phone sizes',async({page})=>{
   await answer(page,true);
   await answer(page,true);
   await expect(page.locator('#trainer-result')).toContainText('Trainer star on your map');
-  await shots('route_battle_won');
+  await shots('battle_won');
 
   await state(page,()=>{st.armAt=0;});
   await page.click('#trainer-map');
@@ -910,7 +1130,7 @@ test('route screenshots at tablet and phone sizes',async({page})=>{
   });
   await openParents(page);
   await page.locator('.prog-route').scrollIntoViewIfNeeded();
-  await expect(page.locator('.prog-route')).toHaveText('Route 1: step 4 of 6 · 3 trainers beaten.');
-  await shots('route_parents');
+  await expect(page.locator('.prog-route')).toHaveText('Route 1: step 4 of 6. Trainers beaten: 3 so far.');
+  await shots('parents');
   expect(errors).toEqual([]);
 });

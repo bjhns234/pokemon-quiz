@@ -149,7 +149,10 @@ test('two hits win on question 2, and the prize is XP plus a star',async({page})
   const roundXp=await state(page,()=>st.round.xp|0);
   await expect(page.locator('#round-xp')).toHaveText(`+${roundXp} XP`);
   const shown=await page.locator('.round-mark').allTextContents();
-  const order=await state(page,()=>st.round.marks.map(m=>m?'✓':'○'));
+  const order=await state(page,()=>{
+    const marks=st.round.marks.map(m=>m?'✓':'○');
+    return marks.filter(m=>m==='✓').concat(marks.filter(m=>m==='○'));
+  });
   expect(shown.map(s=>s.trim())).toEqual(order);
   const saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('pkq-save')).kids[0].data);
   expect(saved.v).toBe(1);
