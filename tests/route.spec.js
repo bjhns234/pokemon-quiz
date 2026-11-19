@@ -633,6 +633,28 @@ test('climbing back onto this route does not send him home',async({page})=>{
   expect(errors).toEqual([]);
 });
 
+test('a silent climb at the door introduces the new route from the house',async({page})=>{
+  const errors=await boot(page);
+  await state(page,()=>{
+    st.route={tier:1,step:6};
+    st.stats.math.level=1;
+    st.badges.math=[1];
+    st.grade=0;
+    st.gymOffer.math=null;
+    st.log={'2026-11-16':{'math|@|1':'1'.repeat(20)},'2026-11-17':{'math|@|1':'1'.repeat(20)}};
+    st.redo={math:{tier:1,fresh:40}};
+    maybeMasteryAdvance('math');
+  });
+  expect(await routeOf(page)).toEqual({tier:2,step:0});
+  expect(await state(page,()=>!!st.route.debut)).toBe(true);
+  await showRound(page);
+  await expect(page.locator('#route-label')).toHaveText('Route 2');
+  await expect(page.locator('#route-caption')).toHaveText('New route! Route 2');
+  await expect(page.locator('#route-token')).toHaveAttribute('data-step','0');
+  expect(await routeOf(page)).toEqual({tier:2,step:0});
+  expect(errors).toEqual([]);
+});
+
 test('a climb before the door starts the new route when he reaches the door',async({page})=>{
   const errors=await boot(page);
   await state(page,()=>{

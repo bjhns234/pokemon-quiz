@@ -3431,7 +3431,9 @@ function parseRoute(raw,stats,log,redo){
 function routeCaptionText(){
   ensureRoute();
   const step=st.route.step|0;
-  if(st.route.announce==='new')return 'New route! Route '+(st.route.tier|0);
+  // A silent climb lands him on the new house before the next finish.
+  // That house is the introduction, so the caption says so while debut lasts.
+  if(st.route.announce==='new'||(st.route.debut&&step===0))return 'New route! Route '+(st.route.tier|0);
   if(step>=6&&routeBadgeEnd())return 'You have the '+routeBadgeName()+'!';
   if(st.route.announce==='shortcut')return 'Shortcut! The Gym is open!';
   if(step>=6&&routeCanOpenGym())return 'The Gym is open!';
