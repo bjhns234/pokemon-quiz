@@ -137,6 +137,9 @@ test('six of ten has no encounter and seven of ten starts one that does not coun
 
   await releaseRound(page);
   await page.click('#round-again');
+  // Round 2 is a trainer battle. This check is about the bonus catch,
+  // so the finish counts as round 3.
+  await state(page,()=>{st.roundsDone=2;});
   await playAnswers(page,10,7);
   await expect(page.locator('#round-done')).toHaveCount(0);
   await expect(page.locator('.wild-card')).toBeVisible();
@@ -732,6 +735,8 @@ test('round length is per child, and 5 and 15 use 4 and 11',async({page})=>{
   await openParents(page);
   await page.locator('#round-setting [data-round="5"]').click();
   await backToGame(page);
+  // Round 2 would be a trainer battle. Keep this one a bonus catch.
+  await state(page,()=>{st.roundsDone=2;});
   await playAnswers(page,5,4);
   await expect(page.locator('.wild-card')).toBeVisible();
   expect(await state(page,()=>st.bonusWild)).toBe(true);
@@ -775,6 +780,8 @@ test('round length is per child, and 5 and 15 use 4 and 11',async({page})=>{
   await expect(page.locator('#round-line')).toContainText('10 of 15 right');
   await releaseRound(page);
   await page.click('#round-again');
+  // Maya's second finished round would be her trainer battle.
+  await state(page,()=>{st.roundsDone=2;});
   await playAnswers(page,15,11);
   await expect(page.locator('.wild-card')).toBeVisible();
   expect(await state(page,()=>({n:st.round.n,right:st.round.right,bonus:!!st.bonusWild}))).toEqual({
@@ -820,6 +827,8 @@ test('a longer length waits until the next round, and a shorter one already reac
   await expect(page.locator('#round-done')).toHaveCount(0);
   await expect(page.locator('.qtext')).toBeVisible();
   // Six right is enough for a round of 5 (the line is 4) and not for a round of 10.
+  // This is the second finished round, which would be a trainer battle.
+  await state(page,()=>{st.roundsDone=2;});
   await state(page,()=>askForHelp());
   await answer(page,true);
   await expect(page.locator('.wild-card')).toBeVisible();
@@ -989,6 +998,8 @@ test('the round screen and the dotted question fit an iPad and a phone',async({p
 
   await releaseRound(page);
   await page.click('#round-again');
+  // The second finished round is a trainer battle. These shots are the catch.
+  await state(page,()=>{st.roundsDone=2;});
   await playAnswers(page,10,7);
   await state(page,()=>{
     const pi=PKM.findIndex(p=>p.n==='Pidgey');

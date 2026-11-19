@@ -559,6 +559,133 @@ button.mon-strip:focus{outline:3px solid #1D4ED8;outline-offset:2px}
 #game .qcard:has(.warmup-back) .q-head{display:none;height:0;min-height:0;margin:0;padding:0}
 .round-dot{width:10px;height:10px;border-radius:50%;background:#E5E7EB;box-shadow:inset 0 0 0 1.5px #D1D5DB;pointer-events:none;flex:0 0 auto}
 .round-dot[data-on="1"]{background:#34D399;box-shadow:none}
+/* Trainer battles. Sky, not the wild card's dark green or the Gym's lilac.
+   The picture is a cap, not a new sprite sheet. */
+.trainer-card{background:linear-gradient(180deg,#E0F2FE,#fff);border:3px solid #7DD3FC;border-radius:16px;padding:12px 14px;margin-bottom:12px;text-align:center;box-shadow:0 2px 8px rgba(14,116,144,.08)}
+.trainer-pill{display:inline-block;background:#C2410C;color:#fff;font-size:18px;font-weight:800;line-height:1.2;border-radius:999px;padding:4px 12px}
+.trainer-title{font-size:32px;font-weight:800;color:#0F172A;line-height:1.15;margin:8px 0}
+.trainer-name,.trainer-mon,.trainer-partner-name{font-size:22px;font-weight:800;color:#0F172A;line-height:1.2}
+.trainer-name{margin:6px 0 2px}
+.trainer-line,.trainer-progress,.trainer-worked,.trainer-praise,.trainer-xp,.trainer-star{font-size:20px;font-weight:700;color:#0F172A;line-height:1.3;margin:4px 0}
+.trainer-praise{color:#1E3A8A}
+.trainer-star{color:#9A3412}
+.trainer-worked{background:#fff;border-radius:12px;padding:10px 12px}
+.trainer-top{display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap}
+.trainer-icon{width:36px;height:36px;border-radius:50%;background:#C2410C;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:20px;line-height:1;flex:0 0 auto}
+.trainer-versus{display:flex;justify-content:center;align-items:flex-end;gap:18px;margin:8px 0}
+.trainer-slide-foe,.trainer-slide-me{display:flex;flex-direction:column;align-items:center;gap:6px}
+.trainer-result .trainer-foe{display:flex;justify-content:center;width:100%;margin:6px auto 8px}
+.trainer-foe-row{display:flex;align-items:center;gap:12px;text-align:left;margin:8px 0}
+.trainer-foe{flex:0 0 auto}
+.trainer-foe img,.trainer-slide-foe img{width:150px;height:150px;object-fit:contain;display:block}
+.trainer-foe-meta{flex:1 1 auto;min-width:0}
+.trainer-foe-meta .trainer-icon{margin-bottom:4px}
+.trainer-partner{display:flex;align-items:center;justify-content:center;gap:8px;margin:6px 0}
+.trainer-partner img{width:84px;height:84px;object-fit:contain;display:block}
+.hp-track{height:18px;border-radius:999px;background:#fff;border:2px solid #0F172A;overflow:hidden;margin-top:6px}
+.hp-fill{height:100%;width:0;border-radius:999px;background:#16A34A}
+.hp-fill.amber{background:#D97706}
+.trainer-dots{display:inline-flex;align-items:center;gap:6px;margin-left:8px;vertical-align:middle}
+.trainer-dot{width:12px;height:12px;border-radius:50%;background:#fff;box-shadow:inset 0 0 0 2px #94A3B8}
+.trainer-dot[data-mark="hit"]{background:#16A34A;box-shadow:none}
+.trainer-dot[data-mark="miss"]{background:#CBD5E1;box-shadow:none}
+.trainer-stage{display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-areas:"foe meta" "partner partner";align-items:center;gap:8px 12px;margin:8px 0}
+.trainer-foe{grid-area:foe}
+.trainer-foe-meta{grid-area:meta}
+.trainer-stage .trainer-partner{grid-area:partner;margin:0}
+#game:has(#trainer-card) .qtext{text-align:center}
+/* The tablet question reserves a streak row even when it is empty.
+   A battle has no streak pill, so that blank row only pushes Next down. */
+#game:has(#trainer-card) .qcard::before{content:none;height:0;min-height:0;padding:0;margin:0}
+#game:has(#trainer-next) .trainer-card{margin-bottom:6px}
+#game:has(#trainer-next) .trainer-worked,
+#game:has(#trainer-next) .trainer-praise{margin:2px 0;padding:6px 8px}
+#game:has(#trainer-card) .ans-btn{min-height:64px;font-size:20px}
+#game:has(#trainer-card) .help-btn,
+#game:has(#trainer-card) .help-box,
+#game:has(#trainer-card) .help-say,
+#game:has(#trainer-card) .help-keep,
+#game:has(#trainer-card) .hv-cap{font-size:18px}
+@media (min-width:768px){
+  #game:has(#trainer-card) .ans-btn{min-height:92px;font-size:20px;padding:8px 10px}
+}
+.trainer-hit-tag{display:inline-block;background:#14532D;color:#fff;font-size:20px;font-weight:800;line-height:1.2;border-radius:999px;padding:3px 10px}
+.trainer-go{display:flex;align-items:center;justify-content:center;width:100%;min-height:76px;margin-top:10px;border:none;border-radius:14px;background:#1A1A2E;color:#fff;font-family:inherit;font-size:22px;font-weight:800;cursor:pointer}
+.trainer-go:hover{opacity:.92}
+@media (max-width:700px){
+  .trainer-foe img,.trainer-slide-foe img{width:96px;height:96px}
+  .trainer-partner img{width:64px;height:64px}
+  #game:has(#trainer-card) .trainer-card{padding:8px 10px;margin-bottom:6px}
+  #game:has(#trainer-card) .trainer-stage{grid-template-columns:auto minmax(0,1fr) auto;grid-template-areas:"foe meta partner";gap:4px 8px;margin:4px 0}
+  #game:has(#trainer-card) .trainer-partner{flex-direction:column;gap:2px}
+  #game:has(#trainer-card) .qcard{padding:8px 10px}
+  #game:has(#trainer-card) .qtext{margin-bottom:6px}
+  #game:has(#trainer-card) .ans-grid{gap:6px;margin-bottom:4px}
+  /* A miss adds the worked answer and Next. The picture hint already
+     did its job, so the four answers and Next stay on the phone. */
+  #game:has(#trainer-next) .trainer-stage .trainer-partner{display:none}
+  #game:has(#trainer-next) .trainer-foe img{width:72px;height:72px}
+  #game:has(#trainer-next) .hint-visual{display:none}
+  #game:has(#trainer-next) .trainer-worked,
+  #game:has(#trainer-next) .trainer-praise{margin:2px 0;padding:6px 8px}
+  #game:has(#trainer-next) .trainer-go{min-height:64px;margin-top:4px}
+}
+/* Landscape tablets. The two Pokémon share one row and the cap steps
+   aside, so the question, the four answers, the feedback, and Next
+   sit above the Game bar. */
+@media (orientation:landscape) and (min-width:1000px) and (max-height:860px){
+  #game:has(#trainer-card)>.hdr{margin-bottom:2px}
+  #game:has(#trainer-card) .trainer-card{padding:6px 10px 4px;margin-bottom:4px}
+  #game:has(#trainer-card) .trainer-name{display:none}
+  #game:has(#trainer-card) .trainer-stage{grid-template-columns:auto minmax(0,1fr) auto;grid-template-areas:"foe meta partner";gap:6px 10px;margin:2px 0}
+  #game:has(#trainer-card) .trainer-foe img,
+  #game:has(#trainer-card) .trainer-partner img{width:64px;height:64px}
+  #game:has(#trainer-card) .trainer-partner{flex-direction:column;gap:2px}
+  #game:has(#trainer-card) .trainer-progress{margin:0}
+  #game:has(#trainer-card) .qcard{padding:6px 10px 4px;margin-bottom:0}
+  #game:has(#trainer-card) .qtext{margin-bottom:4px;font-size:20px;line-height:1.25}
+  #game:has(#trainer-card) .ans-grid{gap:6px;margin-bottom:4px}
+  #game:has(#trainer-card) .trainer-worked,
+  #game:has(#trainer-card) .trainer-praise{margin:2px 0;padding:4px 8px}
+  #game:has(#trainer-card) .hint-visual{display:none}
+  #game:has(#trainer-card) .trainer-go{min-height:56px;margin-top:4px;padding:8px}
+}
+@media (max-height:800px){
+  /* A miss needs the row. A hit keeps the partner so Hit! stays beside it. */
+  #game:has(#trainer-next) .trainer-stage .trainer-partner{display:none}
+  #game:has(#trainer-card) .trainer-foe img{width:72px;height:72px}
+}
+/* Portrait tablets. GitHub's fonts run wider, so a miss uses a smaller
+   foe and drops the picture hint. The answers stay the full tablet size. */
+@media (min-width:701px) and (min-height:801px){
+  #game:has(#trainer-next) .trainer-foe img{width:96px;height:96px}
+  #game:has(#trainer-next) .trainer-partner img{width:64px;height:64px}
+  #game:has(#trainer-next) .trainer-card{padding:8px 12px 4px}
+  #game:has(#trainer-next) .trainer-stage{margin:2px 0;gap:4px 10px}
+  #game:has(#trainer-next) .qcard{padding:6px 12px 4px}
+  #game:has(#trainer-next) .qtext{margin-bottom:4px;line-height:1.25}
+  #game:has(#trainer-next) .ans-grid{gap:6px;margin-bottom:4px}
+  #game:has(#trainer-next) .hint-visual{display:none}
+  #game:has(#trainer-next) .trainer-go{margin-top:6px}
+}
+@media (max-height:520px){
+  .trainer-partner{display:none}
+  .trainer-foe img,.trainer-slide-foe img{width:72px;height:72px}
+}
+@media (prefers-reduced-motion:no-preference){
+  .hp-fill{transition:width 400ms ease}
+  .trainer-foe.hit{animation:trainer-shake 300ms ease}
+  .trainer-hit-tag{animation:trainer-pop 300ms ease forwards}
+  .trainer-slide-foe{animation:trainer-in-right 300ms ease}
+  .trainer-slide-me{animation:trainer-in-left 300ms ease}
+  .trainer-foe.fainted{animation:trainer-faint 400ms ease forwards}
+}
+.trainer-foe.fainted{filter:grayscale(1);opacity:.72}
+@keyframes trainer-shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-8px)}50%{transform:translateX(8px)}75%{transform:translateX(-4px)}}
+@keyframes trainer-pop{0%{transform:scale(.85)}100%{transform:scale(1.1)}}
+@keyframes trainer-in-right{0%{transform:translateX(28px);opacity:0}100%{transform:none;opacity:1}}
+@keyframes trainer-in-left{0%{transform:translateX(-28px);opacity:0}100%{transform:none;opacity:1}}
+@keyframes trainer-faint{to{transform:rotate(12deg);filter:grayscale(1);opacity:.72}}
 .round-card{text-align:center;padding:12px 14px 14px}
 .round-hero{display:flex;justify-content:center;margin:0}
 .round-hero img{width:150px;height:150px;object-fit:contain}
@@ -2791,6 +2918,12 @@ function mkState(saved){
     roundPref:10,
     round:freshRound(10),
     bonusWild:false,
+    // Optional. How many rounds this child has finished, which trainers
+    // they have beaten, and a battle still on screen. Old saves have none.
+    roundsDone:0,
+    trainerStars:[],
+    trainerNext:0,
+    trainer:null,
   };
   if(saved){
     s.starter=saved.starter;
@@ -2820,6 +2953,10 @@ function mkState(saved){
     s.backPending=!!saved.backPending;
     s.roundPref=saved.roundPref||10;
     s.round=saved.round||freshRound(s.roundPref);
+    s.roundsDone=Math.max(0,saved.roundsDone|0);
+    s.trainerStars=Array.isArray(saved.trainerStars)?saved.trainerStars:[];
+    s.trainerNext=Math.max(0,saved.trainerNext|0);
+    s.trainer=saved.trainer||null;
     if(saved.reviewCount){
       SUBS.forEach(sub=>{s.reviewCount[sub]=Math.max(0,saved.reviewCount[sub]|0);});
     }
@@ -2830,7 +2967,9 @@ function mkState(saved){
     // resumes at the same count.
     const pendingBonus=s.round&&s.round.bonusPending&&!(s.round.bonus&&s.round.bonus.name);
     const roundScreen=s.round&&s.round.closed&&!pendingBonus&&!saved.award&&!saved.gym;
-    s.phase=saved.award?'award':saved.gym?'gym':roundScreen?'round':saved.team.length>0?'play':'starter';
+    // A Gym or an award stays put. A battle in progress comes back before
+    // the round-done screen, which is also how a closed round looks.
+    s.phase=saved.award?'award':saved.gym?'gym':saved.trainer?'trainer':roundScreen?'round':saved.team.length>0?'play':'starter';
   }
   parkHiddenSubject(s);
   return s;
@@ -2943,7 +3082,16 @@ function gamePayload(){
     };
     if(rr.bonusPending)payload.round.bonusPending=true;
     if(rr.bonus&&rr.bonus.name)payload.round.bonus={name:String(rr.bonus.name).slice(0,40),caught:!!rr.bonus.caught};
+    // The bonus slot was a trainer battle, so a reload must not start a catch.
+    if(rr.settled)payload.round.settled=true;
   }
+  // Optional. Missing on old saves. Omitted again while they're empty,
+  // so a Pokédex from before trainer battles still round-trips.
+  if((st.roundsDone|0)>0)payload.roundsDone=st.roundsDone|0;
+  if(st.trainerStars&&st.trainerStars.length)payload.trainerStars=st.trainerStars.slice();
+  if((st.trainerNext|0)>0)payload.trainerNext=st.trainerNext|0;
+  const battle=trainerPayload();
+  if(battle)payload.trainer=battle;
   return payload;
 }
 
@@ -3045,9 +3193,99 @@ function parseRound(raw,pref){
     holdWild:false,
     // A held catch is not saved. Once the count is full and the line was met,
     // the bonus is still owed, so a reload starts it instead of skipping it.
-    bonusPending:!bonus&&(!!raw.bonusPending||((n>=len||!!raw.closed)&&right>=roundGoal(!!raw.endAfter&&n<len?len0:len))),
+    // settled means the finale already happened (a trainer battle took the
+    // catch). Old saves omit it, and a qualified round still owes the catch.
+    settled:raw.settled===true,
+    bonusPending:raw.settled===true?false:!bonus&&(!!raw.bonusPending||((n>=len||!!raw.closed)&&right>=roundGoal(!!raw.endAfter&&n<len?len0:len))),
     bonus,
   };
+}
+// Fixed roster, in the order they battle. Ace Trainer Kim waits at the Gym
+// door for the map; she is not in this rotation. Declared up here so a
+// save can name a trainer while it is loading.
+const TRAINERS=[
+  {id:'joey',name:'Youngster Joey',kid:'Joey',mon:'Rattata',dex:19},
+  {id:'mia',name:'Lass Mia',kid:'Mia',mon:'Pidgey',dex:16},
+  {id:'sam',name:'Bug Catcher Sam',kid:'Sam',mon:'Caterpie',dex:10},
+  {id:'ben',name:'Hiker Ben',kid:'Ben',mon:'Geodude',dex:74},
+  {id:'liz',name:'Picnicker Liz',kid:'Liz',mon:'Oddish',dex:43},
+  {id:'kim',name:'Ace Trainer Kim',kid:'Kim',mon:'Lucario',dex:448,door:true},
+];
+const TRAINER_Q=3;
+const TRAINER_HITS=2;
+const TRAINER_PRIZE=30;
+function routeTrainers(){return TRAINERS.filter(t=>!t.door);}
+// The one switch the map PR replaces. Today a trainer battle is the 2nd,
+// 5th, 8th… finished round for this child. `finished` is that count.
+function trainerBattleDue(finished){
+  const n=finished|0;
+  return n>=2&&((n-2)%3)===0;
+}
+function trainerById(id){return TRAINERS.find(t=>t.id===id)||null;}
+function parseStars(raw){
+  if(!Array.isArray(raw))return [];
+  const ids=routeTrainers().map(t=>t.id);
+  const out=[];
+  raw.forEach(id=>{
+    if(typeof id==='string'&&ids.indexOf(id)>=0&&out.indexOf(id)<0)out.push(id);
+  });
+  return out;
+}
+function parseTrainer(raw){
+  if(!raw||typeof raw!=='object')return null;
+  const t=trainerById(raw.id);
+  if(!t||t.door)return null;
+  const over=raw.over==='win'||raw.over==='lose'?raw.over:null;
+  let q=null;
+  const src=raw.q;
+  if(src&&SUBS.includes(src.sub)&&QB[src.sub]&&QB[src.sub][src.lv]&&QB[src.sub][src.lv][src.idx|0]){
+    q={sub:src.sub,lv:src.lv|0,idx:src.idx|0,warmup:!!src.warmup,bankReview:!!src.bankReview,rematch:!!src.rematch};
+    if(Array.isArray(src.order))q.order=src.order.map(i=>i|0);
+    if(src.helped)q.helped=true;
+  }
+  return {
+    id:t.id,
+    hits:Math.max(0,Math.min(TRAINER_HITS,raw.hits|0)),
+    qn:Math.max(0,Math.min(TRAINER_Q,raw.qn|0)),
+    gained:Math.max(0,raw.gained|0),
+    over,
+    intro:!!raw.intro&&!over,
+    miss:!!raw.miss&&!over,
+    showHit:!!raw.showHit&&!over,
+    prize:!!raw.prize||over==='win',
+    level:Math.max(2,raw.level|0),
+    q,
+    results:Array.isArray(raw.results)?raw.results.filter(x=>x==='hit'||x==='miss').slice(0,TRAINER_Q):[],
+  };
+}
+function trainerPayload(){
+  const b=st.trainer;
+  if(!b||!trainerById(b.id))return undefined;
+  const out={
+    id:b.id,
+    hits:b.hits|0,
+    qn:b.qn|0,
+    gained:Math.max(0,b.gained|0),
+    level:Math.max(2,b.level|0),
+  };
+  if(b.over)out.over=b.over;
+  if(b.intro)out.intro=true;
+  if(b.miss)out.miss=true;
+  if(b.showHit)out.showHit=true;
+  if(b.prize)out.prize=true;
+  if(b.results&&b.results.length)out.results=b.results.filter(x=>x==='hit'||x==='miss').slice(0,TRAINER_Q);
+  const tmpl=st.q&&st.q.tmpl;
+  if(!b.intro&&!b.over&&tmpl&&QB[tmpl.sub]&&QB[tmpl.sub][tmpl.lv]){
+    out.q={sub:tmpl.sub,lv:tmpl.lv|0,idx:tmpl.idx|0};
+    if(Array.isArray(tmpl.order))out.q.order=tmpl.order.slice();
+    if(st.helped)out.q.helped=true;
+    if(st.q.warmup)out.q.warmup=true;
+    if(st.q.bankReview)out.q.bankReview=true;
+    if(st.q.rematch)out.q.rematch=true;
+  }else if(b.q){
+    out.q=b.q;
+  }
+  return out;
 }
 function parseGameSave(data){
   try{
@@ -3228,6 +3466,10 @@ function parseGameSave(data){
       backPending:data.backPending===true,
       roundPref:roundLengthValue(data.settings&&data.settings.round),
       round:parseRound(data.round,data.settings&&data.settings.round),
+      roundsDone:Math.max(0,data.roundsDone|0),
+      trainerStars:parseStars(data.trainerStars),
+      trainerNext:Math.max(0,data.trainerNext|0),
+      trainer:parseTrainer(data.trainer),
     };
   }catch(e){
     // corrupt or half-written save: start fresh rather than fail to a blank screen
@@ -3774,9 +4016,46 @@ function showGameChrome(){
   const wrap=document.querySelector('.wrap');
   if(wrap)wrap.classList.remove('wide');
 }
+function restoreTrainerQuestion(){
+  const b=st.trainer;
+  if(!b||b.intro||b.over)return;
+  const saved=b.q;
+  if(!saved||!QB[saved.sub]||!QB[saved.sub][saved.lv]||!QB[saved.sub][saved.lv][saved.idx]){
+    dealTrainerQuestion();
+    return;
+  }
+  const raw=QB[saved.sub][saved.lv][saved.idx];
+  const order=Array.isArray(saved.order)?saved.order.map(i=>i|0):null;
+  const same=order&&order.length===raw[1].length&&raw[1].every((_,i)=>order.includes(i));
+  const q=same
+    ?fillQuestion({sub:saved.sub,lv:saved.lv|0,idx:saved.idx|0,raw,order,cheer:raw[3]},PKM[activePi()].n)
+    :serveQuestion(saved.sub,saved.lv,saved.idx,PKM[activePi()].n);
+  if(saved.warmup)q.warmup=true;
+  if(saved.bankReview)q.bankReview=true;
+  if(saved.rematch)q.rematch=true;
+  q.back=false;
+  st.q=q;
+  st.sel=null;st.cor=false;st.anim='';st.helped=false;st.wrong=[];st.lastXp=0;st.draft='';
+  st.tries=b.miss?1:0;
+  st.helped=!!saved.helped;
+  st.armAt=Date.now()+PAUSE.first;
+}
 function bootInto(){
   view='game';
+  if(st.phase==='trainer'&&st.trainer){
+    restoreTrainerQuestion();
+    render();
+    return;
+  }
   if(st.round&&st.round.bonusPending&&!(st.round.bonus&&st.round.bonus.name)){
+    if(trainerBattleDue(st.roundsDone|0)&&st.phase!=='gym'&&st.phase!=='award'){
+      st.bonusWild=false;
+      st.round.bonusPending=false;
+      st.round.settled=true;
+      beginTrainerBattle();
+      render();
+      return;
+    }
     st.bonusWild=true;
     st.round.closed=true;
     triggerWildEncounter(rollShiny());
@@ -5328,7 +5607,10 @@ function finishGymWin(){
   st.phase='award';
   st.armAt=Date.now()+ROUND_TAP_PAUSE;
   // The award is the end of this round. The next one starts at 0.
+  // A Gym is never interrupted, and the award does not start a battle.
   st.bonusWild=false;
+  st.trainer=null;
+  tallyFinishedRound();
   st.round=freshRound(st.roundPref||10);
 }
 function finishGymLose(){
@@ -5891,8 +6173,29 @@ function openRoundFinale(){
   r.closed=true;
   r.holdEvo=false;
   r.holdWild=false;
+  // The battle already happened. The evolution after it lands here.
+  if(r.battleDone){
+    r.battleDone=false;
+    st.wild=null;
+    st.wildEscape=false;
+    st.bonusWild=false;
+    enterRoundScreen();
+    return;
+  }
   const goalLen=r.endAfter?roundLengthValue(st.roundPref):roundLengthValue(r.len);
-  if((r.right|0)>=roundGoal(goalLen)&&activeTM()&&!(st.phase==='wild'&&st.wild)){
+  const earned=(r.right|0)>=roundGoal(goalLen)&&!!activeTM()&&!(st.phase==='wild'&&st.wild);
+  // A trainer round spends the bonus-catch slot on the battle.
+  if(earned&&trainerBattleDue(st.roundsDone|0)&&st.phase!=='gym'&&st.phase!=='award'){
+    st.bonusWild=false;
+    r.bonusPending=false;
+    r.bonus=null;
+    r.settled=true;
+    st.wild=null;
+    st.wildEscape=false;
+    beginTrainerBattle();
+    return;
+  }
+  if(earned){
     st.bonusWild=true;
     r.bonusPending=true;
     r.bonus=null;
@@ -5919,6 +6222,44 @@ function finishHeldWild(){
   openRoundFinale();
   return true;
 }
+// Once per finished round, including one a Gym award closes early.
+// A reload must not count the same round again, so the flag sticks
+// until the round object is replaced.
+function tallyFinishedRound(){
+  const r=activeRound();
+  if(r.tallied||r.closed)return;
+  r.tallied=true;
+  st.roundsDone=(st.roundsDone|0)+1;
+}
+function beginTrainerBattle(){
+  const route=routeTrainers();
+  const ix=Math.max(0,st.trainerNext|0);
+  const t=route[ix%route.length];
+  st.trainerNext=ix+1;
+  st.trainer={
+    id:t.id,hits:0,qn:0,gained:0,over:null,intro:true,miss:false,
+    showHit:false,prize:false,level:wildLevel(),q:null,results:[],
+  };
+  st.phase='trainer';
+  st.bonusWild=false;
+  st.wild=null;
+  st.wildEscape=false;
+  st.q=null;
+  st.armAt=0;
+  const r=st.round;
+  if(r){r.settled=true;r.bonusPending=false;r.bonus=null;}
+}
+function workedAnswerLine(q){
+  if(!q)return 'Good try!';
+  const ans=q.answers[q.correctIndex];
+  const stem=q.tmpl&&q.tmpl.raw?String(q.tmpl.raw[0]):String(q.question||'');
+  let m;
+  if((m=stem.match(/^What is (\d+) \+ (\d+)\?$/)))return `Good try! ${m[1]} + ${m[2]} = ${ans}.`;
+  if((m=stem.match(/^What is (\d+) - (\d+)\?$/)))return `Good try! ${m[1]} - ${m[2]} = ${ans}.`;
+  if((m=stem.match(/^What is (\d+) x (\d+)\?$/)))return `Good try! ${m[1]} x ${m[2]} = ${ans}.`;
+  if((m=stem.match(/^What is (\d+) divided by (\d+)\?$/)))return `Good try! ${m[1]} ÷ ${m[2]} = ${ans}.`;
+  return `Good try! The answer is ${ans}.`;
+}
 function noteRoundAnswer(ok,firstTry){
   if(!(ok||st.wildEscape))return;
   if(st.bonusWild)return;
@@ -5937,12 +6278,25 @@ function noteRoundAnswer(ok,firstTry){
   r.marks.push(right?1:0);
   r.xp=(r.xp|0)+Math.max(0,st.lastXp|0);
   if(!(r.endAfter||r.n>=r.len))return;
-  if(st.phase==='wild'&&st.wild&&!st.wildEscape){
-    r.holdWild=true;
+  tallyFinishedRound();
+  const holdingWild=st.phase==='wild'&&st.wild&&!st.wildEscape;
+  // A catch that is already ready stays on Catch it. Only a fight that
+  // still has questions left yields to the evolution, then comes back.
+  const wildStillGoing=holdingWild&&(st.wild.correctStreak|0)<CATCH_STREAK_NEEDED;
+  if(holdingWild)r.holdWild=true;
+  if(st.pendingEvo&&wildStillGoing){
+    r.closed=true;
+    r.holdEvo=true;
+    st.phase='play';
+    return;
+  }
+  if(holdingWild)return;
+  if(st.pendingEvo){
+    r.closed=true;
+    r.holdEvo=true;
     return;
   }
   r.closed=true;
-  if(st.pendingEvo){r.holdEvo=true;return;}
   openRoundFinale();
 }
 function finishBonusMiss(){
@@ -5957,6 +6311,125 @@ function finishBonusMiss(){
   r.bonusPending=false;
   r.bonus={name,caught:false};
   enterRoundScreen();
+}
+function dealTrainerQuestion(){
+  const b=st.trainer;
+  if(!b||b.over)return;
+  b.intro=false;
+  b.miss=false;
+  b.qn=(b.qn|0)+1;
+  st.phase='trainer';
+  st.served++;
+  const q=pickDealtQuestion(PKM[activePi()].n);
+  if(q)q.back=false;
+  rememberSeen(q);
+  st.q=q;
+  st.sel=null;st.cor=false;st.anim='';st.helped=false;
+  st.tries=0;st.wrong=[];st.lastXp=0;st.draft='';
+  st.armAt=Date.now()+PAUSE.first;
+}
+function finishTrainer(outcome){
+  const b=st.trainer;
+  if(!b||b.over)return;
+  b.over=outcome==='win'?'win':'lose';
+  b.intro=false;
+  b.miss=false;
+  b.showHit=false;
+  if(b.over==='win'&&!b.prize){
+    b.prize=true;
+    const tm=activeTM();
+    if(tm){tm.xp+=TRAINER_PRIZE;applyLevelUps();}
+    if(!st.trainerStars)st.trainerStars=[];
+    if(st.trainerStars.indexOf(b.id)<0)st.trainerStars.push(b.id);
+  }
+  st.armAt=Date.now()+ROUND_TAP_PAUSE;
+}
+function resolveTrainerAnswer(ok){
+  const b=st.trainer;
+  if(!b||b.over)return;
+  if(!Array.isArray(b.results))b.results=[];
+  b.results.push(ok?'hit':'miss');
+  if(ok){
+    b.hits=(b.hits|0)+1;
+    b.gained=(b.gained|0)+Math.max(0,st.lastXp|0);
+    b.showHit=true;
+    b.miss=false;
+  }else{
+    b.miss=true;
+    b.showHit=false;
+  }
+  if(b.hits>=TRAINER_HITS){finishTrainer('win');return;}
+  if(b.miss)return;
+  if((b.qn|0)>=TRAINER_Q){finishTrainer('lose');return;}
+  dealTrainerQuestion();
+}
+function advanceTrainer(){
+  const b=st.trainer;
+  if(!b||b.over||!b.miss)return;
+  b.miss=false;
+  if((b.qn|0)>=TRAINER_Q){finishTrainer('lose');return;}
+  dealTrainerQuestion();
+}
+function leaveTrainer(){
+  if(Date.now()<(st.armAt||0))return;
+  if(!st.trainer||!st.trainer.over)return;
+  st.trainer=null;
+  st.q=null;
+  if(st.pendingEvo){
+    const r=activeRound();
+    r.closed=true;
+    r.holdEvo=true;
+    r.battleDone=true;
+    r.settled=true;
+    st.phase='play';
+    processEvolution();
+    return;
+  }
+  enterRoundScreen();
+  save();
+  render();
+}
+function startTrainerQuestions(){
+  if(!st.trainer||!st.trainer.intro||st.trainer.over)return;
+  st.trainer.showHit=false;
+  dealTrainerQuestion();
+  save();
+  render();
+}
+function trainerDotsHTML(){
+  const results=st.trainer&&st.trainer.results||[];
+  let s='<span class="trainer-dots" aria-hidden="true">';
+  for(let i=0;i<TRAINER_Q;i++){
+    const mark=results[i]==='hit'?'hit':results[i]==='miss'?'miss':'open';
+    s+=`<span class="trainer-dot" data-mark="${mark}"></span>`;
+  }
+  return s+'</span>';
+}
+function trainerHTML(){
+  const b=st.trainer;
+  const t=trainerById(b.id)||routeTrainers()[0];
+  const me=activeTM();
+  const meName=PKM[activePi()].n;
+  if(b.intro){
+    return `<div class="card trainer-card" id="trainer-card"><div class="trainer-pill">Trainer Battle</div><h2 class="trainer-title" id="trainer-title">${escapeHtml(t.name)} wants to battle!</h2><div class="trainer-icon" aria-hidden="true">&#129506;</div><div class="trainer-versus"><div class="trainer-slide trainer-slide-foe">${pkImg(t.dex,150)}</div><div class="trainer-slide trainer-slide-me trainer-partner">${me?pkSprite(me.pi,84,!!me.shiny):''}<div class="trainer-partner-name">${escapeHtml(meName)}</div></div></div><p class="trainer-line">${escapeHtml(t.kid)} sends out ${escapeHtml(t.mon)}!</p><p class="trainer-line">Get 2 hits to win.</p><button type="button" class="trainer-go" id="trainer-go">Battle!</button></div>`;
+  }
+  if(b.over){
+    const win=b.over==='win';
+    const hits=b.hits|0;
+    const xp=win?TRAINER_PRIZE:(b.gained|0);
+    const title=win?`You beat ${t.name}!`:`${t.mon} ran back to ${t.kid}.`;
+    const sub=win?`${t.mon} is all tired out. Great math!`:hits>0?`Nice try! You got ${hits} hit${hits===1?'':'s'}.`:'Nice try!';
+    const extra=win?'<p class="trainer-star">&#11088; You earned a trainer star!</p>':'<p class="trainer-line">Every try makes you stronger.</p>';
+    const xpLine=win||xp>0?`<p class="trainer-xp" id="trainer-xp">+${xp} XP</p>`:'';
+    const foe=win?' trainer-foe fainted':' trainer-foe';
+    return `<div class="card trainer-card trainer-result" id="trainer-result"><div class="trainer-pill">Trainer Battle</div><div class="${foe.trim()}">${pkImg(t.dex,150)}</div><h2 class="trainer-title">${escapeHtml(title)}</h2><p class="trainer-line">${escapeHtml(sub)}</p>${extra}${xpLine}<button type="button" class="trainer-go" id="trainer-map">Keep going</button></div>`;
+  }
+  const hp=Math.max(0,TRAINER_HITS-(b.hits|0));
+  const pct=Math.round(hp/TRAINER_HITS*100);
+  const tone=hp<=1?' amber':'';
+  const hit=b.showHit?'<span class="trainer-hit-tag" id="trainer-hit">Hit!</span>':'';
+  const foeCls='trainer-foe'+(b.showHit?' hit':'');
+  return `<div class="card trainer-card" id="trainer-card"><div class="trainer-top"><span class="trainer-pill">Trainer Battle</span><span class="trainer-name">${escapeHtml(t.name)}</span></div><div class="trainer-stage"><div class="${foeCls}">${pkImg(t.dex,150)}</div><div class="trainer-foe-meta"><div class="trainer-mon" id="trainer-mon">${escapeHtml(t.kid)}'s ${escapeHtml(t.mon)}</div><div class="hp-track" id="trainer-hp" data-hp="${hp}"><div class="hp-fill${tone}" style="width:${pct}%"></div></div></div><div class="trainer-partner">${me?pkSprite(me.pi,84,!!me.shiny):''}<span class="trainer-partner-name">${escapeHtml(meName)}</span>${hit}</div></div><div class="trainer-progress"><span id="trainer-q">Question ${b.qn|0} of ${TRAINER_Q}</span>${trainerDotsHTML()}</div></div>`;
 }
 function playRoundAgain(){
   if(Date.now()<(st.armAt||0))return;
@@ -5973,6 +6446,7 @@ function playRoundAgain(){
   st.wild=null;
   st.wildEscape=false;
   st.bonusWild=false;
+  st.trainer=null;
   st.phase='play';
   st.round=freshRound(st.roundPref||10);
   roundFarewell='';
@@ -5996,6 +6470,7 @@ function doneForNow(){
   st.wild=null;
   st.wildEscape=false;
   st.bonusWild=false;
+  st.trainer=null;
   st.q=null;
   st.phase='play';
   st.round=freshRound(st.roundPref||10);
@@ -6014,7 +6489,8 @@ function roundScreenHTML(){
     ?`<p id="round-bonus" class="round-bonus">${escapeHtml(r.bonus.caught?`${r.bonus.name} joined your team!`:`${r.bonus.name} got away this time. Great work!`)}</p>`
     :'';
   const line=`${r.right|0} of ${r.n|0} right. You and ${name} kept going!`;
-  return `<div class="card round-card" id="round-done"><div class="round-hero" id="round-celebrate">${tm?pkSprite(tm.pi,150,!!tm.shiny):''}</div><h2 id="round-title" class="round-title">Round done!</h2><div class="round-marks">${marks}</div><p id="round-line" class="round-line">${escapeHtml(line)}</p><p id="round-xp" class="round-xp">${r.xp|0} XP</p>${bonus}<button type="button" class="round-again" id="round-again">Play again</button><button type="button" class="round-leave" id="round-done-exit">Done</button></div>`;
+  const xpLine=r.settled?`+${r.xp|0} XP`:`${r.xp|0} XP`;
+  return `<div class="card round-card" id="round-done"><div class="round-hero" id="round-celebrate">${tm?pkSprite(tm.pi,150,!!tm.shiny):''}</div><h2 id="round-title" class="round-title">Round done!</h2><div class="round-marks">${marks}</div><p id="round-line" class="round-line">${escapeHtml(line)}</p><p id="round-xp" class="round-xp">${xpLine}</p>${bonus}<button type="button" class="round-again" id="round-again">Play again</button><button type="button" class="round-leave" id="round-done-exit">Done</button></div>`;
 }
 function qCardHTML(resultMsg,btnLabel){
   if(!st.q)return'';
@@ -6022,7 +6498,8 @@ function qCardHTML(resultMsg,btnLabel){
   // Resolved means there is nothing left to do but move on: he solved it, or the
   // encounter ended under him. Until then the un-ruled-out answers stay live so
   // he can try again on the same question.
-  const resolved=st.cor||st.wildEscape;
+  const trainerMiss=st.phase==='trainer'&&st.trainer&&st.trainer.miss;
+  const resolved=st.cor||st.wildEscape||trainerMiss;
   // Driven off the time actually left, so a re-render part-way through the wait
   // (a subject change, a team switch) doesn't restart the fade from full.
   const armLeft=Math.max(0,st.armAt-Date.now());
@@ -6034,7 +6511,7 @@ function qCardHTML(resultMsg,btnLabel){
   const maxed=st.streak>=XP_STREAK_CAP;
   // One tag at most, and only once a run is long enough to notice. Best, shiny
   // odds, rematch, and the subject name stay off this card. A rematch still pays.
-  const warming=!!q.warmup;
+  const warming=!!q.warmup&&st.phase!=='trainer';
   const streakPill=!warming&&st.streak>=3
     ?`<span class="streak-pill${maxed?' maxed':''}${grew?' bump':''}">&#128293; ${st.streak} in a row</span>`
     :'';
@@ -6045,7 +6522,7 @@ function qCardHTML(resultMsg,btnLabel){
   // The hello is only the first warm-up question. The tag stays for all three.
   const say=warming&&st.warmup&&(st.warmup.at|0)===0
     ?`<div class="warmup-say"><strong>${partner} says:</strong> Let's do a quick warm-up!</div>`:'';
-  const back=q.back?`<div class="warmup-back">${partner} says: Back to it!</div>`:'';
+  const back=q.back&&st.phase!=='trainer'?`<div class="warmup-back">${partner} says: Back to it!</div>`:'';
   let h=`<div class="card qcard">${head}${say}${back}<div class="qtext">${q.question}</div>`;
   if(gymTimerApplies()){
     h+=`<div class="gym-time" id="gym-time"><span class="gym-time-lbl">Thinking time</span><span class="gym-time-track"><span class="gym-time-fill" id="gym-time-fill"></span></span></div>`;
@@ -6086,7 +6563,12 @@ function qCardHTML(resultMsg,btnLabel){
     h+=`</div>`;
   }
   if(helpHTML)h+=helpHTML;
-  if(st.tries>0){
+  if(trainerMiss){
+    h+=`<p id="trainer-worked" class="trainer-worked">${escapeHtml(workedAnswerLine(q))}</p>`;
+    h+=`<p id="trainer-praise" class="trainer-praise">You kept trying. That's how trainers get strong!</p>`;
+    if(visual)h+=visual;
+    h+=`<button type="button" class="trainer-go" id="trainer-next">Next</button>`;
+  } else if(st.tries>0){
     h+=verdictHTML();
     h+=prizeHTML();
     if(resultMsg)h+=`<div class="${st.phase==='gym'?'gym-hint':'result-msg'}">${resultMsg}</div>`;
@@ -6252,6 +6734,11 @@ function render(){
     h+=`</div></div>`;
   }
 
+  if(st.phase==='trainer'&&st.trainer){
+    h+=trainerHTML();
+    if(!st.trainer.intro&&!st.trainer.over)h+=qCardHTML('','Next');
+  }
+
   if(st.phase==='play'){
     const tm=activeTM();
     const p=PKM[tm.pi];
@@ -6405,6 +6892,9 @@ function render(){
   gameEl.querySelectorAll('[data-subj]').forEach(b=>b.addEventListener('click',()=>chooseSubject(b.dataset.subj)));
   const sb=gameEl.querySelector('#subj-btn');if(sb)sb.addEventListener('click',openSubjectPicker);
   const nb=gameEl.querySelector('#nxt');if(nb)nb.addEventListener('click',onNext);
+  const tgo=gameEl.querySelector('#trainer-go');if(tgo)tgo.addEventListener('click',startTrainerQuestions);
+  const tnext=gameEl.querySelector('#trainer-next');if(tnext)tnext.addEventListener('click',()=>{advanceTrainer();save();render();revealAnswer();});
+  const tmap=gameEl.querySelector('#trainer-map');if(tmap)tmap.addEventListener('click',leaveTrainer);
   const fb=gameEl.querySelector('#flee');if(fb)fb.addEventListener('click',fleeWild);
   const hb=gameEl.querySelector('#help-btn');if(hb)hb.addEventListener('click',askForHelp);
   gameEl.querySelectorAll('[data-gym-start]').forEach(b=>b.addEventListener('click',()=>startGym(b.dataset.gymStart)));
@@ -6652,19 +7142,9 @@ function recordReview(tmpl,clean){
   return false;
 }
 
-async function loadQuestion(){
-  st.served++;
-  // The question dealt on boot is the one they already snoozed past. Hold
-  // that snooze; the next question they actually ask for clears it.
-  if(st.holdSnooze)st.holdSnooze=false;
-  else SUBS.forEach(s=>{st.gymSnooze[s]=false;});
-  const pname=questionPname();
-  st.wildEscape=false;
-  st.lvlUpMsg=null;
-  st.streakMsg=null;
-  st.rematchMsg=null;
-  // A due Rematch takes the slot without spending the subject bag, so Mix keeps
-  // its rotation either way.
+// The same picker practice uses: a warm-up queue, then a due Rematch, then
+// the regular deal with its review mix. Trainer battles call this too.
+function pickDealtQuestion(pname){
   const w=st.warmup;
   const r=dueReview();
   let q;
@@ -6686,13 +7166,29 @@ async function loadQuestion(){
     const sub=nextSubject(st.subject);
     q=dealRegular(sub,pname);
   }
-  if(st.backPending&&!(q&&q.warmup)){
+  if(st.backPending&&!(q&&q.warmup)&&st.phase!=='trainer'){
     q.back=true;
     st.backPending=false;
     // Spent once the return question is dealt, so a second reload does not
     // say it again. Optional on the save; SAVE_V stays 1.
     save();
   }
+  return q;
+}
+async function loadQuestion(){
+  st.served++;
+  // The question dealt on boot is the one they already snoozed past. Hold
+  // that snooze; the next question they actually ask for clears it.
+  if(st.holdSnooze)st.holdSnooze=false;
+  else SUBS.forEach(s=>{st.gymSnooze[s]=false;});
+  const pname=questionPname();
+  st.wildEscape=false;
+  st.lvlUpMsg=null;
+  st.streakMsg=null;
+  st.rematchMsg=null;
+  // A due Rematch takes the slot without spending the subject bag, so Mix keeps
+  // its rotation either way.
+  const q=pickDealtQuestion(pname);
   rememberSeen(q);
   st.q=q;st.sel=null;st.cor=false;st.anim="";st.helped=false;
   st.tries=0;st.wrong=[];st.lastXp=0;st.draft='';st.armAt=Date.now()+PAUSE.first;
@@ -6720,6 +7216,7 @@ function askForHelp(){
   if(!st.q||st.tries>0||st.helped||st.cor||st.wildEscape)return;
   st.helped=true;
   if(st.gym){st.gym.timerLeft=null;st.gym.deadline=null;save();}
+  else if(st.phase==='trainer')save();
   render();
 }
 
@@ -7236,6 +7733,9 @@ function switchPokemon(idx){
 }
 
 function applyLevelUps(){
+  // XP earned while an evolution is waiting stays on the Pokémon. The
+  // evolution spends it on the new form, the same way a Gym prize does.
+  if(st.pendingEvo)return;
   const tm=activeTM();if(!tm)return;
   while(tm.xp>=xpToNext(tm.level)){
     tm.xp-=xpToNext(tm.level);
@@ -7306,6 +7806,8 @@ function familyOf(pi){
 // Arcanines. Now any member of the family, in the same colour, rules the whole
 // family out, the same rule the stray-starter pool already followed.
 function triggerWildEncounter(shiny){
+  // Wild rolls belong to practice. A trainer battle never meets one.
+  if(st.phase==='trainer')return;
   if(shiny===undefined)shiny=rollShiny();
   const allWild=WILD_BY_GEN.reduce((a,g)=>a.concat(g),[]);
   const teamPis=ownedPis(shiny);
@@ -7362,6 +7864,16 @@ function fleeWild(){
 }
 
 function afterTurn(){
+  const held=st.round;
+  // The evolution interrupted a wild fight. Put that same Pokémon back.
+  // A new question here would skip the catch the round was holding.
+  if(held&&held.holdWild&&st.wild&&!st.wildEscape){
+    held.holdEvo=false;
+    st.phase='wild';
+    save();
+    if(view==='game')render();
+    return;
+  }
   // The round waited for the evolution. That was the button's job.
   if(st.round&&st.round.holdEvo&&st.round.closed&&!st.pendingEvo){
     if(!(st.phase==='wild'&&st.wild)){
@@ -7398,6 +7910,11 @@ function afterTurn(){
 }
 
 function onNext(){
+  if(st.phase==='trainer'){
+    if(st.trainer&&st.trainer.miss){advanceTrainer();save();render();return;}
+    if(st.trainer&&st.trainer.over){leaveTrainer();return;}
+    return;
+  }
   if(st.phase==='gym'){onGymNext();return;}
   if(st.phase==='award'){dismissAward();return;}
   if(st.phase==='wild'){
@@ -7479,6 +7996,7 @@ function typedValue(raw){
   return String(Number(s));
 }
 function canCommit(){
+  if(st.phase==='trainer'&&st.trainer&&(st.trainer.miss||st.trainer.over||st.trainer.intro))return false;
   return !!(st.q&&!st.cor&&!st.wildEscape&&Date.now()>=st.armAt);
 }
 function showPadNote(msg){
@@ -7583,7 +8101,7 @@ function commitAttempt(ok,choice,nextDraft){
       const sub=st.stats[st.q.subject];sub.att++;sub.cor++;
       // A review question must not wipe the run it is sitting inside.
       if(st.phase!=='gym'&&!(st.q&&(st.q.bankReview||st.q.warmup)))sub.cs=0;
-      if(st.phase==='play'||st.phase==='gym'){
+      if(st.phase==='play'||st.phase==='gym'||st.phase==='trainer'){
         const tm=activeTM();
         if(tm){st.lastXp=XP_WITH_HELP;tm.xp+=st.lastXp;applyLevelUps();}
       }
@@ -7600,12 +8118,12 @@ function commitAttempt(ok,choice,nextDraft){
       // Flat base XP. The streak ladder, the milestone bonus, and a catch
       // all stay put: a warm-up cannot be farmed into a Gym or a 5-in-a-row.
       const tm=activeTM();
-      if(tm&&(st.phase==='play'||st.phase==='gym')){st.lastXp=XP_BASE;tm.xp+=st.lastXp;applyLevelUps();}
+      if(tm&&(st.phase==='play'||st.phase==='gym'||st.phase==='trainer')){st.lastXp=XP_BASE;tm.xp+=st.lastXp;applyLevelUps();}
     } else if(ok&&!helped){
       st.streak++;
       if(st.streak>st.bestStreak){st.bestStreak=st.streak;if(st.streak>=BEST_STREAK_NOTE)st.newRecord=true;}
       const bonus=milestoneBonus(st.streak);
-      if(st.phase==='play'||st.phase==='gym'){
+      if(st.phase==='play'||st.phase==='gym'||st.phase==='trainer'){
         const tm=activeTM();
         if(tm){st.lastXp=xpForStreak(st.streak)+bonus;tm.xp+=st.lastXp;applyLevelUps();}
       } else if(st.phase==='wild'&&st.wild){
@@ -7636,7 +8154,7 @@ function commitAttempt(ok,choice,nextDraft){
       const tm=activeTM();
       if(tm){
         tm.xp+=REVIEW.bonus;
-        if(st.phase==='play'||st.phase==='gym')st.lastXp+=REVIEW.bonus;
+        if(st.phase==='play'||st.phase==='gym'||st.phase==='trainer')st.lastXp+=REVIEW.bonus;
         // An evolution already queued will run applyLevelUps itself once it lands.
         if(!st.pendingEvo)applyLevelUps();
       }
@@ -7665,12 +8183,15 @@ function commitAttempt(ok,choice,nextDraft){
 
   // Re-arm before the retry: the hint needs reading anyway, and it's what stops
   // a wrong answer from becoming a free rapid-fire second guess.
-  if(!ok)st.armAt=Date.now()+PAUSE.retry;
+  if(!ok&&st.phase!=='trainer')st.armAt=Date.now()+PAUSE.retry;
   // Cooldown is practice questions he actually answers, not a reload dealing one.
   if(firstTry&&st.phase==='play'&&!(st.q&&st.q.warmup))tickGymCool();
   const wasBonus=!!st.bonusWild;
   noteRoundAnswer(ok,firstTry);
   if(wasBonus&&st.wildEscape)finishBonusMiss();
+  // The answer that opens the battle is still a round question. It must
+  // not also count as the first hit, so an intro that just appeared waits.
+  if(st.phase==='trainer'&&st.trainer&&!st.trainer.intro)resolveTrainerAnswer(ok);
   save();
   render();
   // A long answer can leave Next, or the hint, under the Game bar.
