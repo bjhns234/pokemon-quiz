@@ -98,8 +98,8 @@ test('two hits win on question 2, and the prize is XP plus a star',async({page})
   await expect(page.locator('#trainer-result')).toContainText('You beat Youngster Joey!');
   await expect(page.locator('#trainer-result')).toContainText('Rattata is all tired out. Great math!');
   await expect(page.locator('#trainer-result')).toContainText('+30 XP');
-  await expect(page.locator('#trainer-result')).toContainText('Trainer star on your map');
-  await expect(page.getByRole('button',{name:'See your map'})).toBeVisible();
+  await expect(page.locator('#trainer-result')).toContainText('You earned a trainer star!');
+  await expect(page.getByRole('button',{name:'Keep going'})).toBeVisible();
   expect(await state(page,()=>st.trainerStars)).toEqual(['joey']);
   expect(await state(page,()=>activeTM().xp)).toBeGreaterThanOrEqual(before+30);
   expect(await state(page,()=>st.team.some(t=>PKM[t.pi].n==='Rattata'))).toBe(false);
@@ -113,6 +113,11 @@ test('two hits win on question 2, and the prize is XP plus a star',async({page})
   await page.click('#trainer-map');
   await expect(page.locator('#round-done')).toBeVisible();
   expect(await state(page,()=>st.round.n)).toBe(10);
+  const roundXp=await state(page,()=>st.round.xp|0);
+  await expect(page.locator('#round-xp')).toHaveText(`+${roundXp} XP`);
+  const shown=await page.locator('.round-mark').allTextContents();
+  const order=await state(page,()=>st.round.marks.map(m=>m?'✓':'○'));
+  expect(shown.map(s=>s.trim())).toEqual(order);
   const saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('pkq-save')).kids[0].data);
   expect(saved.v).toBe(1);
   expect(saved.trainerStars).toEqual(['joey']);
@@ -185,11 +190,12 @@ test('three questions without two hits lets the Pokémon get away',async({page})
   await answer(page,false);
   await page.click('#trainer-next');
   await expect(page.locator('#trainer-result')).toContainText('Rattata ran back to Joey.');
-  await expect(page.locator('#trainer-result')).toContainText('Nice try! You got 0 hits.');
+  await expect(page.locator('#trainer-result')).toContainText('Nice try!');
+  await expect(page.locator('#trainer-result')).not.toContainText('0 hits');
   await expect(page.locator('#trainer-result')).toContainText('Every try makes you stronger.');
-  await expect(page.locator('#trainer-result')).toContainText('+0 XP');
+  await expect(page.locator('#trainer-xp')).toHaveCount(0);
   expect(await state(page,()=>st.trainerStars||[])).toEqual([]);
-  await expect(page.getByRole('button',{name:'See your map'})).toBeVisible();
+  await expect(page.getByRole('button',{name:'Keep going'})).toBeVisible();
   await expect(page.getByRole('button',{name:/rematch|battle again/i})).toHaveCount(0);
 
   await state(page,()=>{st.trainer=null;st.phase='play';st.roundsDone=1;return loadQuestion();});
@@ -507,6 +513,98 @@ test('an old save without the new fields loads and still saves as version 1',asy
   expect(errors).toEqual([]);
 });
 
+async function missScreen(page){
+  await openBattle(page,1);
+  await state(page,()=>{
+    const idx=QB.math[1].findIndex(q=>q[0].startsWith('Which holds'));
+    st.q=serveQuestion('math',1,idx,questionPname());
+    st.tries=0;st.cor=false;st.helped=false;st.wrong=[];st.armAt=0;
+    render();
+  });
+  await answer(page,false);
+  await expect(page.locator('#trainer-next')).toBeVisible();
+}
+
+test('a miss keeps Next on screen in landscape',async({page})=>{
+  const errors=await boot(page);
+  await missScreen(page);
+  const sizes=[
+    {width:1024,height:768},
+    {width:1194,height:834},
+    {width:1133,height:744},
+  ];
+  for(const size of sizes){
+    await page.setViewportSize(size);
+    const fit=await page.evaluate(()=>{
+      const main=document.getElementById('app-main');
+      const next=document.getElementById('trainer-next').getBoundingClientRect();
+      const nav=document.getElementById('bottom-nav').getBoundingClientRect();
+      const answers=[...document.querySelectorAll('.ans-btn')].map(el=>el.getBoundingClientRect());
+      const q=document.querySelector('.qtext').getBoundingClientRect();
+      return {
+        scroll:main.scrollHeight-main.clientHeight,
+        nextTop:next.top,
+        nextBottom:next.bottom,
+        navTop:nav.top,
+        answers:answers.length,
+        answerBottom:answers.reduce((m,r)=>Math.max(m,r.bottom),0),
+        qTop:q.top,
+      };
+    });
+    const where=`${size.width}x${size.height}`;
+    expect(fit.scroll,where).toBeLessThanOrEqual(1);
+    expect(fit.answers,where).toBe(4);
+    expect(fit.qTop,where).toBeGreaterThanOrEqual(0);
+    expect(fit.answerBottom,where).toBeLessThanOrEqual(fit.navTop+0.5);
+    expect(fit.nextTop,where).toBeGreaterThanOrEqual(0);
+    expect(fit.nextBottom,where).toBeLessThanOrEqual(fit.navTop+0.5);
+  }
+  expect(errors).toEqual([]);
+});
+
+test('battle answers are as tall as the tablet question buttons',async({page})=>{
+  const errors=await boot(page);
+  await missScreen(page);
+  const sizes=[
+    {width:768,height:1024,min:88,max:104},
+    {width:1024,height:768,min:88,max:104},
+    {width:390,height:844,min:64,max:88},
+  ];
+  for(const size of sizes){
+    await page.setViewportSize(size);
+    const box=await page.locator('.ans-btn').first().boundingBox();
+    const font=await page.locator('.ans-btn').first().evaluate(el=>parseFloat(getComputedStyle(el).fontSize));
+    const where=`${size.width}x${size.height}`;
+    expect(box.height,where).toBeGreaterThanOrEqual(size.min);
+    expect(box.height,where).toBeLessThanOrEqual(size.max);
+    expect(font,where).toBe(20);
+  }
+  expect(errors).toEqual([]);
+});
+
+test('a hit sits beside the partner, and a miss turns its dot grey',async({page})=>{
+  const errors=await boot(page);
+  await closeQualified(page,1);
+  await expect(page.locator('#trainer-card .trainer-icon')).toBeVisible();
+  await page.click('#trainer-go');
+  await answer(page,true);
+  await expect(page.locator('.trainer-partner #trainer-hit')).toBeVisible();
+  await expect(page.locator('#trainer-card .trainer-icon')).toHaveCount(0);
+  await expect(page.locator('.trainer-top #trainer-hit')).toHaveCount(0);
+  let marks=await page.locator('.trainer-dot').evaluateAll(els=>els.map(el=>el.dataset.mark));
+  expect(marks).toEqual(['hit','open','open']);
+  const align=await page.locator('.qtext').evaluate(el=>getComputedStyle(el).textAlign);
+  expect(align).toBe('center');
+  await answer(page,false);
+  await expect(page.locator('#trainer-card .trainer-icon')).toHaveCount(0);
+  marks=await page.locator('.trainer-dot').evaluateAll(els=>els.map(el=>el.dataset.mark));
+  expect(marks).toEqual(['hit','miss','open']);
+  const colors=await page.locator('.trainer-dot').evaluateAll(els=>els.map(el=>getComputedStyle(el).backgroundColor));
+  expect(colors[0]).not.toBe(colors[1]);
+  expect(colors[1]).not.toBe(colors[2]);
+  expect(errors).toEqual([]);
+});
+
 test('trainer battle screens fit an iPad and a phone',async({page})=>{
   test.setTimeout(180000);
   const errors=await boot(page);
@@ -610,7 +708,8 @@ test('trainer battle screens fit an iPad and a phone',async({page})=>{
   await page.click('#trainer-next');
   await answer(page,false);
   await page.click('#trainer-next');
-  await expect(page.locator('#trainer-result')).toContainText('got 0 hits');
+  await expect(page.locator('#trainer-result')).toContainText('Nice try!');
+  await expect(page.locator('#trainer-result')).not.toContainText('0 hits');
   await shot('battle_got_away');
   expect(errors).toEqual([]);
 });
