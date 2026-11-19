@@ -838,6 +838,73 @@ test('the hop and the ready halo run when motion is allowed',async({page})=>{
   expect(errors).toEqual([]);
 });
 
+test('the hop onto the Gym stays outside the ring while it moves',async({page})=>{
+  await page.emulateMedia({reducedMotion:'no-preference'});
+  const errors=await boot(page);
+  const full={'2026-11-16':{'math|@|1':'1'.repeat(20)},'2026-11-17':{'math|@|1':'1'.repeat(20)}};
+  const scenes=[
+    {name:'arrival',route:{tier:1,step:6,hopFrom:5},log:{},offer:null},
+    {name:'shortcut',route:{tier:1,step:6,hopFrom:3,announce:'shortcut'},log:full,offer:{tier:1,cool:0}},
+  ];
+  const sizes=[{width:768,height:1024},{width:1024,height:768},{width:390,height:844}];
+  for(const scene of scenes){
+    for(const size of sizes){
+      await page.setViewportSize(size);
+      await state(page,s=>{
+        st.route=s.route;
+        st.log=s.log;
+        st.badges.math=[];
+        st.gymOffer.math=s.offer;
+        st.phase='round';
+        if(!st.round)st.round=freshRound(10);
+        st.round.n=10;st.round.right=6;st.round.closed=true;
+        st.round.marks=[1,1,1,1,1,1,0,0,0,0];
+        render();
+      },scene);
+      const where=`${scene.name} ${size.width}x${size.height}`;
+      const hop=await page.evaluate(()=>{
+        function overlap(a,b){
+          return {
+            x:Math.min(a.right,b.right)-Math.max(a.left,b.left),
+            y:Math.min(a.bottom,b.bottom)-Math.max(a.top,b.top),
+          };
+        }
+        const token=document.getElementById('route-token');
+        const anim=token.getAnimations().find(a=>a.animationName&&a.animationName!=='none');
+        if(!anim)return {name:'none',samples:[]};
+        anim.pause();
+        const dur=Number(anim.effect.getComputedTiming().duration);
+        const marks=[['start',0],['middle',0.5],['end',0.98]];
+        const samples=marks.map(([at,t])=>{
+          anim.currentTime=dur*t;
+          const box=token.getBoundingClientRect();
+          const ring=document.querySelector('#route-map .gym-ring').getBoundingClientRect();
+          const label=document.querySelector('.route-gym-label').getBoundingClientRect();
+          const ringHit=overlap(box,ring);
+          const labelHit=overlap(box,label);
+          return {
+            at,
+            ring:ringHit.x>1&&ringHit.y>1,
+            label:labelHit.x>1&&labelHit.y>1,
+            ringX:Math.round(ringHit.x),
+            ringY:Math.round(ringHit.y),
+            labelX:Math.round(labelHit.x),
+            labelY:Math.round(labelHit.y),
+          };
+        });
+        return {name:anim.animationName,samples};
+      });
+      expect(hop.name,where).not.toBe('none');
+      expect(hop.samples,where).toHaveLength(3);
+      for(const sample of hop.samples){
+        expect(sample.ring,`${where} ${sample.at} ring ${sample.ringX}x${sample.ringY}`).toBe(false);
+        expect(sample.label,`${where} ${sample.at} label ${sample.labelX}x${sample.labelY}`).toBe(false);
+      }
+    }
+  }
+  expect(errors).toEqual([]);
+});
+
 test('the map fits an iPad and a phone without scrolling',async({page})=>{
   const errors=await boot(page);
   await state(page,()=>{

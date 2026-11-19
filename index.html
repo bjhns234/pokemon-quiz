@@ -740,8 +740,10 @@ button.mon-strip:focus{outline:3px solid #1D4ED8;outline-offset:2px}
 .route-node[data-step="5"]{grid-area:2/1}
 .route-node[data-step="6"]{grid-area:3/2}
 @keyframes route-arc{0%{transform:translateX(-50%) translateY(0)}40%{transform:translateX(-50%) translateY(-14px)}100%{transform:translateX(-50%) translateY(0)}}
+@keyframes route-arc-gym{0%{transform:translate(-100%,-50%) translateY(0)}40%{transform:translate(-100%,-50%) translateY(-14px)}100%{transform:translate(-100%,-50%) translateY(0)}}
 @keyframes route-halo{0%,100%{filter:none}50%{filter:drop-shadow(0 0 8px #7C3AED)}}
 .route-token.hop{animation:route-arc 600ms ease-out}
+.route-gym-node .route-token.hop{animation-name:route-arc-gym}
 .route-token.hop-chain{animation-duration:250ms}
 #route-map .gym-ring-val{transition:stroke-dasharray 500ms ease}
 #route-map .gym-ring.ready{animation:route-halo 600ms ease-in-out 3}
@@ -775,12 +777,14 @@ button.mon-strip:focus{outline:3px solid #1D4ED8;outline-offset:2px}
   .route-token,.route-token img{width:48px;height:48px}
   .route-gym-node .route-token{left:50%;top:0;bottom:auto;width:48px;height:48px;transform:translate(-50%,-100%)}
   .route-gym-node .route-token img{width:48px;height:48px}
+  @keyframes route-arc-gym-phone{0%{transform:translate(-50%,-100%) translateY(0)}40%{transform:translate(-50%,-100%) translateY(-14px)}100%{transform:translate(-50%,-100%) translateY(0)}}
+  .route-gym-node .route-token.hop{animation-name:route-arc-gym-phone}
   .route-gym-label{position:absolute;top:38px;left:50%;transform:translateX(-50%);font-size:18px;white-space:nowrap}
   .route-badge{font-size:18px}
   .route-caption{margin-top:4px}
 }
 @media (prefers-reduced-motion:reduce){
-  .route-token.hop,#route-map .gym-ring.ready{animation:none}
+  .route-token.hop,.route-gym-node .route-token.hop,#route-map .gym-ring.ready{animation:none}
   #route-map .gym-ring-val{transition:none}
 }
 .who-farewell{font-size:20px;font-weight:800;color:#065F46;text-align:center;margin:0 0 8px}
