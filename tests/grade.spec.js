@@ -129,7 +129,13 @@ test('locking kindergarten stays in tier 1, and a Gym win gives the badge only',
   expect(await state(page,()=>st.stats.math.level)).toBe(1);
   expect(await state(page,()=>st.gymOffer.math)).toBeNull();
 
-  await state(page,()=>{st.gymOffer.math={tier:1,cool:0};st.cor=true;render();});
+  // Twenty-four right answers finish two rounds. The Gym check needs the
+  // question screen again, which Play again would open.
+  await state(page,()=>{
+    st.bonusWild=false;st.wild=null;st.wildEscape=false;st.phase='play';
+    st.round=freshRound(st.roundPref||10);
+    st.gymOffer.math={tier:1,cool:0};st.cor=true;render();
+  });
   await page.click('[data-gym-start="math"]');
   await state(page,()=>{st.gym.lead=1;});
   await answer(page,true);
@@ -138,6 +144,7 @@ test('locking kindergarten stays in tier 1, and a Gym win gives the badge only',
   await expect(page.locator('.award-sub')).toHaveText('You earned the badge!');
   await expect(page.locator('.award-card')).not.toContainText('Same questions');
   expect(await state(page,()=>({level:st.stats.math.level,badges:[...st.badges.math]}))).toEqual({level:1,badges:[1]});
+  await state(page,()=>{st.armAt=0;});
   await page.click('#award-go');
 
   for(let i=0;i<5;i++){

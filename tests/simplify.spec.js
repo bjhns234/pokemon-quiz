@@ -134,11 +134,14 @@ test('before an answer there are three controls, and four when switching is avai
   await expect(page.locator('.gym-invite')).toHaveCount(0);
   await expect(page.locator('.nxt-btn')).toHaveCount(0);
 
+  // The round dots always occupy the streak row. The pill itself still waits for 3.
   await state(page,()=>{st.streak=2;st.bestStreak=9;st.q.rematch=true;render();});
-  await expect(page.locator('#game .qcard .q-head')).toHaveCount(0);
+  await expect(page.locator('#game .qcard .q-head')).toHaveCount(1);
+  await expect(page.locator('#game .streak-pill')).toHaveCount(0);
+  await expect(page.locator('#game .round-dots')).toHaveCount(1);
 
   await state(page,()=>{st.streak=3;render();});
-  await expect(page.locator('#game .qcard .q-head > *')).toHaveCount(1);
+  await expect(page.locator('#game .qcard .q-head > *')).toHaveCount(2);
   await expect(page.locator('#game .streak-pill')).toContainText('3 in a row');
 });
 

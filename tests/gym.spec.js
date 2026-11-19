@@ -83,6 +83,7 @@ test('a win opens the next tier, awards the badge, and pays the prizes',async({p
   await expect(page.locator('.award-card')).toContainText('Great Ball');
   await expect(page.locator('body')).not.toContainText(/Level|Grade|defeated|you lost/i);
 
+  await state(page,()=>{st.armAt=0;});
   await page.click('#award-go');
   expect(await state(page,()=>st.phase)).toBe('play');
   await page.reload();
@@ -358,6 +359,7 @@ test('a Rare Candy levels the active Pokémon, and a Great Ball starts the next 
   await page.click('[data-gym-start="math"]');
   await state(page,()=>{st.gym.lead=1;});
   await answer(page,true);
+  await state(page,()=>{st.armAt=0;});
   await page.click('#award-go');
   const lvl=await state(page,()=>activeTM().level);
   await page.click('#nav-pdx');
@@ -667,6 +669,7 @@ test('winning a tier again does not pay the prize a second time',async({page})=>
   await page.click('[data-gym-start="math"]');
   await state(page,()=>{st.gym.lead=1;});
   await answer(page,true);
+  await state(page,()=>{st.armAt=0;});
   await page.click('#award-go');
   const first=await state(page,()=>({candy:st.items.candy,great:st.items.great,team:st.team.length,prizes:[...st.prizes.math]}));
   expect(first.prizes).toEqual([1]);

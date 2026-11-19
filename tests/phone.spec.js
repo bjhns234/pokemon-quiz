@@ -384,6 +384,8 @@ test('a long answer scrolls Next above the bar',async({page})=>{
         st.activeIdx=0;
       }
       st.pendingEvo=null;
+      st.bonusWild=false;
+      st.round=freshRound(st.roundPref||10);
       st.phase='play';st.subject=spec.sub;
       st.q=serveQuestion(spec.sub,spec.lv,spec.idx,questionPname());
       st.tries=0;st.cor=false;st.wrong=[];st.helped=false;st.armAt=0;st.wildEscape=false;st.draft='';
@@ -601,6 +603,8 @@ test('Next fits above the bar without scrolling on the other small screens',asyn
         st.activeIdx=0;
       }
       st.pendingEvo=null;
+      st.bonusWild=false;
+      st.round=freshRound(st.roundPref||10);
       st.phase='play';st.subject='reading';
       st.q=serveQuestion('reading',1,0,questionPname());
       st.tries=0;st.cor=false;st.wrong=[];st.helped=false;st.armAt=0;st.wildEscape=false;st.draft='';

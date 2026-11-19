@@ -251,7 +251,8 @@ button.mon-strip:focus{outline:3px solid #1D4ED8;outline-offset:2px}
 @media (prefers-reduced-motion:reduce){
   .gym-ring.glow,.psvg,.psvg.bk,.psvg.sk,
   #game .mon-strip .psvg.bk img,#game .mon-strip .psvg.sk img,
-  .warmup-tag,.warmup-say,.warmup-back,.streak-pill{animation:none}
+  .warmup-tag,.warmup-say,.warmup-back,.streak-pill,
+  #round-celebrate{animation:none}
 }
 /* A level-up lands on the pill that actually changed instead of a bar above the card.
    Green because the +XP badge just below it is green too, so the badge, the bar filling
@@ -472,6 +473,7 @@ button.mon-strip:focus{outline:3px solid #1D4ED8;outline-offset:2px}
 .who-ava img{width:72px;height:72px;object-fit:contain}
 .who-name{font-size:16px;font-weight:800;color:#1A1A2E;margin-top:4px}
 .who-sub{font-size:11px;color:#374151;font-weight:700;line-height:1.3;min-height:2.6em}
+.who-count{display:block}
 .who-edit{margin-top:12px;background:#fff;border:2px solid #D1D5DB;color:#1A1A2E;font-weight:800;font-size:14px;border-radius:10px;padding:8px 16px;font-family:inherit;cursor:pointer}
 .who-new{grid-column:1/-1;display:flex;align-items:center;justify-content:center;gap:8px;background:#F5F3FF;border:2px dashed #7C3AED;color:#4C1D95;border-radius:16px;padding:14px;font-size:16px;font-weight:800;cursor:pointer;font-family:inherit}
 .who-new img{width:40px;height:40px;object-fit:contain}
@@ -542,15 +544,48 @@ button.mon-strip:focus{outline:3px solid #1D4ED8;outline-offset:2px}
 .timer-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:4px;font-size:16px;font-weight:800;color:#1A1A2E}
 .timer-toggle{min-height:44px;min-width:88px;border-radius:999px;border:2px solid #1A1A2E;background:#fff;color:#1A1A2E;font-family:inherit;font-weight:800;font-size:16px;padding:8px 16px;cursor:pointer}
 .timer-toggle.on{background:#1A1A2E;color:#fff}
-.grade-row{margin-top:14px}
-.grade-row+.grade-row{border-top:1px solid #E5E7EB;padding-top:14px}
-.grade-name{font-size:16px;font-weight:800;color:#1A1A2E;margin-bottom:8px}
+.grade-row,.round-row{margin-top:14px}
+.grade-row+.grade-row,.round-row+.round-row{border-top:1px solid #E5E7EB;padding-top:14px}
+.grade-name,.round-name{font-size:16px;font-weight:800;color:#1A1A2E;margin-bottom:8px}
 /* Equal cells. auto-fill keeps an empty track, so a last button on its own
    row stays one cell wide instead of stretching across the card. */
 .grade-choices{display:grid;grid-template-columns:repeat(auto-fill,minmax(8.25rem,1fr));gap:8px}
 .grade-choice{min-height:44px;min-width:0;padding:8px 10px;border-radius:12px;border:2px solid #1A1A2E;background:#fff;color:#1A1A2E;font-family:inherit;font-weight:800;font-size:16px;line-height:1.2;cursor:pointer;text-align:center;display:flex;align-items:center;justify-content:center}
 .grade-choice.sel{background:#1A1A2E;color:#fff}
 .grade-blurb{font-size:16px;font-weight:700;color:#1A1A2E;line-height:1.35;margin-top:10px}
+/* Progress through this round. Sits in the streak row's free space. Not a control. */
+.round-dots{display:inline-flex;align-items:center;gap:4px;margin-left:auto;height:10px;pointer-events:none;flex:0 0 auto}
+/* Back to it owns the top of the card on every screen size. The dots come back on the next question. */
+#game .qcard:has(.warmup-back) .q-head{display:none;height:0;min-height:0;margin:0;padding:0}
+.round-dot{width:10px;height:10px;border-radius:50%;background:#E5E7EB;box-shadow:inset 0 0 0 1.5px #D1D5DB;pointer-events:none;flex:0 0 auto}
+.round-dot[data-on="1"]{background:#34D399;box-shadow:none}
+.round-card{text-align:center;padding:12px 14px 14px}
+.round-hero{display:flex;justify-content:center;margin:0}
+.round-hero img{width:150px;height:150px;object-fit:contain}
+#round-celebrate{animation:round-pop .55s ease}
+@keyframes round-pop{0%{transform:scale(.9)}55%{transform:scale(1.04)}100%{transform:scale(1)}}
+.round-title{font-size:28px;font-weight:800;color:#1A1A2E;margin:2px 0 6px;line-height:1.2}
+.round-marks{display:flex;flex-wrap:wrap;justify-content:center;gap:4px 6px;margin:0 0 6px}
+.round-mark{font-size:22px;line-height:1;font-weight:800;color:#6B7280}
+.round-mark[data-right="1"]{color:#065F46}
+.round-line{font-size:22px;font-weight:800;color:#1F2937;line-height:1.25;margin:0 0 4px}
+.round-xp,.round-bonus{font-size:18px;font-weight:700;color:#1F2937;margin:2px 0}
+.round-bonus{color:#065F46}
+.round-again,.round-leave{display:flex;align-items:center;justify-content:center;width:100%;min-height:64px;border-radius:14px;font-family:inherit;font-size:20px;font-weight:800;cursor:pointer;margin-top:8px}
+.round-again{background:#1A1A2E;color:#fff;border:none}
+.round-leave{background:#fff;color:#1A1A2E;border:2px solid #1A1A2E}
+.round-actions{display:flex;flex-direction:column;gap:0}
+.who-farewell{font-size:20px;font-weight:800;color:#065F46;text-align:center;margin:0 0 8px}
+@media (max-width:560px){
+  .round-hero img{width:120px;height:120px}
+  .round-title{font-size:24px}
+  .round-line{font-size:20px}
+  .round-xp,.round-bonus{font-size:16px}
+  .round-mark{font-size:20px}
+}
+@media (prefers-reduced-motion:reduce){
+  #round-celebrate{animation:none}
+}
 .parent-q{font-size:22px;font-weight:800;color:#1A1A2E;text-align:center;margin:8px 0}
 .parent-ans{width:100%;border:2px solid #E5E7EB;border-radius:14px;padding:12px;font-size:22px;font-weight:800;text-align:center;font-family:inherit;color:#1A1A2E}
 .parent-ans:focus{outline:none;border-color:#1A1A2E}
@@ -677,6 +712,8 @@ button.mon-strip:focus{outline:3px solid #1D4ED8;outline-offset:2px}
    Math hides the picture only while the keys are up. After the answer
    the picture comes back small, and Next stays on screen. */
 @media (max-height:520px){
+  /* A short phone has no free row. The dots come back when the screen is tall enough. */
+  #game .round-dots{display:none}
   #app-main{padding:2px 8px 1px}
   .hdr{margin-bottom:0}
   .card{padding:4px 8px;margin-bottom:2px}
@@ -826,7 +863,9 @@ button.mon-strip:focus{outline:3px solid #1D4ED8;outline-offset:2px}
   .gym-end p{font-size:13px;margin:2px 0 4px;line-height:1.3}
   .gym-end .gym-hint{padding:4px 8px;margin:0 0 4px;font-size:12px}
   #game:has(.gym-end) #gym-back,
-  #game:has(.award-card) #award-go{flex:0 0 auto;min-height:40px;padding:8px 12px}
+  #game:has(.award-card) .round-actions{flex:0 0 auto}
+  #game:has(.award-card) #award-go,
+  #game:has(.award-card) #round-done-exit{flex:0 0 auto;min-height:40px;padding:8px 12px;margin-top:0}
   .award-kicker{font-size:11px}
   .award-title{font-size:16px;margin:2px 0}
   .award-sub,.award-prize{font-size:13px;margin:2px 0}
@@ -939,7 +978,7 @@ button.mon-strip:focus{outline:3px solid #1D4ED8;outline-offset:2px}
      box as the real pill. A font that runs taller cannot change either one. */
   #game .streak-pill,#game .q-head,#game .qcard::before{box-sizing:border-box;height:24px;min-height:24px;line-height:24px;padding:0 10px}
   #game .qcard::before{content:"\1F525  5 in a row";visibility:hidden;display:flex;width:max-content;align-items:center;font-size:14px;font-weight:700;letter-spacing:0.03em;margin:0 0 4px;white-space:nowrap}
-  #game .q-head{margin:0 0 4px;padding:0}
+  #game .q-head{margin:0 0 4px;padding:0;flex-wrap:nowrap}
   #game .qcard:has(.q-head)::before,
   #game .qcard:has(.warmup-back)::before{content:none;height:0;min-height:0;padding:0;margin:0}
   /* One spacing for every tablet height, so the picture grows smoothly
@@ -2747,6 +2786,11 @@ function mkState(saved){
     moves:[],
     redo:{},
     backPending:false,
+    // How many questions this child plays before the round ends. The round
+    // itself is separate, so a change waits until the next one.
+    roundPref:10,
+    round:freshRound(10),
+    bonusWild:false,
   };
   if(saved){
     s.starter=saved.starter;
@@ -2774,13 +2818,19 @@ function mkState(saved){
     s.moves=Array.isArray(saved.moves)?saved.moves:[];
     s.redo=saved.redo||{};
     s.backPending=!!saved.backPending;
+    s.roundPref=saved.roundPref||10;
+    s.round=saved.round||freshRound(s.roundPref);
     if(saved.reviewCount){
       SUBS.forEach(sub=>{s.reviewCount[sub]=Math.max(0,saved.reviewCount[sub]|0);});
     }
     // An award or a Gym in progress is resumed. A wild fight still in
     // progress is not. A catch or evolution is written down the moment it
     // happens, so leaving during the animation keeps the Pokémon.
-    s.phase=saved.award?'award':saved.gym?'gym':saved.team.length>0?'play':'starter';
+    // A finished round comes back on its done screen. A half-played one
+    // resumes at the same count.
+    const pendingBonus=s.round&&s.round.bonusPending&&!(s.round.bonus&&s.round.bonus.name);
+    const roundScreen=s.round&&s.round.closed&&!pendingBonus&&!saved.award&&!saved.gym;
+    s.phase=saved.award?'award':saved.gym?'gym':roundScreen?'round':saved.team.length>0?'play':'starter';
   }
   parkHiddenSubject(s);
   return s;
@@ -2860,7 +2910,8 @@ function gamePayload(){
     log:pruneLog(st.log),
     logSince:/^\d{4}-\d{2}-\d{2}$/.test(st.logSince)?st.logSince:LOG_EPOCH,
     // Auto when missing. A number 1–4 keeps math at that tier.
-    settings:{grade:st.grade>=1&&st.grade<=4?st.grade:'auto'},
+    // Round length is 5, 10, or 15. Missing means 10. SAVE_V stays 1.
+    settings:{grade:st.grade>=1&&st.grade<=4?st.grade:'auto',round:roundLengthValue(st.roundPref)},
     reviewCount:{
       math:Math.max(0,(st.reviewCount&&st.reviewCount.math)|0),
       reading:Math.max(0,(st.reviewCount&&st.reviewCount.reading)|0),
@@ -2878,6 +2929,21 @@ function gamePayload(){
   if(st.moves&&st.moves.length)payload.moves=st.moves.slice(-8);
   if(st.redo&&Object.keys(st.redo).length)payload.redo=st.redo;
   if(st.backPending)payload.backPending=true;
+  // Optional. An old save has no round and starts again at 0.
+  const rr=st.round;
+  if(rr&&((rr.n|0)>0||rr.closed||rr.endAfter)){
+    payload.round={
+      n:Math.max(0,rr.n|0),
+      right:Math.max(0,rr.right|0),
+      len:roundLengthValue(rr.len),
+      marks:Array.isArray(rr.marks)?rr.marks.slice(0,40).map(x=>x?1:0):[],
+      xp:Math.max(0,rr.xp|0),
+      endAfter:!!rr.endAfter,
+      closed:!!rr.closed,
+    };
+    if(rr.bonusPending)payload.round.bonusPending=true;
+    if(rr.bonus&&rr.bonus.name)payload.round.bonus={name:String(rr.bonus.name).slice(0,40),caught:!!rr.bonus.caught};
+  }
   return payload;
 }
 
@@ -2940,6 +3006,48 @@ function parseRedo(raw){
     out[sub]={tier,fresh};
   });
   return out;
+}
+// 5, 10, or 15. Anything else is the default of 10.
+function roundLengthValue(raw){
+  const n=typeof raw==='string'?parseInt(raw,10):raw|0;
+  return n===5||n===15||n===10?n:10;
+}
+function roundGoal(len){
+  if((len|0)<=5)return 4;
+  if((len|0)>=15)return 11;
+  return 7;
+}
+function freshRound(len){
+  return {n:0,right:0,len:roundLengthValue(len),marks:[],xp:0,bonus:null,endAfter:false,closed:false,holdEvo:false,holdWild:false,bonusPending:false};
+}
+function parseRound(raw,pref){
+  const len0=roundLengthValue(pref);
+  if(!raw||typeof raw!=='object')return null;
+  const len=raw.len===5||raw.len===10||raw.len===15?raw.len:len0;
+  let n=Math.max(0,raw.n|0);
+  let right=Math.max(0,raw.right|0);
+  if(n>40){n=0;right=0;}
+  if(right>n)right=n;
+  let marks=Array.isArray(raw.marks)?raw.marks.slice(0,n).map(x=>x?1:0):null;
+  if(!marks||marks.length!==n){
+    marks=[];
+    for(let i=0;i<n;i++)marks.push(i<right?1:0);
+  }
+  const bonus=raw.bonus&&typeof raw.bonus.name==='string'
+    ?{name:raw.bonus.name.slice(0,40),caught:!!raw.bonus.caught}
+    :null;
+  return {
+    n,right,len,marks,
+    xp:Math.max(0,raw.xp|0),
+    endAfter:!!raw.endAfter&&n<len,
+    closed:n>=len?true:!!raw.closed,
+    holdEvo:false,
+    holdWild:false,
+    // A held catch is not saved. Once the count is full and the line was met,
+    // the bonus is still owed, so a reload starts it instead of skipping it.
+    bonusPending:!bonus&&(!!raw.bonusPending||((n>=len||!!raw.closed)&&right>=roundGoal(!!raw.endAfter&&n<len?len0:len))),
+    bonus,
+  };
 }
 function parseGameSave(data){
   try{
@@ -3118,6 +3226,8 @@ function parseGameSave(data){
       moves:parseMoves(data.moves),
       redo:parseRedo(data.redo),
       backPending:data.backPending===true,
+      roundPref:roundLengthValue(data.settings&&data.settings.round),
+      round:parseRound(data.round,data.settings&&data.settings.round),
     };
   }catch(e){
     // corrupt or half-written save: start fresh rather than fail to a blank screen
@@ -3371,7 +3481,10 @@ function sanitizeKid(k){
   const kid={id:k.id.slice(0,40),name:cleanName(k.name),avatar,data};
   if(k.askName)kid.askName=true;
   // A grade picked before the first starter has no game payload yet.
-  if(!data&&k.settings&&typeof k.settings==='object')kid.settings={grade:gradeValue(k.settings.grade)||'auto'};
+  if(!data&&k.settings&&typeof k.settings==='object'){
+    kid.settings={grade:gradeValue(k.settings.grade)||'auto'};
+    if(k.settings.round!=null)kid.settings.round=roundLengthValue(k.settings.round);
+  }
   return kid;
 }
 function activeKid(){return profiles.kids.find(k=>k.id===profiles.activeId)||null;}
@@ -3398,7 +3511,7 @@ function captureActive(){
     delete kid.settings;
   } else {
     kid.data=null;
-    kid.settings={grade:st.grade>=1&&st.grade<=4?st.grade:'auto'};
+    kid.settings={grade:st.grade>=1&&st.grade<=4?st.grade:'auto',round:roundLengthValue(st.roundPref)};
   }
 }
 function writeRoster(){
@@ -3410,7 +3523,10 @@ function writeRoster(){
       kids:profiles.kids.map(k=>{
         const row={id:k.id,name:k.name,avatar:k.avatar,data:k.data||null};
         if(k.askName)row.askName=true;
-        if(!row.data&&k.settings)row.settings={grade:gradeValue(k.settings.grade)||'auto'};
+        if(!row.data&&k.settings){
+          row.settings={grade:gradeValue(k.settings.grade)||'auto'};
+          if(k.settings.round!=null)row.settings.round=roundLengthValue(k.settings.round);
+        }
         return row;
       }),
     }));
@@ -3583,20 +3699,28 @@ function notePractice(tmpl,outcome){
     delete st.practice.topics[keys[0]];
   }
 }
-function kidBlurb(kid){
+function kidCardLines(kid){
   const d=kid&&kid.data;
   if(kid&&kid.id===profiles.activeId&&st.team.length){
     const t=st.team[Math.min(Math.max(0,st.activeIdx|0),st.team.length-1)]||st.team[0];
-    const extra=st.team.length>1?` · ${st.team.length} Pokémon`:'';
-    return `${t.shiny?'Shiny ':''}${PKM[t.pi].n} · Lv ${t.level|0}${extra}`;
+    return {
+      line:`${t.shiny?'Shiny ':''}${PKM[t.pi].n} · Lv ${t.level|0}`,
+      count:st.team.length>1?`${st.team.length} Pokémon`:'',
+    };
   }
-  if(!d||!Array.isArray(d.team)||!d.team.length)return 'Ready to start';
+  if(!d||!Array.isArray(d.team)||!d.team.length)return {line:'Ready to start',count:''};
   const idx=Math.min(Math.max(0,d.activeIdx|0),d.team.length-1);
   const t=d.team[idx]||d.team[0];
   const pk=PKM[NUM_TO_PI[t.num]];
   const name=pk?pk.n:'Pokémon';
-  const extra=d.team.length>1?` · ${d.team.length} Pokémon`:'';
-  return `${t.shiny?'Shiny ':''}${name} · Lv ${t.level|0}${extra}`;
+  return {
+    line:`${t.shiny?'Shiny ':''}${name} · Lv ${t.level|0}`,
+    count:d.team.length>1?`${d.team.length} Pokémon`:'',
+  };
+}
+function kidBlurb(kid){
+  const p=kidCardLines(kid);
+  return p.count?`${p.line} · ${p.count}`:p.line;
 }
 // The picture a child looks for is the Pokémon they battle with, not a separate buddy.
 function faceForKid(kid){
@@ -3652,6 +3776,19 @@ function showGameChrome(){
 }
 function bootInto(){
   view='game';
+  if(st.round&&st.round.bonusPending&&!(st.round.bonus&&st.round.bonus.name)){
+    st.bonusWild=true;
+    st.round.closed=true;
+    triggerWildEncounter(rollShiny());
+    if(st.phase==='wild'&&st.wild)return;
+    st.bonusWild=false;
+    st.round.bonusPending=false;
+    st.wild=null;
+    st.wildEscape=false;
+    enterRoundScreen();
+    render();
+    return;
+  }
   if(st.phase==='gym'&&st.gym){
     if(st.gym.solved){
       st.gym.solved=false;
@@ -3667,6 +3804,7 @@ function bootInto(){
 function selectProfile(id){
   const kid=profiles.kids.find(k=>k.id===id);
   if(!kid)return;
+  roundFarewell='';
   if(profiles.activeId===id){
     whoMode='list';
     pendingDelete=null;
@@ -3681,7 +3819,13 @@ function selectProfile(id){
   profiles.activeId=id;
   const parsed=kid.data?parseGameSave(kid.data):null;
   st=mkState(parsed);
-  if(!parsed&&kid.settings)st.grade=gradeValue(kid.settings.grade);
+  if(!parsed&&kid.settings){
+    st.grade=gradeValue(kid.settings.grade);
+    if(kid.settings.round!=null){
+      st.roundPref=roundLengthValue(kid.settings.round);
+      if(st.round)st.round.len=st.roundPref;
+    }
+  }
   reshuffleDecks();
   subjectBag=[];
   lastSubject=null;
@@ -3803,6 +3947,7 @@ function resetCurrentProfile(){
   render();
 }
 function openProfiles(){
+  roundFarewell='';
   pauseGymTimer();
   hideMoments();
   if(activeKid())captureActive();
@@ -3915,11 +4060,14 @@ function renderWho(){
   }
   const back=activeKid()?bigBackHTML('who-back','Back to the game'):'';
   const lead=profiles.kids.length?'Tap your Pokémon. Each trainer keeps their own.':'Add a trainer to start.';
-  h+=`${back}<div class="card" style="text-align:center"><div class="parent-title">Who's playing?</div><p class="who-lead">${lead}</p><div class="who-grid">`;
+  const bye=roundFarewell?`<p id="who-farewell" class="who-farewell">Great playing, ${escapeHtml(roundFarewell)}!</p>`:'';
+  h+=`${back}<div class="card" style="text-align:center"><div class="parent-title">Who's playing?</div>${bye}<p class="who-lead">${lead}</p><div class="who-grid">`;
   profiles.kids.forEach(kid=>{
     const now=kid.id===profiles.activeId?' now':'';
     const face=faceForKid(kid);
-    h+=`<div class="who-card"><button type="button" class="who-play${now}" data-pick="${escapeHtml(kid.id)}"><div class="who-ava">${pkSprite(face.pi,72,face.shiny)}</div><div class="who-name">${escapeHtml(kid.name)}</div><div class="who-sub">${escapeHtml(kidBlurb(kid))}</div></button><button type="button" class="who-edit" data-edit="${escapeHtml(kid.id)}" aria-label="Edit ${escapeHtml(kid.name)}">Edit</button></div>`;
+    const lines=kidCardLines(kid);
+    const count=lines.count?`<span class="who-count">${escapeHtml(lines.count)}</span>`:'';
+    h+=`<div class="who-card"><button type="button" class="who-play${now}" data-pick="${escapeHtml(kid.id)}"><div class="who-ava">${pkSprite(face.pi,72,face.shiny)}</div><div class="who-name">${escapeHtml(kid.name)}</div><div class="who-sub"><span class="who-mon">${escapeHtml(lines.line)}</span>${count}</div></button><button type="button" class="who-edit" data-edit="${escapeHtml(kid.id)}" aria-label="Edit ${escapeHtml(kid.name)}">Edit</button></div>`;
   });
   if(profiles.kids.length<PROFILE_MAX){
     h+=`<button type="button" class="who-new" id="profile-new">${pkSprite(avatarPi('#025'),40,false)}Add a trainer</button>`;
@@ -3931,6 +4079,7 @@ function renderWho(){
   const bb=document.getElementById('who-back');
   if(bb)bb.addEventListener('click',()=>{
     if(!activeKid())return;
+    roundFarewell='';
     view='game';
     if((st.phase==='play'&&!st.q)||(st.phase==='gym'&&!st.q))bootInto();
     else{render();if(st.phase==='gym')armGymTimer();}
@@ -4674,7 +4823,62 @@ function setKidGrade(kidId, raw){
     }
     delete kid.settings;
   } else {
+    const kept=kid.settings&&kid.settings.round;
     kid.settings={grade:stored};
+    if(kept!=null)kid.settings.round=roundLengthValue(kept);
+  }
+  if(activeKid()&&st.team.length)save();
+  else writeRoster();
+}
+function kidRoundPref(kid){
+  if(!kid)return 10;
+  if(kid.id===profiles.activeId)return roundLengthValue(st.roundPref);
+  const settings=kid.data&&kid.data.settings?kid.data.settings:kid.settings;
+  return roundLengthValue(settings&&settings.round);
+}
+function roundSettingHTML(){
+  let h=`<div class="card" id="round-setting"><div class="parent-title" style="font-size:20px">Round length</div><p class="parent-lead">How many questions, then a break.</p>`;
+  if(!profiles.kids.length)return h+`<p class="parent-lead">No trainers yet. A child can make one from the game.</p></div>`;
+  const many=profiles.kids.length>1;
+  profiles.kids.forEach(kid=>{
+    const cur=kidRoundPref(kid);
+    const who=many?`<div class="round-name">${escapeHtml(kid.name)}'s round</div>`:'';
+    h+=`<div class="round-row" data-round-kid="${escapeHtml(kid.id)}">${who}<div class="grade-choices" role="radiogroup" aria-label="Round length for ${escapeHtml(kid.name)}">`;
+    [5,10,15].forEach(n=>{
+      const on=n===cur;
+      h+=`<button type="button" class="grade-choice${on?' sel':''}" data-round="${n}" data-for="${escapeHtml(kid.id)}" aria-pressed="${on?'true':'false'}">${n}</button>`;
+    });
+    h+=`</div></div>`;
+  });
+  return h+`</div>`;
+}
+function tuneRoundLength(round, next){
+  if(!round)return;
+  if((round.n|0)===0&&!round.closed){
+    round.len=next;
+    round.endAfter=false;
+  } else if((round.n|0)>=next&&next<(round.len|0)){
+    round.endAfter=true;
+  } else {
+    round.endAfter=false;
+  }
+}
+function setKidRound(kidId, raw){
+  const kid=profiles.kids.find(k=>k.id===kidId);
+  if(!kid)return;
+  const next=roundLengthValue(raw);
+  if(kid.id===profiles.activeId){
+    st.roundPref=next;
+    tuneRoundLength(activeRound(),next);
+    save();
+    return;
+  }
+  if(kid.data){
+    kid.data.settings=Object.assign({},kid.data.settings,{round:next});
+    if(kid.data.round&&typeof kid.data.round==='object')tuneRoundLength(kid.data.round,next);
+    delete kid.settings;
+  } else {
+    kid.settings=Object.assign({},kid.settings,{grade:(kid.settings&&kid.settings.grade)||'auto',round:next});
   }
   if(activeKid()&&st.team.length)save();
   else writeRoster();
@@ -4726,6 +4930,7 @@ function renderParent(){
   profiles.kids.forEach(kid=>{h+=progressCardHTML(kid);});
   h+=`<div class="card" id="timer-setting"><div class="parent-title" style="font-size:20px">Thinking time</div><p class="parent-lead">On harder Gym battles, a bar counts down while they think. It stays off unless you turn it on.</p><div class="timer-row"><span>Thinking time</span><button type="button" id="gym-timer-toggle" class="timer-toggle${timerOn?' on':''}" aria-pressed="${timerOn?'true':'false'}">${timerOn?'On':'Off'}</button></div></div>`;
   h+=gradeSettingHTML();
+  h+=roundSettingHTML();
   if(!profiles.kids.length){
     h+=`<div class="card"><p class="parent-lead">No trainers yet. A child can make one from the game.</p></div>`;
   } else {
@@ -4738,8 +4943,12 @@ function renderParent(){
   document.getElementById('parent-back').addEventListener('click',closeParent);
   const timerBtn=document.getElementById('gym-timer-toggle');
   if(timerBtn)timerBtn.addEventListener('click',()=>{setGymTimerEnabled(!gymTimerEnabled());renderParent();});
-  parentEl.querySelectorAll('.grade-choice').forEach(b=>b.addEventListener('click',()=>{
+  parentEl.querySelectorAll('#grade-setting .grade-choice').forEach(b=>b.addEventListener('click',()=>{
     setKidGrade(b.dataset.for,b.dataset.grade);
+    renderParent();
+  }));
+  parentEl.querySelectorAll('#round-setting .grade-choice').forEach(b=>b.addEventListener('click',()=>{
+    setKidRound(b.dataset.for,b.dataset.round);
     renderParent();
   }));
   parentEl.querySelectorAll('[data-progress-more]').forEach(b=>b.addEventListener('click',()=>{
@@ -4774,7 +4983,13 @@ let st=mkState(loadSaved());
 // A grade chosen before the first starter lives on the trainer, not in a game.
 (function applyPendingGrade(){
   const kid=activeKid();
-  if(kid&&!kid.data&&kid.settings)st.grade=gradeValue(kid.settings.grade);
+  if(kid&&!kid.data&&kid.settings){
+    st.grade=gradeValue(kid.settings.grade);
+    if(kid.settings.round!=null){
+      st.roundPref=roundLengthValue(kid.settings.round);
+      if(st.round)st.round.len=st.roundPref;
+    }
+  }
 })();
 let view=openingWho?'who':'game';
 const gameEl=document.getElementById("game");
@@ -5111,6 +5326,10 @@ function finishGymWin(){
   };
   st.gym=null;
   st.phase='award';
+  st.armAt=Date.now()+ROUND_TAP_PAUSE;
+  // The award is the end of this round. The next one starts at 0.
+  st.bonusWild=false;
+  st.round=freshRound(st.roundPref||10);
 }
 function finishGymLose(){
   const g=st.gym;
@@ -5241,6 +5460,7 @@ function forfeitGym(){
 }
 function dismissAward(){
   if(st.phase!=='award')return;
+  if(Date.now()<(st.armAt||0))return;
   st.award=null;
   st.phase='play';
   save();
@@ -5636,6 +5856,166 @@ function prizeHTML(){
   return `<div class="prize-line">${parts.join(' · ')}</div>`;
 }
 
+let roundFarewell='';
+function activeRound(){
+  if(!st.round)st.round=freshRound(st.roundPref||10);
+  return st.round;
+}
+function roundDotsHTML(){
+  if(st.bonusWild)return '';
+  if(st.phase!=='play'&&st.phase!=='wild')return '';
+  const r=activeRound();
+  const len=roundLengthValue(r.len);
+  const n=Math.max(0,Math.min(len,r.n|0));
+  let s='<span class="round-dots" aria-hidden="true">';
+  for(let i=0;i<len;i++)s+=`<span class="round-dot" data-on="${i<n?'1':'0'}"></span>`;
+  return s+'</span>';
+}
+const ROUND_TAP_PAUSE=800;
+function enterRoundScreen(){
+  if(st.phase!=='round')st.armAt=Date.now()+ROUND_TAP_PAUSE;
+  st.phase='round';
+  const r=st.round;
+  if(r){r.closed=true;r.bonusPending=false;r.holdWild=false;}
+}
+function openRoundFinale(){
+  if(st.phase==='wild'&&st.wild&&!st.wildEscape)return;
+  // The flee already ended this fight. Clear it before the goal check, or a
+  // round that earned a bonus would see a wild still on screen and skip it.
+  if(st.wildEscape){
+    st.wild=null;
+    st.wildEscape=false;
+    if(st.phase==='wild')st.phase='play';
+  }
+  const r=activeRound();
+  r.closed=true;
+  r.holdEvo=false;
+  r.holdWild=false;
+  const goalLen=r.endAfter?roundLengthValue(st.roundPref):roundLengthValue(r.len);
+  if((r.right|0)>=roundGoal(goalLen)&&activeTM()&&!(st.phase==='wild'&&st.wild)){
+    st.bonusWild=true;
+    r.bonusPending=true;
+    r.bonus=null;
+    triggerWildEncounter(rollShiny());
+    if(st.phase==='wild'&&st.wild)return;
+    st.bonusWild=false;
+    r.bonusPending=false;
+  }
+  st.wild=null;
+  st.wildEscape=false;
+  enterRoundScreen();
+}
+function finishHeldWild(){
+  const r=st.round;
+  if(!r||!r.holdWild)return false;
+  r.holdWild=false;
+  r.closed=true;
+  if(st.pendingEvo){
+    r.holdEvo=true;
+    st.phase='play';
+    processEvolution();
+    return true;
+  }
+  openRoundFinale();
+  return true;
+}
+function noteRoundAnswer(ok,firstTry){
+  if(!(ok||st.wildEscape))return;
+  if(st.bonusWild)return;
+  if(st.phase!=='play'&&st.phase!=='wild')return;
+  let r=activeRound();
+  if(r.holdWild)return;
+  if(r.closed){
+    st.bonusWild=false;
+    st.round=freshRound(st.roundPref||10);
+    r=st.round;
+  }
+  const right=!!(ok&&firstTry&&!st.helped);
+  r.n++;
+  if(right)r.right++;
+  if(!Array.isArray(r.marks))r.marks=[];
+  r.marks.push(right?1:0);
+  r.xp=(r.xp|0)+Math.max(0,st.lastXp|0);
+  if(!(r.endAfter||r.n>=r.len))return;
+  if(st.phase==='wild'&&st.wild&&!st.wildEscape){
+    r.holdWild=true;
+    return;
+  }
+  r.closed=true;
+  if(st.pendingEvo){r.holdEvo=true;return;}
+  openRoundFinale();
+}
+function finishBonusMiss(){
+  if(!st.bonusWild||!st.wild)return;
+  const name=PKM[st.wild.pi].n;
+  spendGreatBall();
+  st.wild=null;
+  st.wildEscape=false;
+  st.bonusWild=false;
+  const r=activeRound();
+  r.closed=true;
+  r.bonusPending=false;
+  r.bonus={name,caught:false};
+  enterRoundScreen();
+}
+function playRoundAgain(){
+  if(Date.now()<(st.armAt||0))return;
+  if(st.pendingEvo){
+    const tm=activeTM();
+    const evo=st.pendingEvo;
+    if(tm&&tm.pi===evo.fromPi&&PKM[evo.toPi]){
+      tm.pi=evo.toPi;
+      markDex(evo.toPi,!!tm.shiny);
+    }
+    st.pendingEvo=null;
+  }
+  st.award=null;
+  st.wild=null;
+  st.wildEscape=false;
+  st.bonusWild=false;
+  st.phase='play';
+  st.round=freshRound(st.roundPref||10);
+  roundFarewell='';
+  save();
+  loadQuestion();
+}
+function doneForNow(){
+  if(Date.now()<(st.armAt||0))return;
+  if(st.pendingEvo){
+    const tm=activeTM();
+    const evo=st.pendingEvo;
+    if(tm&&tm.pi===evo.fromPi&&PKM[evo.toPi]){
+      tm.pi=evo.toPi;
+      markDex(evo.toPi,!!tm.shiny);
+    }
+    st.pendingEvo=null;
+  }
+  const kid=activeKid();
+  roundFarewell=kid?kid.name:'Trainer';
+  st.award=null;
+  st.wild=null;
+  st.wildEscape=false;
+  st.bonusWild=false;
+  st.q=null;
+  st.phase='play';
+  st.round=freshRound(st.roundPref||10);
+  save();
+  whoMode='list';
+  pendingDelete=null;
+  view='who';
+  renderWho();
+}
+function roundScreenHTML(){
+  const r=activeRound();
+  const tm=activeTM();
+  const name=tm?PKM[tm.pi].n:'your Pokémon';
+  const marks=(r.marks||[]).map(ok=>`<span class="round-mark" data-right="${ok?'1':'0'}">${ok?'✓':'○'}</span>`).join('');
+  const bonus=r.bonus&&r.bonus.name
+    ?`<p id="round-bonus" class="round-bonus">${escapeHtml(r.bonus.caught?`${r.bonus.name} joined your team!`:`${r.bonus.name} got away this time. Great work!`)}</p>`
+    :'';
+  const line=`${r.right|0} of ${r.n|0} right. You and ${name} kept going!`;
+  return `<div class="card round-card" id="round-done"><div class="round-hero" id="round-celebrate">${tm?pkSprite(tm.pi,150,!!tm.shiny):''}</div><h2 id="round-title" class="round-title">Round done!</h2><div class="round-marks">${marks}</div><p id="round-line" class="round-line">${escapeHtml(line)}</p><p id="round-xp" class="round-xp">${r.xp|0} XP</p>${bonus}<button type="button" class="round-again" id="round-again">Play again</button><button type="button" class="round-leave" id="round-done-exit">Done</button></div>`;
+}
 function qCardHTML(resultMsg,btnLabel){
   if(!st.q)return'';
   const q=st.q;
@@ -5659,7 +6039,8 @@ function qCardHTML(resultMsg,btnLabel){
     ?`<span class="streak-pill${maxed?' maxed':''}${grew?' bump':''}">&#128293; ${st.streak} in a row</span>`
     :'';
   const warmTag=warming?'<span class="warmup-tag">Warm-up</span>':'';
-  const head=streakPill||warmTag?`<div class="q-head">${streakPill||warmTag}</div>`:'';
+  const dots=roundDotsHTML();
+  const head=streakPill||warmTag||dots?`<div class="q-head">${streakPill||warmTag}${dots}</div>`:'';
   const partner=PKM[activePi()].n;
   // The hello is only the first warm-up question. The tag stays for all three.
   const say=warming&&st.warmup&&(st.warmup.at|0)===0
@@ -5805,6 +6186,19 @@ function render(){
     :'';
   const hdr=`<div class="hdr hdr-tight">${whoButtonHTML('who-btn')}<span class="hdr-right">${hdrRight}</span></div>`;
   let h=hdr;
+
+  if(st.phase==='round'&&activeTM()){
+    h+=roundScreenHTML();
+    gameEl.innerHTML=h;
+    const again=gameEl.querySelector('#round-again');
+    if(again)again.addEventListener('click',playRoundAgain);
+    const leave=gameEl.querySelector('#round-done-exit');
+    if(leave)leave.addEventListener('click',doneForNow);
+    const whoRound=gameEl.querySelector('#who-btn');
+    if(whoRound)whoRound.addEventListener('click',openProfiles);
+    dockMute();
+    return;
+  }
 
   if(st.phase==='starter'){
     h+=`<div class="starter-card"><div style="font-size:22px;font-weight:700;color:#1A1A2E;margin-bottom:3px;text-align:center">Choose your starter!</div><div style="font-size:16px;color:#374151;margin-bottom:14px;text-align:center">Pick your partner for this learning adventure</div>`;
@@ -5988,7 +6382,7 @@ function render(){
     const waiting=held
       ?'You earned the badge!'
       :(multiSubject()?`New ${SNAME[a.sub]} questions are waiting.`:'New questions unlocked!');
-    h+=`<div class="card award-card"><div class="award-scroll"><div class="award-kicker">Gym prize</div><div class="award-pop">${badgeHTML(a.sub,a.tier,true)}</div><div class="award-title">You earned the ${badgeName(a.sub,a.tier)}!</div><div class="award-sub">${waiting}</div>${prizeBit}${grew}</div><button class="award-go" id="award-go">Yay!</button></div>`;
+    h+=`<div class="card award-card"><div class="award-scroll"><div class="award-kicker">Gym prize</div><div class="award-pop">${badgeHTML(a.sub,a.tier,true)}</div><div class="award-title">You earned the ${badgeName(a.sub,a.tier)}!</div><div class="award-sub">${waiting}</div>${prizeBit}${grew}</div><div class="round-actions"><button class="award-go round-again" id="award-go" type="button">Play again</button><button class="round-leave" id="round-done-exit" type="button">Done</button></div></div>`;
   }
 
   gameEl.innerHTML=h;
@@ -6026,6 +6420,7 @@ function render(){
   const gno=gameEl.querySelector('#gym-forfeit-no');if(gno)gno.addEventListener('click',cancelEndGym);
   const candy=gameEl.querySelector('#candy-btn');if(candy)candy.addEventListener('click',useCandy);
   const awardGo=gameEl.querySelector('#award-go');if(awardGo)awardGo.addEventListener('click',dismissAward);
+  const roundLeave=gameEl.querySelector('#round-done-exit');if(roundLeave)roundLeave.addEventListener('click',doneForNow);
   const whoB=gameEl.querySelector('#who-btn');if(whoB)whoB.addEventListener('click',openProfiles);
   wireNameAsk(gameEl);
   armGymTimer();
@@ -6275,7 +6670,7 @@ async function loadQuestion(){
   let q;
   // The warm-up owes a fixed queue. A reload deals the same unanswered one
   // again (at is the next to serve, and it moves only when that one is scored).
-  if(w&&w.at<w.queue.length&&QB[w.sub]&&QB[w.sub][w.tier]){
+  if(w&&!st.bonusWild&&w.at<w.queue.length&&QB[w.sub]&&QB[w.sub][w.tier]){
     const idx=w.queue[w.at]|0;
     pullFromBag(w.sub,w.tier,idx);
     q=serveQuestion(w.sub,w.tier,idx,pname);
@@ -6929,6 +7324,31 @@ function fleeWild(){
   if(st.phase!=='wild'||!st.wild)return;
   if(st.wildEscape||st.wild.correctStreak>=CATCH_STREAK_NEEDED)return;
   if(st.tries>0&&!st.cor)return;
+  if(st.bonusWild){
+    const name=PKM[st.wild.pi].n;
+    spendGreatBall();
+    st.wild=null;
+    st.wildEscape=false;
+    st.bonusWild=false;
+    const r=activeRound();
+    r.closed=true;
+    r.bonusPending=false;
+    r.bonus={name,caught:false};
+    enterRoundScreen();
+    save();
+    render();
+    return;
+  }
+  if(st.round&&st.round.holdWild){
+    spendGreatBall();
+    st.wild=null;
+    st.wildEscape=false;
+    st.phase='play';
+    finishHeldWild();
+    save();
+    if(st.phase!=='wild')render();
+    return;
+  }
   // The ball is spent only once this fight is actually over.
   spendGreatBall();
   st.wild=null;
@@ -6942,6 +7362,16 @@ function fleeWild(){
 }
 
 function afterTurn(){
+  // The round waited for the evolution. That was the button's job.
+  if(st.round&&st.round.holdEvo&&st.round.closed&&!st.pendingEvo){
+    if(!(st.phase==='wild'&&st.wild)){
+      st.round.holdEvo=false;
+      openRoundFinale();
+      save();
+      if(st.phase!=='wild')render();
+      return;
+    }
+  }
   // A warm-up question is practice, not a hunt. No Poké Ball is rolled for it,
   // and the streak ladder was not paid. The next regular question can meet
   // a Pokémon again.
@@ -6973,12 +7403,23 @@ function onNext(){
   if(st.phase==='wild'){
     if(st.wildEscape){
       spendGreatBall();
-      st.wild=null;st.wildEscape=false;st.phase='play';
+      st.wild=null;st.wildEscape=false;
+      if(st.round&&st.round.holdWild){
+        st.phase='play';
+        finishHeldWild();
+        save();
+        if(st.phase!=='wild')render();
+        return;
+      }
+      st.phase='play';
       save();
       loadQuestion();return;
     }
     if(st.wild&&st.wild.correctStreak>=CATCH_STREAK_NEEDED){
       const wp=st.wild.pi;const wlev=st.wild.level;const wsh=!!st.wild.shiny;
+      const bonus=!!st.bonusWild;
+      const held=!!(st.round&&st.round.holdWild);
+      const caughtName=PKM[wp].n;
       // The ball, the team, and the Pokédex are saved before the animation,
       // so closing or going back during Gotcha still keeps the Pokémon.
       spendGreatBall();
@@ -6986,6 +7427,35 @@ function onNext(){
       markDex(wp,wsh);
       st.wild=null;
       st.wildEscape=false;
+      if(bonus){
+        st.bonusWild=false;
+        const r=activeRound();
+        r.closed=true;
+        r.bonusPending=false;
+        r.bonus={name:caughtName,caught:true};
+        enterRoundScreen();
+        save();
+        playCatch(wp,wsh,()=>{if(view==='game')render();});
+        return;
+      }
+      if(held){
+        st.round.holdWild=false;
+        save();
+        playCatch(wp,wsh,()=>{
+          if(view!=='game')return;
+          if(st.pendingEvo){
+            st.round.closed=true;
+            st.round.holdEvo=true;
+            st.phase='play';
+            processEvolution();
+          } else {
+            openRoundFinale();
+            save();
+            if(st.phase!=='wild')render();
+          }
+        });
+        return;
+      }
       st.phase='play';
       save();
       playCatch(wp,wsh,()=>{if(view==='game')loadQuestion();});
@@ -7141,10 +7611,12 @@ function commitAttempt(ok,choice,nextDraft){
       } else if(st.phase==='wild'&&st.wild){
         st.wild.correctStreak++;
         // A milestone shouldn't be worth less because a wild Pokemon happened to
-        // turn up, so the bonus is paid in either phase -- unlike per-answer XP,
-        // which stays a play-phase reward.
+        // turn up, so the bonus is paid in either phase. A regular wild question
+        // has no per-answer XP of its own. When it counts toward the round, the
+        // done screen gets the milestone and nothing left over from last time.
         const tm=activeTM();
         if(tm&&bonus){tm.xp+=bonus;applyLevelUps();}
+        if(!st.bonusWild)st.lastXp=bonus|0;
       }
       if(bonus)st.streakMsg=`${st.streak} in a row! +${bonus} bonus XP!`;
     } else if(!ok&&!(st.q&&st.q.warmup)){
@@ -7155,6 +7627,7 @@ function commitAttempt(ok,choice,nextDraft){
       if(st.phase==='wild'&&st.wild){
         st.wild.misses=(st.wild.misses||0)+1;
         if(st.wild.misses>CATCH_MISSES_ALLOWED)st.wildEscape=true;
+        if(!st.bonusWild)st.lastXp=0;
       }
     }
     // Paid in either phase, like a milestone: it's for beating this question, and
@@ -7195,6 +7668,9 @@ function commitAttempt(ok,choice,nextDraft){
   if(!ok)st.armAt=Date.now()+PAUSE.retry;
   // Cooldown is practice questions he actually answers, not a reload dealing one.
   if(firstTry&&st.phase==='play'&&!(st.q&&st.q.warmup))tickGymCool();
+  const wasBonus=!!st.bonusWild;
+  noteRoundAnswer(ok,firstTry);
+  if(wasBonus&&st.wildEscape)finishBonusMiss();
   save();
   render();
   // A long answer can leave Next, or the hint, under the Game bar.

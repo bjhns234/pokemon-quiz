@@ -352,7 +352,7 @@ test('short landscape keeps the question, gym endings, and the trainer form tapp
     await showGymEnding(page,kind);
     await expect(page.getByText(copy).first()).toBeVisible();
     const btn=kind==='win'?'#award-go':'#gym-back';
-    await expect(page.locator(btn)).toHaveText(kind==='win'?'Yay!':'Back to practice');
+    await expect(page.locator(btn)).toHaveText(kind==='win'?'Play again':'Back to practice');
     await centerHits(page,btn);
     if(kind!=='win'){
       const room=await page.locator('.gym-end-scroll').evaluate(el=>el.clientHeight);
@@ -402,7 +402,7 @@ test('a short tablet keeps the counting hint and the gym prize above the bar',as
   await startGame(page,'math');
   await page.setViewportSize({width:932,height:430});
   await showGymEnding(page,'win');
-  await expect(page.locator('#award-go')).toHaveText('Yay!');
+  await expect(page.locator('#award-go')).toHaveText('Play again');
   await centerHits(page,'#award-go');
 
   await serveStem(page,'What is 6 + 7?');
