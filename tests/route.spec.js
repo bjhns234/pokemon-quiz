@@ -980,7 +980,8 @@ test('a dotted path joins the nodes in walking order',async({page})=>{
   expect(walk.len).toBeGreaterThan(40);
   expect(walk.dash==='none'||walk.dash==='0px').toBe(false);
   for(const hit of walk.hits){
-    expect(hit.best,`step ${hit.step} on the path`).toBeLessThan(36);
+    if(hit.step<6)expect(hit.best,`step ${hit.step} on the path`).toBeLessThan(36);
+    else expect(hit.best,'the path stops at the Gym edge, not its center').toBeGreaterThan(30);
     expect(hit.forward,`step ${hit.step} follows the previous`).toBe(true);
     expect(hit.on).toBe(hit.step<=4?'1':'0');
   }
@@ -1026,10 +1027,83 @@ test('the partner stands on its node and does not cover the others',async({page}
       expect(fit.w,where).toBeGreaterThanOrEqual(phone?44:68);
       expect(fit.w,where).toBeLessThanOrEqual(phone?52:76);
       expect(fit.covered,where).toBe(false);
-      expect(fit.dx,where).toBeLessThan(12);
-      expect(fit.db,where).toBeLessThan(10);
+      if(step!==6){
+        expect(fit.dx,where).toBeLessThan(12);
+        expect(fit.db,where).toBeLessThan(10);
+      }
     }
   }
+  expect(errors).toEqual([]);
+});
+
+test('the token waits outside the Gym ring',async({page})=>{
+  await page.emulateMedia({reducedMotion:'reduce'});
+  const errors=await boot(page);
+  const sizes=[
+    {width:768,height:1024},{width:1024,height:768},
+    {width:1194,height:834},{width:1133,height:744},
+    {width:390,height:844},{width:375,height:667},
+  ];
+  const full={'2026-11-16':{'math|@|1':'1'.repeat(20)},'2026-11-17':{'math|@|1':'1'.repeat(20)}};
+  const scenes=[
+    {name:'door',route:{tier:1,step:6},log:{},offer:null},
+    {name:'gym_open',route:{tier:1,step:6},log:full,offer:{tier:1,cool:0}},
+    {name:'shortcut',route:{tier:1,step:6,announce:'shortcut'},log:full,offer:{tier:1,cool:0}},
+  ];
+  for(const scene of scenes){
+    await state(page,s=>{
+      st.route=s.route;
+      st.log=s.log;
+      st.badges.math=[];
+      st.gymOffer.math=s.offer;
+      st.phase='round';
+      if(!st.round)st.round=freshRound(10);
+      st.round.n=10;st.round.right=6;st.round.closed=true;
+      st.round.marks=[1,1,1,1,1,1,0,0,0,0];
+      render();
+    },scene);
+    for(const size of sizes){
+      await page.setViewportSize(size);
+      const where=`${scene.name} ${size.width}x${size.height}`;
+      const fit=await page.evaluate(()=>{
+        function hit(a,b){
+          const ix=Math.min(a.right,b.right)-Math.max(a.left,b.left);
+          const iy=Math.min(a.bottom,b.bottom)-Math.max(a.top,b.top);
+          return ix>1&&iy>1;
+        }
+        const token=document.getElementById('route-token').getBoundingClientRect();
+        const ring=document.querySelector('#route-map .gym-ring').getBoundingClientRect();
+        const label=document.querySelector('.route-gym-label').getBoundingClientRect();
+        const phone=window.innerWidth<500;
+        const beside=token.right<=ring.left+1;
+        const above=token.bottom<=ring.top+1;
+        return {ring:hit(token,ring),label:hit(token,label),beside,above,phone};
+      });
+      expect(fit.ring,where).toBe(false);
+      expect(fit.label,where).toBe(false);
+      if(size.width>=768)expect(fit.beside,where).toBe(true);
+      else expect(fit.beside||fit.above,where).toBe(true);
+    }
+  }
+  expect(errors).toEqual([]);
+});
+
+test('the last path leg stops at the Gym ring',async({page})=>{
+  const errors=await boot(page);
+  await state(page,()=>{st.route={tier:1,step:6};});
+  await showRound(page);
+  await page.setViewportSize({width:768,height:1024});
+  const end=await page.evaluate(()=>{
+    const path=document.querySelector('#route-path path');
+    const len=path.getTotalLength();
+    const p=path.getPointAtLength(len);
+    const pt=new DOMPoint(p.x,p.y).matrixTransform(path.getScreenCTM());
+    const ring=document.querySelector('#route-map .gym-ring').getBoundingClientRect();
+    const cx=ring.left+ring.width/2;
+    const cy=ring.top+ring.height/2;
+    return {dist:Math.hypot(pt.x-cx,pt.y-cy),radius:ring.width/2};
+  });
+  expect(end.dist).toBeGreaterThanOrEqual(end.radius-1);
   expect(errors).toEqual([]);
 });
 
@@ -1184,6 +1258,10 @@ test('route screenshots at tablet and phone sizes',async({page})=>{
   });
   await expect(page.locator('#route-caption')).toHaveText('The Gym opens when the star is full.');
   await shots('door');
+  for(const size of sizes){
+    await page.setViewportSize(size);
+    await page.screenshot({path:`${ART}/v3_door_${size.width}x${size.height}.png`});
+  }
   await page.setViewportSize({width:375,height:667});
   await page.screenshot({path:`${ART}/v2_door_375x667.png`});
 
@@ -1196,6 +1274,8 @@ test('route screenshots at tablet and phone sizes',async({page})=>{
   });
   await expect(page.locator('#route-caption')).toHaveText('The Gym is open!');
   await shots('gym_open');
+  await page.setViewportSize({width:390,height:844});
+  await page.screenshot({path:`${ART}/v3_gym_open_390x844.png`});
 
   await state(page,()=>{
     st.route={tier:1,step:3};
@@ -1208,6 +1288,8 @@ test('route screenshots at tablet and phone sizes',async({page})=>{
   await finishRound(page);
   await expect(page.locator('#route-caption')).toHaveText('Shortcut! The Gym is open!');
   await shots('shortcut');
+  await page.setViewportSize({width:390,height:844});
+  await page.screenshot({path:`${ART}/v3_shortcut_390x844.png`});
 
   await state(page,()=>{
     st.stats.math.level=2;
