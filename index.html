@@ -594,6 +594,12 @@ button.mon-strip:focus{outline:3px solid #1D4ED8;outline-offset:2px}
 .trainer-foe-meta{grid-area:meta}
 .trainer-stage .trainer-partner{grid-area:partner;margin:0}
 #game:has(#trainer-card) .qtext{text-align:center}
+/* The tablet question reserves a streak row even when it is empty.
+   A battle has no streak pill, so that blank row only pushes Next down. */
+#game:has(#trainer-card) .qcard::before{content:none;height:0;min-height:0;padding:0;margin:0}
+#game:has(#trainer-next) .trainer-card{margin-bottom:6px}
+#game:has(#trainer-next) .trainer-worked,
+#game:has(#trainer-next) .trainer-praise{margin:2px 0;padding:6px 8px}
 #game:has(#trainer-card) .ans-btn{min-height:64px;font-size:20px}
 #game:has(#trainer-card) .help-btn,
 #game:has(#trainer-card) .help-box,
@@ -645,8 +651,22 @@ button.mon-strip:focus{outline:3px solid #1D4ED8;outline-offset:2px}
   #game:has(#trainer-card) .trainer-go{min-height:56px;margin-top:4px;padding:8px}
 }
 @media (max-height:800px){
-  #game:has(#trainer-card) .trainer-stage .trainer-partner{display:none}
+  /* A miss needs the row. A hit keeps the partner so Hit! stays beside it. */
+  #game:has(#trainer-next) .trainer-stage .trainer-partner{display:none}
   #game:has(#trainer-card) .trainer-foe img{width:72px;height:72px}
+}
+/* Portrait tablets. GitHub's fonts run wider, so a miss uses a smaller
+   foe and drops the picture hint. The answers stay the full tablet size. */
+@media (min-width:701px) and (min-height:801px){
+  #game:has(#trainer-next) .trainer-foe img{width:96px;height:96px}
+  #game:has(#trainer-next) .trainer-partner img{width:64px;height:64px}
+  #game:has(#trainer-next) .trainer-card{padding:8px 12px 4px}
+  #game:has(#trainer-next) .trainer-stage{margin:2px 0;gap:4px 10px}
+  #game:has(#trainer-next) .qcard{padding:6px 12px 4px}
+  #game:has(#trainer-next) .qtext{margin-bottom:4px;line-height:1.25}
+  #game:has(#trainer-next) .ans-grid{gap:6px;margin-bottom:4px}
+  #game:has(#trainer-next) .hint-visual{display:none}
+  #game:has(#trainer-next) .trainer-go{margin-top:6px}
 }
 @media (max-height:520px){
   .trainer-partner{display:none}

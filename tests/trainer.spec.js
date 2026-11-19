@@ -733,6 +733,26 @@ test('a hit sits beside the partner, and a miss turns its dot grey',async({page}
   expect(errors).toEqual([]);
 });
 
+test('a hit keeps Hit! beside the partner on a short landscape screen',async({page})=>{
+  const errors=await boot(page);
+  await closeQualified(page,1);
+  await page.click('#trainer-go');
+  await answer(page,true);
+  await expect(page.locator('#trainer-hit')).toBeVisible();
+  await state(page,()=>{st.armAt=0;render();});
+  for(const size of [{width:1024,height:768},{width:1133,height:744}]){
+    await page.setViewportSize(size);
+    const where=`${size.width}x${size.height}`;
+    await expect(page.locator('.trainer-partner #trainer-hit'),where).toBeVisible();
+    const scroll=await page.evaluate(()=>{
+      const main=document.getElementById('app-main');
+      return main.scrollHeight-main.clientHeight;
+    });
+    expect(scroll,where).toBeLessThanOrEqual(1);
+  }
+  expect(errors).toEqual([]);
+});
+
 test('trainer battle screens fit an iPad and a phone',async({page})=>{
   test.setTimeout(180000);
   const errors=await boot(page);
