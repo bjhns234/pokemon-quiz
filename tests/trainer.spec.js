@@ -77,6 +77,12 @@ test('finished rounds 2, 5, and 8 are the trainer rounds',async({page})=>{
   await closeQualified(page,4);
   await expect(page.locator('#trainer-card')).toContainText('Lass Mia wants to battle!');
   expect(await state(page,()=>st.trainer.id)).toBe('mia');
+
+  await state(page,()=>{st.trainer=null;st.phase='play';return loadQuestion();});
+  await closeQualified(page,7);
+  await expect(page.locator('#trainer-go')).toBeVisible();
+  expect(await state(page,()=>st.roundsDone)).toBe(8);
+  expect(await state(page,()=>st.phase)).toBe('trainer');
   expect(errors).toEqual([]);
 });
 
@@ -87,21 +93,27 @@ test('two hits win on question 2, and the prize is XP plus a star',async({page})
   await expect(page.locator('#trainer-card')).toContainText('Trainer Battle');
   await expect(page.locator('#trainer-q')).toHaveText('Question 1 of 3');
   await expect(page.locator('#trainer-mon')).toHaveText("Joey's Rattata");
+  await state(page,()=>{st.streak=0;});
   const before=await state(page,()=>activeTM().xp);
   await answer(page,true);
+  const afterHit=await state(page,()=>activeTM().xp);
+  const firstPay=await state(page,()=>xpForStreak(1)+milestoneBonus(1));
+  expect(afterHit-before).toBe(firstPay);
   await expect(page.locator('#trainer-hit')).toHaveText('Hit!');
   await expect(page.locator('#trainer-q')).toHaveText('Question 2 of 3');
   expect(await state(page,()=>st.trainer.hits)).toBe(1);
-  expect(await state(page,()=>activeTM().xp)).toBeGreaterThan(before);
   await expect(page.locator('#trainer-hp')).toHaveAttribute('data-hp','1');
   await answer(page,true);
+  const afterWin=await state(page,()=>activeTM().xp);
+  const secondPay=await state(page,()=>xpForStreak(2)+milestoneBonus(2));
+  expect(afterWin-afterHit-30).toBe(secondPay);
   await expect(page.locator('#trainer-result')).toContainText('You beat Youngster Joey!');
   await expect(page.locator('#trainer-result')).toContainText('Rattata is all tired out. Great math!');
   await expect(page.locator('#trainer-result')).toContainText('+30 XP');
   await expect(page.locator('#trainer-result')).toContainText('You earned a trainer star!');
   await expect(page.getByRole('button',{name:'Keep going'})).toBeVisible();
   expect(await state(page,()=>st.trainerStars)).toEqual(['joey']);
-  expect(await state(page,()=>activeTM().xp)).toBeGreaterThanOrEqual(before+30);
+  expect(await state(page,()=>activeTM().xp)).toBe(afterWin);
   expect(await state(page,()=>st.team.some(t=>PKM[t.pi].n==='Rattata'))).toBe(false);
   expect(await state(page,()=>({candy:st.items.candy,great:st.items.great}))).toEqual(items);
   const left=await state(page,()=>st.armAt-Date.now());
@@ -151,6 +163,16 @@ test('a miss shows that question\'s worked answer and cannot be tried again',asy
   });
   await answer(page,false);
   await expect(page.locator('#trainer-worked')).toHaveText('Good try! 2 + 3 = 5.');
+  await page.click('#trainer-next');
+  await state(page,()=>{
+    const idx=QB.math[1].findIndex(q=>q[0].includes('berries and ate'));
+    st.q=serveQuestion('math',1,idx,questionPname());
+    st.tries=0;st.cor=false;st.helped=false;st.wrong=[];st.armAt=0;
+    st.trainer.miss=false;
+    render();
+  });
+  await answer(page,false);
+  await expect(page.locator('#trainer-worked')).toHaveText('Good try! The answer is 2.');
   await expect(page.locator('#trainer-praise')).toHaveText("You kept trying. That's how trainers get strong!");
   await expect(page.locator('#trainer-next')).toHaveText('Next');
   const tries=await state(page,()=>st.tries);
@@ -171,6 +193,30 @@ test('help then a right answer is a hit, and the picture hint is allowed',async(
   });
   await state(page,()=>askForHelp());
   await expect(page.locator('.help-box')).toBeVisible();
+  for(const size of [{width:768,height:1024},{width:390,height:844}]){
+    await page.setViewportSize(size);
+    const small=await page.evaluate(()=>{
+      const root=document.getElementById('game');
+      const out=[];
+      const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);
+      let node;const seen=new Set();
+      while((node=walker.nextNode())){
+        if(!node.textContent||!node.textContent.trim())continue;
+        const el=node.parentElement;
+        if(!el||seen.has(el)||el.closest('.hdr'))continue;
+        seen.add(el);
+        const s=getComputedStyle(el);
+        if(s.display==='none'||s.visibility==='hidden')continue;
+        const r=el.getBoundingClientRect();
+        if(r.width<2||r.height<2)continue;
+        const px=parseFloat(s.fontSize);
+        if(px<18)out.push(node.textContent.trim().slice(0,24)+' '+px);
+      }
+      return out;
+    });
+    expect(small,`${size.width}x${size.height}`).toEqual([]);
+  }
+  await page.setViewportSize({width:768,height:1024});
   await expect(page.locator('.hint-visual')).toBeVisible();
   await expect(page.locator('.gym-time')).toHaveCount(0);
   await answer(page,true);
@@ -318,6 +364,75 @@ test('an evolution earned in the battle plays after it, before round done',async
   expect(errors).toEqual([]);
 });
 
+test('banked battle XP levels the new form, not the one waiting to evolve',async({page})=>{
+  test.setTimeout(40000);
+  const errors=await boot(page);
+  await openBattle(page,1);
+  await state(page,()=>{
+    const tm=activeTM();
+    tm.pi=0;tm.level=15;tm.shiny=false;
+    tm.xp=xpToNext(15)-1;
+    st.streak=6;
+    st.pendingEvo=null;
+  });
+  await answer(page,true);
+  const queued=await state(page,()=>({
+    name:PKM[activeTM().pi].n,
+    level:activeTM().level,
+    pending:!!st.pendingEvo,
+  }));
+  expect(queued).toEqual({name:'Bulbasaur',level:16,pending:true});
+  await answer(page,true);
+  expect(await state(page,()=>({name:PKM[activeTM().pi].n,level:activeTM().level}))).toEqual({name:'Bulbasaur',level:16});
+  await expect(page.locator('#trainer-result')).toBeVisible();
+  await state(page,()=>{st.armAt=0;});
+  await page.click('#trainer-map');
+  await expect.poll(()=>state(page,()=>({name:PKM[activeTM().pi].n,level:activeTM().level})),{timeout:25000}).toEqual({name:'Ivysaur',level:17});
+  const after=await state(page,()=>{
+    const tm=activeTM();
+    const banked=(xpToNext(15)-1)+45+45+30-xpToNext(15);
+    return {level:tm.level,xp:tm.xp,want:banked-xpToNext(16)};
+  });
+  expect(after.level).toBe(17);
+  expect(after.xp).toBe(after.want);
+  expect(errors).toEqual([]);
+});
+
+test('a round-ending wild evolves before that wild fight continues',async({page})=>{
+  test.setTimeout(40000);
+  const errors=await boot(page);
+  await state(page,()=>{
+    const tm=activeTM();
+    tm.pi=0;tm.level=15;tm.xp=xpToNext(15)-10;tm.shiny=false;
+    st.pendingEvo=null;st.streak=4;st.roundsDone=1;
+    st.round=freshRound(10);
+    st.round.n=9;st.round.right=8;st.round.marks=Array(9).fill(1);
+    const pi=PKM.findIndex(p=>p.n==='Pidgey');
+    st.wild={pi,level:6,shiny:false,correctStreak:1,misses:0};
+    st.phase='wild';
+    Math.random=()=>0.99;
+    return loadQuestion();
+  });
+  const asked=await page.locator('.qtext').innerText();
+  await answer(page,true);
+  await expect(page.locator('#nxt')).toContainText('What\'s happening');
+  expect(await state(page,()=>st.phase)).toBe('play');
+  expect(await state(page,()=>({evo:!!st.pendingEvo,wild:!!(st.round&&st.round.holdWild),name:st.wild&&PKM[st.wild.pi].n}))).toEqual({
+    evo:true,wild:true,name:'Pidgey',
+  });
+  await page.click('#nxt');
+  await expect(page.locator('#evo-overlay.active')).toBeVisible();
+  await expect.poll(()=>state(page,()=>st.phase),{timeout:25000}).toBe('wild');
+  expect(await state(page,()=>PKM[activeTM().pi].n)).toBe('Ivysaur');
+  expect(await state(page,()=>st.wild&&PKM[st.wild.pi].n)).toBe('Pidgey');
+  expect(await state(page,()=>st.wild.correctStreak)).toBe(2);
+  expect(await page.locator('.qtext').innerText()).toBe(asked);
+  await expect(page.locator('#trainer-go')).toHaveCount(0);
+  await page.click('#flee');
+  await expect(page.locator('#trainer-go')).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
 test('a wild already out finishes before the trainer battle',async({page})=>{
   const errors=await boot(page);
   await state(page,()=>{
@@ -347,11 +462,16 @@ test('reload mid-battle resumes the same trainer, hits, and question',async({pag
   await answer(page,true);
   const second=await page.locator('.qtext').innerText();
   expect(second).not.toBe(first);
+  await state(page,()=>askForHelp());
+  const answers=await state(page,()=>st.q.answers.slice());
+  expect(await state(page,()=>st.helped)).toBe(true);
   expect(await state(page,()=>({id:st.trainer.id,hits:st.trainer.hits,qn:st.trainer.qn}))).toEqual({id:'joey',hits:1,qn:2});
   await page.reload();
   await expect(page.locator('#trainer-q')).toHaveText('Question 2 of 3');
   await expect(page.locator('#trainer-mon')).toHaveText("Joey's Rattata");
   await expect(page.locator('.qtext')).toHaveText(second);
+  expect(await state(page,()=>st.q.answers.slice())).toEqual(answers);
+  await expect(page.locator('.help-box')).toBeVisible();
   expect(await state(page,()=>({phase:st.phase,id:st.trainer.id,hits:st.trainer.hits,qn:st.trainer.qn}))).toEqual({
     phase:'trainer',id:'joey',hits:1,qn:2,
   });
@@ -387,10 +507,15 @@ test('battle answers add no round marks, and they do count on the mastery tape',
     const day=localISO(new Date());
     return (st.log[day]&&st.log[day]['math|@|1'])||'';
   });
-  expect(after.length).toBe(before.length+1);
+  expect(after).toBe(before+'1');
   expect(await state(page,()=>st.round.marks)).toEqual(marks);
   expect(await state(page,()=>st.round.n)).toBe(n);
   await answer(page,false);
+  const missed=await state(page,()=>{
+    const day=localISO(new Date());
+    return (st.log[day]&&st.log[day]['math|@|1'])||'';
+  });
+  expect(missed).toBe(after+'0');
   expect(await state(page,()=>st.round.marks)).toEqual(marks);
   expect(errors).toEqual([]);
 });
@@ -529,9 +654,11 @@ test('a miss keeps Next on screen in landscape',async({page})=>{
   const errors=await boot(page);
   await missScreen(page);
   const sizes=[
+    {width:768,height:1024},
     {width:1024,height:768},
     {width:1194,height:834},
     {width:1133,height:744},
+    {width:390,height:844},
   ];
   for(const size of sizes){
     await page.setViewportSize(size);
@@ -554,6 +681,7 @@ test('a miss keeps Next on screen in landscape',async({page})=>{
     const where=`${size.width}x${size.height}`;
     expect(fit.scroll,where).toBeLessThanOrEqual(1);
     expect(fit.answers,where).toBe(4);
+    await expect(page.locator('.ans-btn.cor'),where).toBeVisible();
     expect(fit.qTop,where).toBeGreaterThanOrEqual(0);
     expect(fit.answerBottom,where).toBeLessThanOrEqual(fit.navTop+0.5);
     expect(fit.nextTop,where).toBeGreaterThanOrEqual(0);
@@ -617,7 +745,7 @@ test('trainer battle screens fit an iPad and a phone',async({page})=>{
       const where=`${name} ${size.width}x${size.height}`;
       const fit=await page.evaluate(()=>{
         const main=document.getElementById('app-main');
-        const root=document.getElementById('trainer-card')||document.getElementById('trainer-result')||document.getElementById('round-done');
+        const root=document.getElementById('game');
         const small=[];
         if(root){
           const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);
@@ -625,7 +753,7 @@ test('trainer battle screens fit an iPad and a phone',async({page})=>{
           while((node=walker.nextNode())){
             if(!node.textContent||!node.textContent.trim())continue;
             const el=node.parentElement;
-            if(!el||seen.has(el))continue;
+            if(!el||seen.has(el)||el.closest('.hdr'))continue;
             seen.add(el);
             const s=getComputedStyle(el);
             if(s.display==='none'||s.visibility==='hidden')continue;
@@ -635,9 +763,21 @@ test('trainer battle screens fit an iPad and a phone',async({page})=>{
             if(sizePx<18)small.push(node.textContent.trim().slice(0,24)+' '+sizePx);
           }
         }
-        return {scroll:main.scrollHeight-main.clientHeight,small};
+        const next=document.getElementById('trainer-next');
+        const nr=next?next.getBoundingClientRect():null;
+        const nav=document.getElementById('bottom-nav').getBoundingClientRect();
+        return {
+          scroll:main.scrollHeight-main.clientHeight,
+          small,
+          next:nr?nr.top>=0&&nr.bottom<=nav.top+0.5:false,
+          hasNext:!!next,
+        };
       });
       if(!String(name).includes('round_done'))expect(fit.small,where).toEqual([]);
+      if(fit.hasNext){
+        expect(fit.scroll,where).toBeLessThanOrEqual(1);
+        expect(fit.next,where).toBe(true);
+      }
       await page.screenshot({path:`${ART}/${name}_${size.width}x${size.height}.png`});
     }
     await page.setViewportSize({width:768,height:1024});

@@ -595,6 +595,11 @@ button.mon-strip:focus{outline:3px solid #1D4ED8;outline-offset:2px}
 .trainer-stage .trainer-partner{grid-area:partner;margin:0}
 #game:has(#trainer-card) .qtext{text-align:center}
 #game:has(#trainer-card) .ans-btn{min-height:64px;font-size:20px}
+#game:has(#trainer-card) .help-btn,
+#game:has(#trainer-card) .help-box,
+#game:has(#trainer-card) .help-say,
+#game:has(#trainer-card) .help-keep,
+#game:has(#trainer-card) .hv-cap{font-size:18px}
 @media (min-width:768px){
   #game:has(#trainer-card) .ans-btn{min-height:92px;font-size:20px;padding:8px 10px}
 }
@@ -604,6 +609,20 @@ button.mon-strip:focus{outline:3px solid #1D4ED8;outline-offset:2px}
 @media (max-width:700px){
   .trainer-foe img,.trainer-slide-foe img{width:96px;height:96px}
   .trainer-partner img{width:64px;height:64px}
+  #game:has(#trainer-card) .trainer-card{padding:8px 10px;margin-bottom:6px}
+  #game:has(#trainer-card) .trainer-stage{grid-template-columns:auto minmax(0,1fr) auto;grid-template-areas:"foe meta partner";gap:4px 8px;margin:4px 0}
+  #game:has(#trainer-card) .trainer-partner{flex-direction:column;gap:2px}
+  #game:has(#trainer-card) .qcard{padding:8px 10px}
+  #game:has(#trainer-card) .qtext{margin-bottom:6px}
+  #game:has(#trainer-card) .ans-grid{gap:6px;margin-bottom:4px}
+  /* A miss adds the worked answer and Next. The picture hint already
+     did its job, so the four answers and Next stay on the phone. */
+  #game:has(#trainer-next) .trainer-stage .trainer-partner{display:none}
+  #game:has(#trainer-next) .trainer-foe img{width:72px;height:72px}
+  #game:has(#trainer-next) .hint-visual{display:none}
+  #game:has(#trainer-next) .trainer-worked,
+  #game:has(#trainer-next) .trainer-praise{margin:2px 0;padding:6px 8px}
+  #game:has(#trainer-next) .trainer-go{min-height:64px;margin-top:4px}
 }
 /* Landscape tablets. The two Pokémon share one row and the cap steps
    aside, so the question, the four answers, the feedback, and Next
@@ -624,6 +643,10 @@ button.mon-strip:focus{outline:3px solid #1D4ED8;outline-offset:2px}
   #game:has(#trainer-card) .trainer-praise{margin:2px 0;padding:4px 8px}
   #game:has(#trainer-card) .hint-visual{display:none}
   #game:has(#trainer-card) .trainer-go{min-height:56px;margin-top:4px;padding:8px}
+}
+@media (max-height:800px){
+  #game:has(#trainer-card) .trainer-stage .trainer-partner{display:none}
+  #game:has(#trainer-card) .trainer-foe img{width:72px;height:72px}
 }
 @media (max-height:520px){
   .trainer-partner{display:none}
@@ -3197,6 +3220,8 @@ function parseTrainer(raw){
   const src=raw.q;
   if(src&&SUBS.includes(src.sub)&&QB[src.sub]&&QB[src.sub][src.lv]&&QB[src.sub][src.lv][src.idx|0]){
     q={sub:src.sub,lv:src.lv|0,idx:src.idx|0,warmup:!!src.warmup,bankReview:!!src.bankReview,rematch:!!src.rematch};
+    if(Array.isArray(src.order))q.order=src.order.map(i=>i|0);
+    if(src.helped)q.helped=true;
   }
   return {
     id:t.id,
@@ -3232,6 +3257,8 @@ function trainerPayload(){
   const tmpl=st.q&&st.q.tmpl;
   if(!b.intro&&!b.over&&tmpl&&QB[tmpl.sub]&&QB[tmpl.sub][tmpl.lv]){
     out.q={sub:tmpl.sub,lv:tmpl.lv|0,idx:tmpl.idx|0};
+    if(Array.isArray(tmpl.order))out.q.order=tmpl.order.slice();
+    if(st.helped)out.q.helped=true;
     if(st.q.warmup)out.q.warmup=true;
     if(st.q.bankReview)out.q.bankReview=true;
     if(st.q.rematch)out.q.rematch=true;
@@ -3977,7 +4004,12 @@ function restoreTrainerQuestion(){
     dealTrainerQuestion();
     return;
   }
-  const q=serveQuestion(saved.sub,saved.lv,saved.idx,PKM[activePi()].n);
+  const raw=QB[saved.sub][saved.lv][saved.idx];
+  const order=Array.isArray(saved.order)?saved.order.map(i=>i|0):null;
+  const same=order&&order.length===raw[1].length&&raw[1].every((_,i)=>order.includes(i));
+  const q=same
+    ?fillQuestion({sub:saved.sub,lv:saved.lv|0,idx:saved.idx|0,raw,order,cheer:raw[3]},PKM[activePi()].n)
+    :serveQuestion(saved.sub,saved.lv,saved.idx,PKM[activePi()].n);
   if(saved.warmup)q.warmup=true;
   if(saved.bankReview)q.bankReview=true;
   if(saved.rematch)q.rematch=true;
@@ -3985,6 +4017,7 @@ function restoreTrainerQuestion(){
   st.q=q;
   st.sel=null;st.cor=false;st.anim='';st.helped=false;st.wrong=[];st.lastXp=0;st.draft='';
   st.tries=b.miss?1:0;
+  st.helped=!!saved.helped;
   st.armAt=Date.now()+PAUSE.first;
 }
 function bootInto(){
@@ -6205,7 +6238,6 @@ function workedAnswerLine(q){
   if((m=stem.match(/^What is (\d+) - (\d+)\?$/)))return `Good try! ${m[1]} - ${m[2]} = ${ans}.`;
   if((m=stem.match(/^What is (\d+) x (\d+)\?$/)))return `Good try! ${m[1]} x ${m[2]} = ${ans}.`;
   if((m=stem.match(/^What is (\d+) divided by (\d+)\?$/)))return `Good try! ${m[1]} ÷ ${m[2]} = ${ans}.`;
-  if(q.hint)return /^Good try\b/.test(q.hint)?q.hint:`Good try! ${q.hint}`;
   return `Good try! The answer is ${ans}.`;
 }
 function noteRoundAnswer(ok,firstTry){
@@ -6227,12 +6259,24 @@ function noteRoundAnswer(ok,firstTry){
   r.xp=(r.xp|0)+Math.max(0,st.lastXp|0);
   if(!(r.endAfter||r.n>=r.len))return;
   tallyFinishedRound();
-  if(st.phase==='wild'&&st.wild&&!st.wildEscape){
-    r.holdWild=true;
+  const holdingWild=st.phase==='wild'&&st.wild&&!st.wildEscape;
+  // A catch that is already ready stays on Catch it. Only a fight that
+  // still has questions left yields to the evolution, then comes back.
+  const wildStillGoing=holdingWild&&(st.wild.correctStreak|0)<CATCH_STREAK_NEEDED;
+  if(holdingWild)r.holdWild=true;
+  if(st.pendingEvo&&wildStillGoing){
+    r.closed=true;
+    r.holdEvo=true;
+    st.phase='play';
+    return;
+  }
+  if(holdingWild)return;
+  if(st.pendingEvo){
+    r.closed=true;
+    r.holdEvo=true;
     return;
   }
   r.closed=true;
-  if(st.pendingEvo){r.holdEvo=true;return;}
   openRoundFinale();
 }
 function finishBonusMiss(){
@@ -7152,6 +7196,7 @@ function askForHelp(){
   if(!st.q||st.tries>0||st.helped||st.cor||st.wildEscape)return;
   st.helped=true;
   if(st.gym){st.gym.timerLeft=null;st.gym.deadline=null;save();}
+  else if(st.phase==='trainer')save();
   render();
 }
 
@@ -7668,6 +7713,9 @@ function switchPokemon(idx){
 }
 
 function applyLevelUps(){
+  // XP earned while an evolution is waiting stays on the Pokémon. The
+  // evolution spends it on the new form, the same way a Gym prize does.
+  if(st.pendingEvo)return;
   const tm=activeTM();if(!tm)return;
   while(tm.xp>=xpToNext(tm.level)){
     tm.xp-=xpToNext(tm.level);
@@ -7796,6 +7844,16 @@ function fleeWild(){
 }
 
 function afterTurn(){
+  const held=st.round;
+  // The evolution interrupted a wild fight. Put that same Pokémon back.
+  // A new question here would skip the catch the round was holding.
+  if(held&&held.holdWild&&st.wild&&!st.wildEscape){
+    held.holdEvo=false;
+    st.phase='wild';
+    save();
+    if(view==='game')render();
+    return;
+  }
   // The round waited for the evolution. That was the button's job.
   if(st.round&&st.round.holdEvo&&st.round.closed&&!st.pendingEvo){
     if(!(st.phase==='wild'&&st.wild)){
