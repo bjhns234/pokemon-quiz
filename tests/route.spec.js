@@ -304,7 +304,7 @@ test('every round at a closed Gym door battles Ace Trainer Kim',async({page})=>{
   await page.click('#trainer-go');
   await answer(page,true);
   await answer(page,true);
-  await expect(page.locator('#trainer-result')).toContainText('Trainer star on your map');
+  await expect(page.locator('#trainer-result')).not.toContainText('Trainer star on your map');
   await expect(page.getByRole('button',{name:'See your map'})).toBeVisible();
   expect(await state(page,()=>st.team.some(t=>PKM[t.pi].n==='Lucario'))).toBe(false);
   expect(await state(page,()=> (st.trainerStars||[]).indexOf('kim') )).toBe(-1);
@@ -472,8 +472,8 @@ test('winning the Gym starts the next route at step 0',async({page})=>{
   await expect(page.locator('#round-done')).toBeVisible();
   await expect(page.locator('#route-caption')).toHaveText('New route! Route 2');
   await expect(page.locator('#route-label')).toHaveText('Route 2');
-  expect(await routeOf(page)).toEqual({tier:2,step:0});
-  await expect(page.locator('#route-token')).toHaveAttribute('data-step','0');
+  expect(await routeOf(page)).toEqual({tier:2,step:1});
+  await expect(page.locator('#route-token')).toHaveAttribute('data-step','1');
   expect(errors).toEqual([]);
 });
 
@@ -612,6 +612,93 @@ test('a full ring at the door climbs without inventing a Gym battle',async({page
   });
   expect(await state(page,()=>st.stats.math.level)).toBe(2);
   expect(await routeOf(page)).toEqual({tier:1,step:4});
+  expect(errors).toEqual([]);
+});
+
+test('climbing back onto this route does not send him home',async({page})=>{
+  const errors=await boot(page);
+  await state(page,()=>{
+    st.route={tier:2,step:6};
+    st.stats.math.level=1;
+    st.badges.math=[1];
+    st.grade=0;
+    st.gymOffer.math=null;
+    st.log={'2026-11-16':{'math|@|1':'1'.repeat(20)},'2026-11-17':{'math|@|1':'1'.repeat(20)}};
+    st.redo={math:{tier:1,fresh:40}};
+    maybeMasteryAdvance('math');
+  });
+  expect(await state(page,()=>st.stats.math.level)).toBe(2);
+  expect(await routeOf(page)).toEqual({tier:2,step:6});
+  expect(await state(page,()=>st.phase)).not.toBe('gym');
+  expect(errors).toEqual([]);
+});
+
+test('a climb before the door starts the new route when he reaches the door',async({page})=>{
+  const errors=await boot(page);
+  await state(page,()=>{
+    st.route={tier:1,step:4};
+    st.stats.math.level=1;
+    st.badges.math=[1];
+    st.grade=0;
+    st.gymOffer.math=null;
+    st.log={'2026-11-16':{'math|@|1':'1'.repeat(20)},'2026-11-17':{'math|@|1':'1'.repeat(20)}};
+    st.redo={math:{tier:1,fresh:40}};
+    maybeMasteryAdvance('math');
+  });
+  expect(await state(page,()=>st.stats.math.level)).toBe(2);
+  expect(await routeOf(page)).toEqual({tier:1,step:4});
+  await state(page,()=>{st.route.step=5;st.phase='play';loadQuestion();});
+  await finishRound(page);
+  await expect(page.locator('#round-done')).toBeVisible();
+  await expect(page.locator('#route-caption')).toHaveText('New route! Route 2');
+  await expect(page.locator('#route-label')).toHaveText('Route 2');
+  expect(await routeOf(page)).toEqual({tier:2,step:1});
+  await expect(page.locator('#route-gym')).toHaveCount(0);
+  await expect(page.locator('#trainer-card')).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
+
+test('a reload still owes the trainer battle after a held evolution or a held wild',async({page})=>{
+  const errors=await boot(page);
+  await state(page,()=>{
+    st.route={tier:1,step:1};
+    st.round=freshRound(10);
+    st.round.n=9;
+    st.round.right=5;
+    st.round.marks=[1,1,1,1,1,0,0,0,0];
+    st.pendingEvo={fromPi:activeTM().pi,toPi:activeTM().pi+1};
+    st.phase='play';
+    st.cor=false;st.tries=0;st.wrong=[];
+    if(!st.q)loadQuestion();
+  });
+  await answer(page,true);
+  expect(await state(page,()=>!!(st.round&&st.round.battleOwed))).toBe(true);
+  expect(await state(page,()=>st.phase)).not.toBe('trainer');
+  expect(await state(page,()=>st.round.right)).toBe(6);
+  await page.reload();
+  await expect(page.locator('#trainer-card')).toContainText('Youngster Joey wants to battle!');
+  expect(await state(page,()=>st.trainer&&st.trainer.id)).toBe('joey');
+
+  await state(page,()=>{
+    st.trainer=null;
+    st.pendingEvo=null;
+    st.route={tier:1,step:1};
+    st.round=freshRound(10);
+    st.round.n=9;
+    st.round.right=5;
+    st.round.marks=[1,1,1,1,1,0,0,0,0];
+    const pi=PKM.findIndex(p=>p.n==='Pidgey');
+    st.wild={pi,level:6,shiny:false,correctStreak:1,misses:0};
+    st.phase='wild';
+    st.bonusWild=false;
+    loadQuestion();
+  });
+  await answer(page,true);
+  expect(await state(page,()=>st.phase)).toBe('wild');
+  expect(await state(page,()=>!!(st.round&&st.round.battleOwed))).toBe(true);
+  expect(await state(page,()=>st.round.right)).toBe(6);
+  await page.reload();
+  await expect(page.locator('#trainer-card')).toContainText('Youngster Joey wants to battle!');
   expect(errors).toEqual([]);
 });
 
@@ -824,6 +911,30 @@ test('the map fits an iPad and a phone without scrolling',async({page})=>{
       const ys=fit.nodes.map(n=>n.y);
       expect(Math.max(...ys)-Math.min(...ys),where).toBeLessThan(6);
       expect(fit.map.y,where).toBeGreaterThan(fit.summary.y);
+      await state(page,()=>{
+        st.route.step=6;
+        st.badges.math=[];
+        st.gymOffer.math=null;
+        st.log={};
+        render();
+      });
+      const door=await page.evaluate(()=>{
+        const cap=document.getElementById('route-caption');
+        const main=document.getElementById('app-main');
+        return {
+          text:cap.textContent,
+          scrollW:document.documentElement.scrollWidth,
+          inner:window.innerWidth,
+          v:main.scrollHeight-main.clientHeight,
+          capL:cap.getBoundingClientRect().left,
+          capR:cap.getBoundingClientRect().right,
+        };
+      });
+      expect(door.text,where).toBe('The Gym opens when the star is full.');
+      expect(door.scrollW,where).toBeLessThanOrEqual(door.inner+1);
+      expect(door.capL,where).toBeGreaterThanOrEqual(-1);
+      expect(door.capR,where).toBeLessThanOrEqual(door.inner+1);
+      expect(door.v,where).toBeLessThanOrEqual(4);
     }
   }
   expect(errors).toEqual([]);

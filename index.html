@@ -3164,6 +3164,9 @@ function gamePayload(){
     if(rr.bonus&&rr.bonus.name)payload.round.bonus={name:String(rr.bonus.name).slice(0,40),caught:!!rr.bonus.caught};
     // The bonus slot was a trainer battle, so a reload must not start a catch.
     if(rr.settled)payload.round.settled=true;
+    // A finish landed on a trainer or a closed door, and the battle has not
+    // started yet because an evolution or a wild fight is still on screen.
+    if(rr.battleOwed)payload.round.battleOwed=true;
   }
   // Optional. Missing on old saves. Omitted again while they're empty,
   // so a Pokédex from before trainer battles still round-trips.
@@ -3283,6 +3286,7 @@ function parseRound(raw,pref){
     settled:raw.settled===true,
     bonusPending:raw.settled===true?false:!bonus&&(!!raw.bonusPending||((n>=len||!!raw.closed)&&right>=roundGoal(!!raw.endAfter&&n<len?len0:len))),
     bonus,
+    battleOwed:raw.battleOwed===true,
   };
 }
 // Fixed roster, in the order they battle. Ace Trainer Kim waits at the Gym
@@ -3361,15 +3365,23 @@ function routeBattleKind(){
 }
 function advanceRouteForFinish(){
   ensureRoute();
+  const level=(st.stats&&st.stats.math&&st.stats.math.level)|0;
+  const from=st.route.step|0;
+  const landing=from<6?from+1:6;
+  // He already climbed past this route. Reaching its door must not offer
+  // the higher Gym, and must not keep walking the old path.
+  if(level>(st.route.tier|0)&&landing>=6){
+    st.route={tier:level,step:0,debut:true};
+  }
   if(st.route.debut){
     st.route.debut=false;
     st.route.announce='new';
     st.route.hopFrom=st.route.step|0;
+    if((st.route.step|0)<6)st.route.step=(st.route.step|0)+1;
     return;
   }
-  const from=st.route.step|0;
   st.route.hopFrom=from;
-  st.route.step=from<6?from+1:6;
+  st.route.step=landing;
   if(st.route.announce==='new'||st.route.announce==='shortcut')st.route.announce=null;
 }
 function settleRouteMap(){
@@ -3383,9 +3395,12 @@ function settleRouteMap(){
 }
 function noteRouteClimb(){
   ensureRoute();
-  if((st.route.step|0)<6)return;
   if(routeBadgeEnd())return;
   const to=(st.stats.math.level)|0||1;
+  // Climbing back onto the route he is already walking leaves the token.
+  // A higher tier waits until a finish lands on this route's door.
+  if(to<=(st.route.tier|0))return;
+  if((st.route.step|0)<6)return;
   st.route={tier:to,step:0,debut:true};
 }
 function defaultRoute(stats,log,redo){
@@ -4250,6 +4265,11 @@ function bootInto(){
   view='game';
   if(st.phase==='trainer'&&st.trainer){
     restoreTrainerQuestion();
+    render();
+    return;
+  }
+  if(st.round&&st.round.battleOwed&&st.phase!=='gym'&&st.phase!=='award'){
+    beginTrainerBattle();
     render();
     return;
   }
@@ -6474,6 +6494,7 @@ function tallyFinishedRound(){
   r.tallied=true;
   st.roundsDone=(st.roundsDone|0)+1;
   advanceRouteForFinish();
+  r.battleOwed=!!routeBattleKind();
 }
 function beginTrainerBattle(){
   ensureRoute();
@@ -6492,7 +6513,7 @@ function beginTrainerBattle(){
   st.q=null;
   st.armAt=0;
   const r=st.round;
-  if(r){r.settled=true;r.bonusPending=false;r.bonus=null;}
+  if(r){r.settled=true;r.bonusPending=false;r.bonus=null;r.battleOwed=false;}
 }
 function workedAnswerLine(q){
   if(!q)return 'Good try!';
@@ -6667,7 +6688,8 @@ function trainerHTML(){
     const xp=win?TRAINER_PRIZE:(b.gained|0);
     const title=win?`You beat ${t.name}!`:`${t.mon} ran back to ${t.kid}.`;
     const sub=win?`${t.mon} is all tired out. Great math!`:hits>0?`Nice try! You got ${hits} hit${hits===1?'':'s'}.`:'Nice try!';
-    const extra=win?'<p class="trainer-star">&#11088; Trainer star on your map</p>':'<p class="trainer-line">Every try makes you stronger.</p>';
+    const stamped=win&&t&&!t.door;
+    const extra=stamped?'<p class="trainer-star">&#11088; Trainer star on your map</p>':(win?'':'<p class="trainer-line">Every try makes you stronger.</p>');
     const xpLine=win||xp>0?`<p class="trainer-xp" id="trainer-xp">+${xp} XP</p>`:'';
     const foe=win?' trainer-foe fainted':' trainer-foe';
     return `<div class="card trainer-card trainer-result" id="trainer-result"><div class="trainer-pill">Trainer Battle</div><div class="${foe.trim()}">${pkImg(t.dex,150)}</div><h2 class="trainer-title">${escapeHtml(title)}</h2><p class="trainer-line">${escapeHtml(sub)}</p>${extra}${xpLine}<button type="button" class="trainer-go" id="trainer-map">See your map</button></div>`;

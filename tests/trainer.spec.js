@@ -19,23 +19,15 @@ async function boot(page){
   return errors;
 }
 
-// `done` is how many rounds this child has already finished. One more clean
-// answer closes a round that already has 6 right, so the line of 7 is met.
-async function closeQualified(page,done){
-  await state(page,done=>{
-    st.roundsDone=done|0;
-    const finish=(done|0)+1;
-    const trainerFinish=finish>=2&&((finish-2)%3)===0;
+// `step` is where the token stands before this finish. 1 lands on Joey,
+// 4 lands on Mia, 5 lands on the Gym door, and 0 or 3 keeps the bonus catch.
+async function closeQualified(page,step){
+  await state(page,before=>{
     if(!st.route)st.route={tier:1,step:0};
     st.route.tier=1;
     st.route.debut=false;
     st.route.announce=null;
-    if(trainerFinish){
-      const which=(finish-2)/3;
-      st.route.step=which%2===0?1:4;
-    }else{
-      st.route.step=0;
-    }
+    st.route.step=Math.max(0,Math.min(6,before==null?1:before|0));
     st.round=freshRound(10);
     st.round.n=9;
     st.round.right=6;
@@ -49,7 +41,7 @@ async function closeQualified(page,done){
     if(st.phase!=='play')st.phase='play';
     st.cor=false;st.tries=0;st.wrong=[];st.helped=false;
     Math.random=()=>0.99;
-  },done);
+  },step);
   await answer(page,true);
 }
 
@@ -60,7 +52,7 @@ async function openBattle(page,done){
   await expect(page.locator('.qtext')).toBeVisible();
 }
 
-test('finished rounds 2, 5, and 8 are the trainer rounds',async({page})=>{
+test('route steps 2 and 5, and a closed door, are the trainer battles',async({page})=>{
   const errors=await boot(page);
   const flags=await state(page,()=>{
     const out=[];
@@ -100,9 +92,10 @@ test('finished rounds 2, 5, and 8 are the trainer rounds',async({page})=>{
   expect(await state(page,()=>st.trainer.id)).toBe('mia');
 
   await state(page,()=>{st.trainer=null;st.phase='play';return loadQuestion();});
-  await closeQualified(page,7);
+  await closeQualified(page,5);
   await expect(page.locator('#trainer-go')).toBeVisible();
-  expect(await state(page,()=>st.roundsDone)).toBe(8);
+  await expect(page.locator('#trainer-card')).toContainText('Ace Trainer Kim');
+  expect(await state(page,()=>st.roundsDone)).toBe(5);
   expect(await state(page,()=>st.phase)).toBe('trainer');
   expect(errors).toEqual([]);
 });
@@ -157,7 +150,7 @@ test('two hits win on question 2, and the prize is XP plus a star',async({page})
   const saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('pkq-save')).kids[0].data);
   expect(saved.v).toBe(1);
   expect(saved.trainerStars).toEqual(['joey']);
-  expect(saved.roundsDone).toBe(2);
+  expect(saved.roundsDone).toBe(1);
   expect(errors).toEqual([]);
 });
 
@@ -293,7 +286,7 @@ test('a trainer round battles instead of the bonus catch',async({page})=>{
   expect(await state(page,()=>st.bonusWild)).toBe(false);
   expect(await state(page,()=>st.phase)).toBe('trainer');
   const saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('pkq-save')).kids[0].data);
-  expect(saved.roundsDone).toBe(2);
+  expect(saved.roundsDone).toBe(1);
   expect(saved.trainer.id).toBe('joey');
   expect(saved.v).toBe(1);
   expect(errors).toEqual([]);
