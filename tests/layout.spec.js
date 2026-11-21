@@ -1,7 +1,7 @@
 // The Game / Pokédex bar sits in the page flow, under the questions.
 // At every size we play on, a tap lands on the control itself.
 const {test,expect}=require('@playwright/test');
-const {openGame,startGame,state}=require('./helpers');
+const {openGame,startGame,state,addTrainer}=require('./helpers');
 
 const SIZES=[
   {width:320,height:568},
@@ -272,10 +272,7 @@ test('keyboard digits, Backspace, and Enter drive the number pad',async({page})=
 
 test('Forward after a new trainer returns to the question',async({page})=>{
   await openGame(page);
-  await page.click('#profile-new');
-  await page.fill('#profile-name','Maya');
-  await page.click('[data-avatar="001"]');
-  await page.click('#profile-save');
+  await addTrainer(page,'Maya','001');
   await expect(page.locator('.qtext')).toBeVisible();
   await expect(page.locator('#subj-btn, .subj-opt')).toHaveCount(0);
   await page.goBack();
@@ -361,12 +358,11 @@ test('short landscape keeps the question, gym endings, and the trainer form tapp
   }
 
   await page.evaluate(()=>{whoMode='create';whoDraft={name:'',avatar:null,editId:null};renderWho();});
-  await expect(page.locator('#profile-save')).toHaveText('This is me!');
+  await expect(page.locator('#profile-next')).toHaveText('Next');
   await centerHits(page,'#profile-name');
   await page.fill('#profile-name','Maya');
-  await page.click('[data-avatar="004"]');
-  await expect(page.locator('#profile-save')).toBeEnabled();
-  await centerHits(page,'#profile-save');
+  await expect(page.locator('#profile-next')).toBeEnabled();
+  await centerHits(page,'#profile-next');
 
   await page.evaluate(()=>{
     const kid=profiles.kids[0];
