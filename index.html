@@ -1259,9 +1259,32 @@ button.mon-strip:focus{outline:3px solid #1D4ED8;outline-offset:2px}
 @media (min-height:421px){
   .who-form .who-field{font-size:20px}
 }
+/* Welcome, once, after a brand-new trainer's starter reveal. Same dark rays
+   as the reveal. The sprite size is set in one place so a phone and an iPad
+   share the rule. */
+#welcome-overlay{display:none;position:fixed;inset:0;z-index:1000;background:#0b0524;flex-direction:column;align-items:center;justify-content:center;padding:24px;box-sizing:border-box}
+#welcome-overlay.active{display:flex}
+#welcome-rays{position:absolute;width:160%;height:160%;top:-30%;left:-30%;background:repeating-conic-gradient(rgba(167,139,250,0.09) 0deg 6deg,transparent 6deg 12deg);animation:evo-spin 6s linear infinite;pointer-events:none}
+.welcome-col{position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;width:100%;max-width:640px;flex:0 0 auto}
+#welcome-img{width:min(280px,58vw);height:min(280px,58vw);object-fit:contain;display:block;flex:0 0 auto}
+#welcome-line{width:100%;max-width:560px;margin:32px 0 0;color:#fff;font-weight:800;text-align:center;line-height:1.35;font-size:clamp(22px,4.2vw,28px);text-shadow:0 0 24px rgba(196,181,253,0.7)}
+#welcome-go{appearance:none;border:none;cursor:pointer;font-family:inherit;width:100%;max-width:360px;margin-top:36px;min-height:56px;padding:12px 18px;border-radius:14px;background:#fff;color:#1A1A2E;font-size:22px;font-weight:800}
+#welcome-go:focus{outline:none}
+#welcome-go:focus-visible{outline:3px solid #fff;outline-offset:3px}
+@media (min-width:768px){
+  #welcome-line{font-size:28px}
+  #welcome-go{min-height:64px}
+}
+@media (hover:hover){
+  #welcome-go:hover{background:#F5F3FF}
+}
+#welcome-overlay.active .welcome-col{animation:welcome-in 260ms ease-out both}
+@keyframes welcome-in{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:scale(1)}}
+body:has(#welcome-overlay.active) .wrap{visibility:hidden}
 @media (prefers-reduced-motion:reduce){
-  #pick-rays,#pick-rays.fast{animation:none;display:none}
+  #pick-rays,#pick-rays.fast,#welcome-rays{animation:none;display:none}
   #pick-ball,#pick-sprite-wrap,#pick-burst{animation:none !important}
+  #welcome-overlay .welcome-col,#welcome-overlay.active .welcome-col{animation:none}
 }
 </style>
 </head>
@@ -1295,6 +1318,15 @@ button.mon-strip:focus{outline:3px solid #1D4ED8;outline-offset:2px}
   <div id="pick-burst"></div>
   <div id="pick-sprite-wrap"><div id="pick-ball"></div><img id="pick-img" src="" alt=""></div>
   <div id="pick-label"></div>
+</div>
+
+<div id="welcome-overlay" aria-hidden="true">
+  <div id="welcome-rays"></div>
+  <div class="welcome-col">
+    <img id="welcome-img" alt="">
+    <p id="welcome-line"></p>
+    <button type="button" id="welcome-go">Let's go!</button>
+  </div>
 </div>
 
 <div id="evo-overlay">
@@ -4291,6 +4323,10 @@ function restoreTrainerQuestion(){
 }
 function bootInto(){
   view='game';
+  if(pendingWelcome&&!st.q&&(st.phase==='play'||st.phase==='subject')){
+    showWelcome();
+    return;
+  }
   if(st.phase==='trainer'&&st.trainer){
     restoreTrainerQuestion();
     render();
@@ -4571,11 +4607,11 @@ function continueNewTrainer(){
 // The kid exists only once the ball has opened. Back, or closing the tablet
 // before that, leaves the roster as it was.
 function commitNewTrainer(){
-  if(!addingTrainer)return;
+  if(!addingTrainer)return false;
   const typed=whoDraft.name;
   if(profiles.kids.length>=PROFILE_MAX||!String(typed||'').trim()||profileNameMessage(typed,null)){
     restoreParkedTrainer();
-    return;
+    return false;
   }
   addingTrainer=false;
   heldTrainer=null;
@@ -4585,6 +4621,7 @@ function commitNewTrainer(){
   const kid={id:newProfileId(),name:cleanName(typed),avatar:tm?PKM[tm.pi].num:'#025',data:null};
   profiles.kids.push(kid);
   profiles.activeId=kid.id;
+  return true;
 }
 function renderWho(){
   shelterMute();
@@ -5384,6 +5421,19 @@ function gradeName(tier){
   const m=/^(\d+(?:st|nd|rd|th))/i.exec(plain);
   return m?m[1]:('Grade '+tier);
 }
+// The welcome line. Auto and the Kindergarten lock share one name. The
+// numbered locks use the Parents button's grade with "Grade" spelled out.
+function welcomeGradeLabel(tier){
+  const t=tier|0;
+  if(t<=1)return 'Kindergarten';
+  if(t===2)return '1st Grade';
+  if(t===3)return '2nd Grade';
+  if(t===4)return '3rd Grade';
+  return 'Grade '+t;
+}
+function welcomeLine(){
+  return 'Answer questions to level up your Pok\u00e9mon and master '+welcomeGradeLabel(st.grade)+' Math!';
+}
 // One sentence for the grade that is selected. Written from what that tier
 // actually asks, not a second copy of the long parent-page phrase.
 function gradeBlurb(tier){
@@ -5619,6 +5669,9 @@ let openingWho=false;
 let whoMode='list';
 let whoDraft={name:'',avatar:null,editId:null};
 let addingTrainer=false;
+// Set only when this sitting just created the trainer. Not written to the
+// save: a reload, and every Pokédex from before this screen, skips it.
+let pendingWelcome=false;
 let heldTrainer=null;
 let pendingDelete=null;
 let parentUnlocked=false;
@@ -8194,7 +8247,12 @@ function playStarterReveal(lineIdx,shiny,onDone){
 // might hand him a different one, so the two paths stopped needing to differ.
 function choosePickedStarter(lineIdx){
   const shiny=rollShiny();
-  playStarterReveal(lineIdx,shiny,()=>pickStarter(lineIdx,shiny));
+  // Captured now: commit clears addingTrainer inside the reveal's callback.
+  const welcome=addingTrainer;
+  playStarterReveal(lineIdx,shiny,()=>{
+    if(welcome)pendingWelcome=true;
+    pickStarter(lineIdx,shiny);
+  });
 }
 
 // Picks across every generation, not just the first -- GENS is a list of
@@ -8206,7 +8264,11 @@ function pickRandomStarter(){
   // Rolled up front so the reveal can land on the shiny sprite: the ball is theatre
   // over an already-decided result, colour included.
   const shiny=rollShiny();
-  playStarterReveal(lineIdx,shiny,()=>pickStarter(lineIdx,shiny));
+  const welcome=addingTrainer;
+  playStarterReveal(lineIdx,shiny,()=>{
+    if(welcome)pendingWelcome=true;
+    pickStarter(lineIdx,shiny);
+  });
 }
 
 function pickStarter(lineIdx,shiny){
@@ -8221,7 +8283,38 @@ function pickStarter(lineIdx,shiny){
   enterAfterStarter();
 }
 
+function showWelcome(){
+  const tm=activeTM();
+  const ov=document.getElementById('welcome-overlay');
+  if(!pendingWelcome||!ov||!tm){
+    pendingWelcome=false;
+    if(st.phase==='subject')render();
+    else loadQuestion();
+    return;
+  }
+  const img=document.getElementById('welcome-img');
+  img.src=spriteURL(dexId(tm.pi),!!tm.shiny);
+  img.alt='';
+  document.getElementById('welcome-line').textContent=welcomeLine();
+  ov.classList.add('active');
+  ov.setAttribute('aria-hidden','false');
+  view='game';
+}
+function dismissWelcome(){
+  if(!pendingWelcome)return;
+  pendingWelcome=false;
+  const ov=document.getElementById('welcome-overlay');
+  if(ov){
+    ov.classList.remove('active');
+    ov.setAttribute('aria-hidden','true');
+  }
+  if(st.phase==='subject')render();
+  else loadQuestion();
+}
 function enterAfterStarter(){
+  // pendingWelcome is set by the reveal callback, and only for a trainer
+  // this sitting is adding. pickStarter from a test, a reset, or a reload
+  // never sets it, so those land on the question.
   if(addingTrainer)commitNewTrainer();
   if(!activeKid())ensureProfile();
   // Tests and the starter buttons both land here, sometimes while the
@@ -8236,7 +8329,8 @@ function enterAfterStarter(){
   }
   const show=()=>{
     save();
-    if(st.phase==='subject')render();
+    if(pendingWelcome)showWelcome();
+    else if(st.phase==='subject')render();
     else loadQuestion();
   };
   // Name step and chooser drop out of Back once the trainer exists, so one
@@ -8852,7 +8946,7 @@ let navSilent=false;
 let momentGen=0;
 function hideMoments(){
   momentGen++;
-  ['catch-overlay','evo-overlay','pick-overlay'].forEach(id=>{
+  ['catch-overlay','evo-overlay','pick-overlay','welcome-overlay'].forEach(id=>{
     const ov=document.getElementById(id);
     if(!ov)return;
     ov.classList.remove('active');
@@ -9023,6 +9117,7 @@ function installHistory(){
 }
 
 document.getElementById('mute-btn').addEventListener('click',()=>setMuted(!soundMuted()));
+document.getElementById('welcome-go').addEventListener('click',dismissWelcome);
 paintMute();
 
 // A real keyboard fills the math pad. Enter checks the number, and it must
