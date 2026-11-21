@@ -129,8 +129,8 @@ test("Let's go! lands on question 1 and Back from there is Who's playing",async(
   await expect(page.locator('.qtext')).toBeVisible();
   await expect(page.getByText("Who's playing?")).toBeHidden();
   await expect(page.locator('.starter-card')).toBeHidden();
-  const landed=await state(page,()=>({phase:st.phase,n:st.round.n,att:st.stats.math.att,pending:pendingWelcome}));
-  expect(landed).toEqual({phase:'play',n:0,att:0,pending:false});
+  const landed=await state(page,()=>({phase:st.phase,n:st.round.n,att:st.stats.math.att,pending:pendingWelcomeId}));
+  expect(landed).toEqual({phase:'play',n:0,att:0,pending:null});
   await page.goBack();
   await expect(page.getByText("Who's playing?")).toBeVisible();
   await page.goForward();
@@ -246,8 +246,12 @@ test('the sprite is about 280px on iPad and about 226px on a phone, and the scre
     const btn=await page.locator('#welcome-go').evaluate(el=>{
       const r=el.getBoundingClientRect();
       const s=getComputedStyle(el);
-      return {h:r.height,top:r.top,bottom:r.bottom,left:r.left,right:r.right,radius:parseFloat(s.borderRadius),weight:s.fontWeight,size:parseFloat(s.fontSize),bg:s.backgroundColor,color:s.color};
+      return {w:r.width,h:r.height,top:r.top,bottom:r.bottom,left:r.left,right:r.right,radius:parseFloat(s.borderRadius),weight:s.fontWeight,size:parseFloat(s.fontSize),bg:s.backgroundColor,color:s.color};
     });
+    if(size.width===768){
+      expect(Math.abs(btn.w-360),`button width at 768 was ${btn.w}`).toBeLessThanOrEqual(2);
+      expect(btn.h,`button height at 768 was ${btn.h}`).toBeGreaterThanOrEqual(64);
+    }
     expect(btn.h,`button height at ${size.width}`).toBeGreaterThanOrEqual(size.button);
     expect(btn.size).toBeGreaterThanOrEqual(22);
     expect(String(btn.weight)).toMatch(/800|bold/);
@@ -268,11 +272,82 @@ test('the sprite is about 280px on iPad and about 226px on a phone, and the scre
     expect(btn.bottom,`button at ${size.width}`).toBeLessThanOrEqual(size.height+1);
     expect(btn.top).toBeGreaterThanOrEqual(-1);
   }
-  const wide=await page.locator('#welcome-go').evaluate(el=>{
-    const r=el.getBoundingClientRect();
-    return r.width;
+  expect(errors).toEqual([]);
+});
+
+test("Back, then the other trainer, does not steal the new trainer's welcome",async({page})=>{
+  const errors=await openGame(page);
+  await startGame(page,'math');
+  await state(page,()=>{
+    const kid=activeKid();
+    kid.name='Maya';
+    kid.askName=false;
+    save();
   });
-  expect(wide).toBeLessThanOrEqual(360);
+  await page.click('#who-btn');
+  await toWelcome(page,{name:'Leo',line:1});
+  await expect(page.locator('#welcome-img')).toHaveAttribute('src',/\/4\.png$/);
+  await page.goBack();
+  await expect(page.getByText("Who's playing?")).toBeVisible();
+  await page.locator('[data-pick]').filter({hasText:'Maya'}).click();
+  await expect(page.locator('#welcome-overlay.active')).toHaveCount(0);
+  await expect(page.locator('.qtext')).toBeVisible();
+  await page.click('#who-btn');
+  await page.locator('[data-pick]').filter({hasText:'Leo'}).click();
+  await expect(page.locator('#welcome-overlay.active')).toBeVisible();
+  await expect(page.locator('#welcome-line')).toHaveText(KINDERGARTEN);
+  await expect(page.locator('#welcome-img')).toHaveAttribute('src',/\/4\.png$/);
+  await expect(page.locator('.qtext')).toBeHidden();
+  expect(errors).toEqual([]);
+});
+
+test('a Gym sibling who is reset does not inherit the pending welcome',async({page})=>{
+  const errors=await openGame(page);
+  await startGame(page,'math');
+  await state(page,()=>{
+    const kid=activeKid();
+    kid.name='Maya';
+    kid.askName=false;
+    const tier=st.stats.math.level;
+    st.gym={sub:'math',tier,queue:gymQueue('math',tier),qi:0,kid:GYM_KID_HP,lead:GYM_LEAD_HP,solved:false,over:null};
+    st.phase='gym';
+    save();
+  });
+  await page.click('#who-btn');
+  await toWelcome(page,{name:'Leo',line:1});
+  await page.goBack();
+  await page.locator('[data-pick]').filter({hasText:'Maya'}).click();
+  await expect(page.locator('.gym-card, .gym-name, .qtext').first()).toBeVisible();
+  await state(page,()=>{resetCurrentProfile();});
+  await expect(page.locator('.starter-card')).toBeVisible();
+  await state(page,()=>{playStarterReveal=function(line,shiny,done){done();};});
+  await page.click('#pick-0');
+  await expect(page.locator('#welcome-overlay.active')).toHaveCount(0);
+  await expect(page.locator('.qtext')).toBeVisible();
+  await page.click('#who-btn');
+  await page.locator('[data-pick]').filter({hasText:'Leo'}).click();
+  await expect(page.locator('#welcome-overlay.active')).toBeVisible();
+  await expect(page.locator('#welcome-img')).toHaveAttribute('src',/\/4\.png$/);
+  expect(errors).toEqual([]);
+});
+
+test("Let's go is focused, so Enter dismisses the welcome",async({page})=>{
+  const errors=await openGame(page);
+  await toWelcome(page);
+  await expect(page.locator('#welcome-go')).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('#welcome-overlay.active')).toHaveCount(0);
+  await expect(page.locator('.qtext')).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+test('leaving the welcome marks the overlay hidden',async({page})=>{
+  const errors=await openGame(page);
+  await toWelcome(page);
+  await expect(page.locator('#welcome-overlay')).toHaveAttribute('aria-hidden','false');
+  await page.goBack();
+  await expect(page.locator('#welcome-overlay')).toHaveAttribute('aria-hidden','true');
+  await expect(page.locator('#welcome-overlay.active')).toHaveCount(0);
   expect(errors).toEqual([]);
 });
 

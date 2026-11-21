@@ -4323,7 +4323,8 @@ function restoreTrainerQuestion(){
 }
 function bootInto(){
   view='game';
-  if(pendingWelcome&&!st.q&&(st.phase==='play'||st.phase==='subject')){
+  const owed=activeKid();
+  if(owed&&owed.id===pendingWelcomeId&&!st.q&&(st.phase==='play'||st.phase==='subject')){
     showWelcome();
     return;
   }
@@ -4458,6 +4459,7 @@ function askResetProfile(){
 }
 function resetCurrentProfile(){
   const kid=activeKid();
+  if(kid&&kid.id===pendingWelcomeId)pendingWelcomeId=null;
   st=mkState();
   if(kid)kid.data=null;
   whoMode='list';
@@ -5671,7 +5673,12 @@ let whoDraft={name:'',avatar:null,editId:null};
 let addingTrainer=false;
 // Set only when this sitting just created the trainer. Not written to the
 // save: a reload, and every Pokédex from before this screen, skips it.
-let pendingWelcome=false;
+// The id of the trainer whose reveal just finished, or null. Not saved.
+// Back and opening someone else leave it alone, so only that trainer
+// still has a welcome waiting.
+let pendingWelcomeId=null;
+// Set by the reveal callback, read once commit has created the kid.
+let welcomeOnCommit=false;
 let heldTrainer=null;
 let pendingDelete=null;
 let parentUnlocked=false;
@@ -8250,7 +8257,7 @@ function choosePickedStarter(lineIdx){
   // Captured now: commit clears addingTrainer inside the reveal's callback.
   const welcome=addingTrainer;
   playStarterReveal(lineIdx,shiny,()=>{
-    if(welcome)pendingWelcome=true;
+    welcomeOnCommit=welcome;
     pickStarter(lineIdx,shiny);
   });
 }
@@ -8266,7 +8273,7 @@ function pickRandomStarter(){
   const shiny=rollShiny();
   const welcome=addingTrainer;
   playStarterReveal(lineIdx,shiny,()=>{
-    if(welcome)pendingWelcome=true;
+    welcomeOnCommit=welcome;
     pickStarter(lineIdx,shiny);
   });
 }
@@ -8283,15 +8290,14 @@ function pickStarter(lineIdx,shiny){
   enterAfterStarter();
 }
 
+function welcomeOwed(){
+  const kid=activeKid();
+  return !!(kid&&pendingWelcomeId&&kid.id===pendingWelcomeId);
+}
 function showWelcome(){
   const tm=activeTM();
   const ov=document.getElementById('welcome-overlay');
-  if(!pendingWelcome||!ov||!tm){
-    pendingWelcome=false;
-    if(st.phase==='subject')render();
-    else loadQuestion();
-    return;
-  }
+  if(!welcomeOwed()||!ov||!tm)return;
   const img=document.getElementById('welcome-img');
   img.src=spriteURL(dexId(tm.pi),!!tm.shiny);
   img.alt='';
@@ -8299,10 +8305,12 @@ function showWelcome(){
   ov.classList.add('active');
   ov.setAttribute('aria-hidden','false');
   view='game';
+  const go=document.getElementById('welcome-go');
+  if(go)go.focus({preventScroll:true});
 }
 function dismissWelcome(){
-  if(!pendingWelcome)return;
-  pendingWelcome=false;
+  if(!welcomeOwed())return;
+  pendingWelcomeId=null;
   const ov=document.getElementById('welcome-overlay');
   if(ov){
     ov.classList.remove('active');
@@ -8312,11 +8320,14 @@ function dismissWelcome(){
   else loadQuestion();
 }
 function enterAfterStarter(){
-  // pendingWelcome is set by the reveal callback, and only for a trainer
-  // this sitting is adding. pickStarter from a test, a reset, or a reload
-  // never sets it, so those land on the question.
+  // Only a reveal that was adding a trainer. A direct pickStarter, a reset,
+  // and a reload leave welcomeOnCommit false and do not touch an id that
+  // still belongs to someone else.
+  const welcome=welcomeOnCommit;
+  welcomeOnCommit=false;
   if(addingTrainer)commitNewTrainer();
   if(!activeKid())ensureProfile();
+  if(welcome&&activeKid())pendingWelcomeId=activeKid().id;
   // Tests and the starter buttons both land here, sometimes while the
   // "who's playing" screen is still the one on display.
   view='game';
@@ -8329,7 +8340,7 @@ function enterAfterStarter(){
   }
   const show=()=>{
     save();
-    if(pendingWelcome)showWelcome();
+    if(welcomeOwed())showWelcome();
     else if(st.phase==='subject')render();
     else loadQuestion();
   };
@@ -8951,6 +8962,7 @@ function hideMoments(){
     if(!ov)return;
     ov.classList.remove('active');
     ov.style.cssText='';
+    if(id==='welcome-overlay')ov.setAttribute('aria-hidden','true');
   });
 }
 function histState(screen){
