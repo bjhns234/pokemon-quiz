@@ -2,7 +2,7 @@
 // animation is interrupted, unfair questions have one clear answer, and the
 // phone screens stay usable.
 const {test,expect}=require('@playwright/test');
-const {openGame,startGame,state,answer,nextQuestion}=require('./helpers');
+const {openGame,startGame,state,answer,nextQuestion,addTrainer}=require('./helpers');
 
 const legacy={v:1,starter:0,activeIdx:0,team:[{num:'#001',level:7,xp:3}],dex:['#001'],
   stats:{math:{cor:5,att:6,level:2,cs:1,ws:0},reading:{cor:0,att:0,level:1,cs:0,ws:0},science:{cor:0,att:0,level:1,cs:0,ws:0}},
@@ -428,10 +428,7 @@ test('the sound button never covers the trainer chip',async({page})=>{
 
 test('adding a trainer does not leave a second Who\'s playing in Back',async({page})=>{
   await openGame(page);
-  await page.click('#profile-new');
-  await page.fill('#profile-name','Maya');
-  await page.click('[data-avatar="001"]');
-  await page.click('#profile-save');
+  await addTrainer(page,'Maya','001');
   await expect(page.locator('.qtext')).toBeVisible();
   await expect(page.locator('#subj-btn, .subj-opt')).toHaveCount(0);
   await page.goBack();

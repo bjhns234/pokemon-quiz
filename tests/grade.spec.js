@@ -3,7 +3,7 @@
 // Past kindergarten, every 5th regular question is earlier work, and that
 // answer does not move the level-up or level-down streak.
 const {test,expect}=require('@playwright/test');
-const {openGame,startGame,state,answer,nextQuestion,serve,pinXp}=require('./helpers');
+const {openGame,startGame,state,answer,nextQuestion,serve,pinXp,addTrainer}=require('./helpers');
 
 const SIZES=[
   {width:667,height:375},
@@ -340,17 +340,11 @@ test('every 5th regular question is earlier work, and it leaves the streaks alon
 
 test('a grade is saved per child and still selected after a reload',async({page})=>{
   const errors=await openGame(page);
-  await page.click('#profile-new');
-  await page.fill('#profile-name','Maya');
-  await page.click('[data-avatar="001"]');
-  await page.click('#profile-save');
+  await addTrainer(page,'Maya','001');
   await page.evaluate(()=>{pickStarter(0,false);chooseSubject('math');});
 
   await page.click('#who-btn');
-  await page.click('#profile-new');
-  await page.fill('#profile-name','Leo');
-  await page.click('[data-avatar="004"]');
-  await page.click('#profile-save');
+  await addTrainer(page,'Leo','004');
   await page.evaluate(()=>{pickStarter(1,false);chooseSubject('math');});
 
   await openParents(page);

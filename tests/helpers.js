@@ -49,6 +49,24 @@ const nextQuestion=page=>page.evaluate(()=>loadQuestion());
 
 module.exports={GAME_URL,openGame,startGame,enableAllSubjects,state,answer,nextQuestion};
 
+// Line index for each starter the old avatar grid used to offer.
+const STARTER_LINE={
+  '001':0,'004':1,'007':2,'152':3,'258':8,'387':9,'495':12,'653':17,'722':18,'813':21,
+};
+// Name step, then the shared chooser. Skips the reveal animation: the pick
+// still goes through pickStarter, which is what creates the trainer.
+async function addTrainer(page,name,avatarOrLine){
+  const key=String(avatarOrLine);
+  const line=typeof avatarOrLine==='number'?avatarOrLine:(STARTER_LINE[key]??0);
+  await page.click('#profile-new');
+  await page.fill('#profile-name',name);
+  await page.click('#profile-next');
+  await page.locator('#pick-'+line).waitFor();
+  await page.evaluate(li=>{pickStarter(li,false);},line);
+  await page.locator('.qtext').waitFor({timeout:15000});
+}
+module.exports.addTrainer=addTrainer;
+
 // Puts a specific question on screen, reset exactly as a fresh deal would be.
 // Takes its QB address; with no address it finds the first question in `sub`
 // whose stem names the Pokemon, for tests about the name being redrawn.

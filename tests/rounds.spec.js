@@ -4,7 +4,7 @@
 // red X on the done screen, and nothing asks him to come back later.
 const {test,expect}=require('@playwright/test');
 const fs=require('fs');
-const {openGame,startGame,state,answer}=require('./helpers');
+const {openGame,startGame,state,answer,addTrainer}=require('./helpers');
 
 const ART='/opt/cursor/artifacts';
 const BANNED=/tomorrow|come back|daily|countdown|see you|don'?t go|do not go|one more|reward/i;
@@ -744,10 +744,7 @@ test('round length is per child, and 5 and 15 use 4 and 11',async({page})=>{
 
   // A second child keeps his own length. Simon stays on 5.
   await page.click('#who-btn');
-  await page.click('#profile-new');
-  await page.fill('#profile-name','Maya');
-  await page.click('[data-avatar="004"]');
-  await page.click('#profile-save');
+  await addTrainer(page,'Maya','004');
   await page.evaluate(()=>{pickStarter(1,false);chooseSubject('math');});
   await openParents(page);
   const maya=page.locator('#round-setting .round-row').filter({hasText:'Maya'});

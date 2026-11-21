@@ -1,17 +1,14 @@
 // One tablet, several kids. Profiles keep the saves apart, an old single save
 // becomes the first trainer, and the parent page reads each kid's own record.
 const {test,expect}=require('@playwright/test');
-const {openGame,startGame,state,answer,serve}=require('./helpers');
+const {openGame,startGame,state,answer,serve,addTrainer}=require('./helpers');
 
 const legacy={v:1,starter:0,activeIdx:0,team:[{num:'#001',level:7,xp:3}],dex:['#001'],
   stats:{math:{cor:5,att:6,level:2,cs:1,ws:0},reading:{cor:0,att:0,level:1,cs:0,ws:0},science:{cor:0,att:0,level:1,cs:0,ws:0}},
   review:[{sub:'math',lv:1,idx:0,q:'What is 1 + 2?',wins:0}]};
 
 async function newTrainer(page,name,avatar){
-  await page.click('#profile-new');
-  await page.fill('#profile-name',name);
-  await page.click(`[data-avatar="${avatar}"]`);
-  await page.click('#profile-save');
+  await addTrainer(page,name,avatar);
 }
 
 async function tapParentAnswer(page,text){
@@ -84,10 +81,7 @@ test('two trainers keep separate Pokémon, and deleting one takes a confirm',asy
   await expect(page.locator('#who-screen')).toBeVisible();
   await expect(page.getByText('Choose your starter')).toHaveCount(0);
 
-  await page.click('#profile-new');
-  await page.fill('#profile-name','Maya');
-  await page.click('[data-avatar="001"]');
-  await page.click('#profile-save');
+  await newTrainer(page,'Maya','001');
   await expect(page.locator('.qtext')).toBeVisible();
   await expect(page.locator('#subj-btn, .subj-opt')).toHaveCount(0);
   await expect(page.getByText('Choose your starter')).toHaveCount(0);
@@ -166,10 +160,7 @@ test('two trainers keep separate Pokémon, and deleting one takes a confirm',asy
 
 test('resetting one trainer does not wipe the other',async({page})=>{
   const errors=await openGame(page);
-  await page.click('#profile-new');
-  await page.fill('#profile-name','Maya');
-  await page.click('[data-avatar="001"]');
-  await page.click('#profile-save');
+  await newTrainer(page,'Maya','001');
   await page.evaluate(()=>{pickStarter(0,false);chooseSubject('math');});
   await state(page,()=>{st.items.candy=3;save();});
 
@@ -226,13 +217,10 @@ test('resetting one trainer does not wipe the other',async({page})=>{
 
 test('four trainers fit, and a reload asks who is playing',async({page})=>{
   const errors=await openGame(page);
-  const names=[['Maya','001'],['Leo','004'],['Sam','025'],['Noa','722']];
+  const names=[['Maya','001'],['Leo','004'],['Sam','007'],['Noa','722']];
   for(const [name,avatar] of names){
     if(name!=='Maya')await page.click('#who-btn');
-    await page.click('#profile-new');
-    await page.fill('#profile-name',name);
-    await page.click(`[data-avatar="${avatar}"]`);
-    await page.click('#profile-save');
+    await newTrainer(page,name,avatar);
   }
   await page.click('#who-btn');
   for(const [name] of names){
@@ -331,31 +319,27 @@ test('the parent page stays behind a math check and shows each child apart',asyn
   expect(errors).toEqual([]);
 });
 
-test('two trainers cannot share a name or a buddy, and delete names which one',async({page})=>{
+test('two trainers cannot share a name, and delete names which one',async({page})=>{
   const errors=await openGame(page);
-  await page.click('#profile-new');
-  await page.fill('#profile-name','Maya');
-  await page.click('[data-avatar="001"]');
-  await page.click('#profile-save');
+  await newTrainer(page,'Maya','001');
   await page.click('#who-btn');
 
   await page.click('#profile-new');
   await page.fill('#profile-name','maya');
-  await page.click('[data-avatar="004"]');
   await expect(page.locator('#profile-err')).toContainText('already called Maya');
-  await expect(page.locator('#profile-save')).toBeDisabled();
+  await expect(page.locator('#profile-next')).toBeDisabled();
   expect(await state(page,()=>profiles.kids.map(k=>k.name))).toEqual(['Maya']);
 
   await page.fill('#profile-name','Leo');
-  await page.click('[data-avatar="001"]');
-  await expect(page.locator('#profile-err')).toContainText('Maya already has that Pokémon');
-  await expect(page.locator('#profile-save')).toBeDisabled();
-
-  await page.click('[data-avatar="004"]');
-  await expect(page.locator('#profile-save')).toBeEnabled();
-  await page.click('#profile-save');
+  await expect(page.locator('#profile-err')).toBeHidden();
+  await expect(page.locator('#profile-next')).toBeEnabled();
+  await page.click('#profile-next');
+  await expect(page.locator('#pick-0')).toBeEnabled();
+  await page.evaluate(()=>pickStarter(0,false));
+  await expect(page.locator('.qtext')).toBeVisible();
   await page.click('#who-btn');
   await expect(page.locator('[data-pick]').filter({hasText:'Leo'})).toBeVisible();
+  await expect(page.locator('[data-pick]').filter({hasText:'Leo'})).toContainText('Bulbasaur');
 
   await page.getByRole('button',{name:'Edit Leo'}).click();
   await expect(page.locator('[data-avatar]')).toHaveCount(0);
@@ -545,7 +529,7 @@ test('questions can be described to a parent in plain topics',async({page})=>{
   expect(samples).toEqual([]);
 });
 
-test('a fresh tablet asks to add a trainer, and the buddy stays above a short screen',async({page})=>{
+test('a fresh tablet asks to add a trainer, and the name step stays on a short screen',async({page})=>{
   const errors=await openGame(page);
   await expect(page.getByText('Add a trainer to start.')).toBeVisible();
   await expect(page.getByText('Tap your name')).toHaveCount(0);
@@ -553,34 +537,27 @@ test('a fresh tablet asks to add a trainer, and the buddy stays above a short sc
   await expect(page.locator('#profile-new img')).toHaveCount(1);
 
   await page.click('#profile-new');
-  await expect(page.locator('#profile-hint')).toHaveText('Type a name and tap a Pokémon.');
-  await expect(page.locator('#profile-save')).toBeDisabled();
+  await expect(page.getByText("What's your name?")).toBeVisible();
+  await expect(page.locator('#who-form-back')).toHaveCount(0);
+  await expect(page.locator('.ava-grid')).toHaveCount(0);
+  await expect(page.locator('#profile-next')).toBeDisabled();
   const order=await page.evaluate(()=>{
-    const ava=document.querySelector('.ava-grid');
     const name=document.getElementById('profile-name');
-    const save=document.getElementById('profile-save');
-    return !!(ava&&name&&save
-      && (ava.compareDocumentPosition(name)&Node.DOCUMENT_POSITION_FOLLOWING)
-      && (name.compareDocumentPosition(save)&Node.DOCUMENT_POSITION_FOLLOWING));
+    const next=document.getElementById('profile-next');
+    return !!(name&&next&&(name.compareDocumentPosition(next)&Node.DOCUMENT_POSITION_FOLLOWING));
   });
   expect(order).toBe(true);
-  const back=await page.locator('#who-form-back').boundingBox();
-  const go=await page.locator('#profile-save').boundingBox();
-  expect(back.height).toBeGreaterThanOrEqual(go.height-4);
 
   await page.setViewportSize({width:390,height:480});
+  await page.fill('#profile-name','Maya');
+  await expect(page.locator('#profile-next')).toBeEnabled();
   const fit=await page.evaluate(()=>{
-    const ava=document.querySelector('.ava-grid').getBoundingClientRect();
-    const save=document.getElementById('profile-save').getBoundingClientRect();
+    const name=document.getElementById('profile-name').getBoundingClientRect();
+    const next=document.getElementById('profile-next').getBoundingClientRect();
     const h=window.innerHeight;
-    return ava.height>40&&ava.top>=0&&ava.bottom<=h+1&&save.top>=ava.top&&save.bottom<=h+1;
+    return name.height>20&&name.top>=0&&next.top>=name.top&&next.bottom<=h+1;
   });
   expect(fit).toBe(true);
-  await page.fill('#profile-name','Maya');
-  await expect(page.locator('#profile-hint')).toHaveText('Type a name and tap a Pokémon.');
-  await page.click('[data-avatar="001"]');
-  await expect(page.locator('#profile-hint')).toBeHidden();
-  await expect(page.locator('#profile-save')).toBeEnabled();
   expect(errors).toEqual([]);
 });
 
@@ -631,7 +608,7 @@ test('an old save asks for a name in trainer setup, not on the question',async({
   expect(errors).toEqual([]);
 });
 
-test('a card uses the Pokémon they battle with, and that picture cannot be copied',async({page})=>{
+test('a card uses the Pokémon they battle with, and a sibling can pick it too',async({page})=>{
   const maya={v:1,activeIdx:0,team:[{num:'#001',level:8,xp:1}]};
   const leo={v:1,activeIdx:0,team:[{num:'#004',level:5,xp:0}]};
   const errors=await openGame(page,{save:{v:1,roster:1,activeId:null,kids:[
@@ -646,9 +623,9 @@ test('a card uses the Pokémon they battle with, and that picture cannot be copi
   await page.click('#who-btn');
   await page.click('#profile-new');
   await page.fill('#profile-name','Sam');
-  await page.click('[data-avatar="001"]');
-  await expect(page.locator('#profile-err')).toContainText('Maya already has that Pokémon');
-  await page.click('[data-avatar="025"]');
-  await expect(page.locator('#profile-save')).toBeEnabled();
+  await expect(page.locator('#profile-err')).toBeHidden();
+  await page.click('#profile-next');
+  await expect(page.locator('#pick-0')).toBeEnabled();
+  await expect(page.locator('.starter-opt.muted')).toHaveCount(0);
   expect(errors).toEqual([]);
 });

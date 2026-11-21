@@ -27,6 +27,8 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;height:10
 .hdr-tight .hdr-right{display:flex;align-items:center;flex:0 0 auto}
 .hdr-tight .who-btn{min-width:0;overflow:hidden}
 .hdr-tight .who-btn span{min-width:0}
+.hdr-tight>.big-back{flex:1 1 auto;width:auto;min-width:0;margin-bottom:0}
+.new-trainer-pill{display:inline-flex;align-items:center;justify-content:center;background:#F5F3FF;color:#4C1D95;border:2px solid #7C3AED;border-radius:999px;padding:8px 14px;min-height:44px;font-size:16px;font-weight:800;white-space:nowrap;line-height:1.2}
 .app-name{font-size:15px;font-weight:600;color:#1A1A2E;min-width:0}
 .card{background:#fff;border-radius:16px;padding:18px;margin-bottom:12px;box-shadow:0 2px 8px rgba(0,0,0,0.06)}
 /* The extra top padding is only applied when the corner button is actually there.
@@ -1239,6 +1241,19 @@ button.mon-strip:focus{outline:3px solid #1D4ED8;outline-offset:2px}
   #pokedex-page .reset-long{display:none}
   #pokedex-page .reset-short{display:inline}
   #pokedex-page .hdr-right{flex:0 0 auto}
+  .new-trainer-pill{padding:6px 10px;font-size:14px;min-height:40px}
+}
+@media (min-width:768px) and (min-height:700px){
+  .starter-opt-name{font-size:18px}
+  .starter-opt-type{font-size:14px}
+  .who-form .big-back,#starter-back{min-height:64px}
+}
+@media (min-height:421px){
+  .who-form .who-field{font-size:20px}
+}
+@media (prefers-reduced-motion:reduce){
+  #pick-rays,#pick-rays.fast{animation:none}
+  #pick-ball,#pick-sprite-wrap,#pick-burst{animation:none !important}
 }
 </style>
 </head>
@@ -3717,7 +3732,6 @@ function parseGameSave(data){
 // wraps that object as the first trainer so nobody starts over.
 // SAVE_V stays 1. Bumping it would throw away every Pokédex.
 const PROFILE_MAX=6;
-const AVATAR_IDS=['001','004','007','025','133','152','258','387','495','653','722','813'];
 // Phrases a parent reads. Each one names what that step's questions actually
 // are. Clocks and coins, for example, are only in the hardest math step.
 const TIER_PLAIN={
@@ -4224,11 +4238,6 @@ function whoButtonHTML(id){
 function bigBackHTML(id,label){
   return `<button type="button" class="big-back" id="${id}">&#8592; ${label}</button>`;
 }
-function starterLineForNum(num){
-  const pi=NUM_TO_PI[num];
-  if(pi===undefined)return -1;
-  return LINES.findIndex(ln=>ln[0]===pi);
-}
 function placeParentsLink(){}
 function showGameChrome(){
   shelterMute();
@@ -4351,61 +4360,11 @@ function selectProfile(id){
   bootInto();
   histPush('game');
 }
-// Same name, or the same buddy picture, and a child who can't read can open
-// the wrong game. Both have to be different. Editing keeps your own.
-function profileClash(name,avatar,exceptId){
-  const n=cleanName(name).toLowerCase();
-  const nameKid=profiles.kids.find(k=>k.id!==exceptId&&k.name.toLowerCase()===n)||null;
-  const avaKid=avatar?profiles.kids.find(k=>k.id!==exceptId&&kidPictureNum(k)===avatar)||null:null;
-  return {nameKid,avaKid};
-}
-function profileClashMessage(name,avatar,exceptId){
-  if(!String(name||'').trim()||!avatar)return '';
-  const {nameKid,avaKid}=profileClash(name,avatar,exceptId);
-  if(nameKid&&avaKid&&nameKid.id===avaKid.id)return `${nameKid.name} already has that name and that Pokémon.`;
-  if(nameKid&&avaKid)return `Someone is already called ${nameKid.name}, and ${avaKid.name} already has that Pokémon.`;
-  if(nameKid)return `Someone is already called ${nameKid.name}. Pick a different name.`;
-  if(avaKid)return `${avaKid.name} already has that Pokémon. Pick a different one.`;
-  return '';
-}
 function profileNameMessage(name,exceptId){
   if(!String(name||'').trim())return '';
   const n=cleanName(name).toLowerCase();
   const nameKid=profiles.kids.find(k=>k.id!==exceptId&&k.name.toLowerCase()===n);
   return nameKid?`Someone is already called ${nameKid.name}. Pick a different name.`:'';
-}
-// The picture they tap is the Pokémon they battle with. A line starter uses the
-// normal pick. Pikachu and Eevee are not the first of a stored line, but they
-// still start at the same level and can grow the same way.
-function beginWithPokemon(num,shiny){
-  const pi=NUM_TO_PI[num];
-  if(pi===undefined)return false;
-  const line=starterLineForNum(num);
-  if(line>=0){pickStarter(line,shiny);return true;}
-  shiny=!!shiny;
-  st.team=[{pi,level:STARTER_START_LEVEL,xp:0,shiny}];
-  st.activeIdx=0;
-  markDex(pi,shiny);
-  enterAfterStarter();
-  return true;
-}
-function createProfile(name,avatar){
-  if(profiles.kids.length>=PROFILE_MAX)return;
-  if(profileClashMessage(name,avatar,null))return;
-  captureActive();
-  const kid={id:newProfileId(),name:cleanName(name),avatar,data:null};
-  profiles.kids.push(kid);
-  profiles.activeId=kid.id;
-  st=mkState();
-  reshuffleDecks();
-  subjectBag=[];
-  lastSubject=null;
-  whoMode='list';
-  pendingDelete=null;
-  if(beginWithPokemon(avatar,rollShiny()))return;
-  view='game';
-  writeRoster();
-  render();
 }
 function editProfile(id,name){
   const kid=profiles.kids.find(k=>k.id===id);
@@ -4477,14 +4436,147 @@ function trySaveProfile(){
   const input=document.getElementById('profile-name');
   const name=input?input.value:'';
   if(!String(name).trim())return;
-  if(whoDraft.editId){
-    if(profileNameMessage(name,whoDraft.editId))return;
-    editProfile(whoDraft.editId,name);
-  } else {
-    if(!whoDraft.avatar)return;
-    if(profileClashMessage(name,whoDraft.avatar,null))return;
-    createProfile(name,whoDraft.avatar);
+  if(!whoDraft.editId)return;
+  if(profileNameMessage(name,whoDraft.editId))return;
+  editProfile(whoDraft.editId,name);
+}
+function sameJson(a,b){
+  if(a===b)return true;
+  if(typeof a!==typeof b||!a||typeof a!=='object'||!b)return false;
+  if(Array.isArray(a)||Array.isArray(b)){
+    if(!Array.isArray(a)||!Array.isArray(b)||a.length!==b.length)return false;
+    for(let i=0;i<a.length;i++)if(!sameJson(a[i],b[i]))return false;
+    return true;
   }
+  const ak=Object.keys(a),bk=Object.keys(b);
+  if(ak.length!==bk.length)return false;
+  for(let i=0;i<ak.length;i++){
+    if(!Object.prototype.hasOwnProperty.call(b,ak[i]))return false;
+    if(!sameJson(a[ak[i]],b[ak[i]]))return false;
+  }
+  return true;
+}
+// True when a re-save did not change any existing trainer. The raw string can
+// then be put back so a sibling's Pokédex stays byte for byte.
+function rosterUntouched(raw,next){
+  try{
+    const a=JSON.parse(raw),b=JSON.parse(next);
+    if(!a||!b||a.v!==b.v||a.roster!==b.roster)return false;
+    if((a.activeId||null)!==(b.activeId||null))return false;
+    if(!Array.isArray(a.kids)||!Array.isArray(b.kids)||a.kids.length!==b.kids.length)return false;
+    for(let i=0;i<a.kids.length;i++){
+      const x=a.kids[i],y=b.kids[i];
+      if(x.id!==y.id||x.name!==y.name||x.avatar!==y.avatar||!!x.askName!==!!y.askName)return false;
+      if(!sameJson(x.data??null,y.data??null))return false;
+      if(!sameJson(x.settings??null,y.settings??null))return false;
+    }
+    return true;
+  }catch(e){return false;}
+}
+// The current trainer is written down before the blank chooser replaces the
+// game on screen. Nothing is added for the new kid yet.
+function parkForNewTrainer(){
+  let raw=null;
+  try{raw=localStorage.getItem(SAVE_KEY);}catch(e){}
+  heldTrainer={activeId:profiles.activeId,state:st};
+  if(activeKid()){
+    captureActive();
+    writeRoster();
+    try{
+      const next=localStorage.getItem(SAVE_KEY);
+      if(raw&&rosterUntouched(raw,next)){
+        localStorage.setItem(SAVE_KEY,raw);
+        const parsed=JSON.parse(raw);
+        profiles.kids.forEach(k=>{
+          const row=(parsed.kids||[]).find(r=>r.id===k.id);
+          if(!row)return;
+          k.data=row.data||null;
+          if(row.settings)k.settings=row.settings;
+          else delete k.settings;
+          if(row.askName)k.askName=true;
+          else delete k.askName;
+        });
+      }
+    }catch(e){}
+  }
+  profiles.activeId=null;
+  addingTrainer=true;
+  st=mkState();
+  reshuffleDecks();
+  subjectBag=[];
+  lastSubject=null;
+  view='game';
+}
+function openStarterForNewTrainer(){
+  parkForNewTrainer();
+  render();
+}
+function restoreParkedTrainer(){
+  if(!addingTrainer&&!heldTrainer)return;
+  const held=heldTrainer;
+  heldTrainer=null;
+  addingTrainer=false;
+  profiles.activeId=(held&&held.activeId)||null;
+  if(held&&held.state)st=held.state;
+  else{
+    const kid=activeKid();
+    if(kid&&kid.data)st=mkState(parseGameSave(kid.data));
+    else{
+      st=mkState();
+      if(kid&&kid.settings){
+        st.grade=gradeValue(kid.settings.grade);
+        if(kid.settings.round!=null){
+          st.roundPref=roundLengthValue(kid.settings.round);
+          if(st.round)st.round.len=st.roundPref;
+        }
+      }
+    }
+  }
+  reshuffleDecks();
+  subjectBag=[];
+  lastSubject=null;
+}
+function backFromNewStarter(){
+  const name=whoDraft.name;
+  restoreParkedTrainer();
+  whoMode='create';
+  whoDraft={name,avatar:null,editId:null};
+  view='who';
+  renderWho();
+  histDropIf('new-starter');
+}
+function continueNewTrainer(){
+  const input=document.getElementById('profile-name');
+  const name=input?input.value:(whoDraft.name||'');
+  if(!String(name).trim())return;
+  if(profileNameMessage(name,null))return;
+  if(profiles.kids.length>=PROFILE_MAX)return;
+  whoDraft.name=name;
+  whoDraft.avatar=null;
+  whoDraft.editId=null;
+  if(navReady&&!navSilent&&hist[hist.length-1]==='who-form'){
+    try{history.replaceState(histState('who-form'),'');}catch(e){}
+  }
+  openStarterForNewTrainer();
+  histPush('new-starter');
+}
+// The kid exists only once the ball has opened. Back, or closing the tablet
+// before that, leaves the roster as it was.
+function commitNewTrainer(){
+  if(!addingTrainer)return;
+  const typed=whoDraft.name;
+  if(profiles.kids.length>=PROFILE_MAX||!String(typed||'').trim()||profileNameMessage(typed,null)){
+    restoreParkedTrainer();
+    return;
+  }
+  addingTrainer=false;
+  heldTrainer=null;
+  whoDraft={name:'',avatar:null,editId:null};
+  whoMode='list';
+  const tm=st.team[0];
+  const kid={id:newProfileId(),name:cleanName(typed),avatar:tm?PKM[tm.pi].num:'#025',data:null};
+  profiles.kids.push(kid);
+  profiles.activeId=kid.id;
 }
 function renderWho(){
   shelterMute();
@@ -4515,59 +4607,70 @@ function renderWho(){
     dockMute();
     return;
   }
-  if(whoMode==='create'||whoMode==='edit'){
-    const editing=whoMode==='edit';
-    const editKid=editing?profiles.kids.find(k=>k.id===whoDraft.editId):null;
+  if(whoMode==='create'){
+    const clash=profileNameMessage(whoDraft.name,null);
+    const ready=!!(String(whoDraft.name).trim()&&!clash);
+    h+=`<div class="card who-form">`;
+    if(profiles.kids.length)h+=bigBackHTML('who-form-back','Back');
+    h+=`<div class="parent-title">What's your name?</div>`;
+    h+=`<div class="who-form-foot"><label class="who-label" for="profile-name">Your name</label><input id="profile-name" class="who-field" maxlength="16" autocomplete="off" autocapitalize="words" enterkeyhint="done" value="${escapeHtml(whoDraft.name)}">`;
+    h+=`<p class="parent-err" id="profile-err"${clash?'':' hidden'}>${escapeHtml(clash)}</p>`;
+    h+=`<button type="button" class="who-go stick" id="profile-next"${ready?'':' disabled'}>Next</button></div></div></div>`;
+    profilesEl.innerHTML=h;
+    const back=document.getElementById('who-form-back');
+    if(back)back.addEventListener('click',()=>{whoMode='list';whoDraft={name:'',avatar:null,editId:null};renderWho();histDropIf('who-form');});
+    const input=document.getElementById('profile-name');
+    const sync=()=>{
+      whoDraft.name=input.value;
+      const msg=profileNameMessage(input.value,null);
+      const err=document.getElementById('profile-err');
+      if(err){err.hidden=!msg;err.textContent=msg;}
+      const go=document.getElementById('profile-next');
+      if(go)go.disabled=!(input.value.trim()&&!msg);
+    };
+    input.addEventListener('input',sync);
+    input.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();continueNewTrainer();}});
+    document.getElementById('profile-next').addEventListener('click',continueNewTrainer);
+    dockMute();
+    return;
+  }
+  if(whoMode==='edit'){
+    const editKid=profiles.kids.find(k=>k.id===whoDraft.editId);
     const face=editKid?faceForKid(editKid):null;
+    const clash=profileNameMessage(whoDraft.name,whoDraft.editId);
+    const ready=!!(String(whoDraft.name).trim()&&!clash);
+    const hint=clash||ready?'':'Type a name.';
     h+=`<div class="card who-form">`;
     h+=bigBackHTML('who-form-back','Back');
-    h+=`<div class="parent-title">${editing?(editKid&&editKid.askName?"What's your name?":'Change the name'):'New trainer'}</div>`;
-    if(editing){
-      h+=`<div class="who-ava confirm-ava">${face?pkSprite(face.pi,96,face.shiny):''}</div>`;
-      h+=`<p class="parent-lead">This only changes the name. ${escapeHtml(face?PKM[face.pi].n:'This Pokémon')} stays.</p>`;
-    } else {
-      h+=`<p class="parent-lead">Tap the Pokémon you want to play with.</p><div class="ava-grid">`;
-      AVATAR_IDS.forEach(id=>{
-        const num='#'+id;
-        const sel=whoDraft.avatar===num?' sel':'';
-        h+=`<button type="button" class="ava-opt${sel}" data-avatar="${id}" aria-label="${escapeHtml(PKM[avatarPi(num)].n)}">${pkSprite(avatarPi(num),52,false)}</button>`;
-      });
-      h+=`</div>`;
-    }
-    const clash=editing?profileNameMessage(whoDraft.name,whoDraft.editId):profileClashMessage(whoDraft.name,whoDraft.avatar,null);
-    const ready=editing?!!(String(whoDraft.name).trim()&&!clash):!!(String(whoDraft.name).trim()&&whoDraft.avatar&&!clash);
-    const hint=clash||ready?'':(editing?'Type a name.':'Type a name and tap a Pokémon.');
+    h+=`<div class="parent-title">${editKid&&editKid.askName?"What's your name?":'Change the name'}</div>`;
+    h+=`<div class="who-ava confirm-ava">${face?pkSprite(face.pi,96,face.shiny):''}</div>`;
+    h+=`<p class="parent-lead">This only changes the name. ${escapeHtml(face?PKM[face.pi].n:'This Pokémon')} stays.</p>`;
     h+=`<div class="who-form-foot"><label class="who-label" for="profile-name">Your name</label><input id="profile-name" class="who-field" maxlength="16" autocomplete="off" autocapitalize="words" enterkeyhint="done" value="${escapeHtml(whoDraft.name)}">`;
     h+=`<p class="form-hint" id="profile-hint"${hint?'':' hidden'}>${escapeHtml(hint)}</p>`;
     h+=`<p class="parent-err" id="profile-err"${clash?'':' hidden'}>${escapeHtml(clash)}</p>`;
-    h+=`<button type="button" class="who-go stick" id="profile-save"${ready?'':' disabled'}>${editing?'Save':'This is me!'}</button>`;
-    if(editing&&editKid)h+=`<button type="button" class="who-danger" id="edit-remove">Remove ${escapeHtml(editKid.name)}</button>`;
+    h+=`<button type="button" class="who-go stick" id="profile-save"${ready?'':' disabled'}>Save</button>`;
+    if(editKid)h+=`<button type="button" class="who-danger" id="edit-remove">Remove ${escapeHtml(editKid.name)}</button>`;
     h+=`</div></div></div>`;
     profilesEl.innerHTML=h;
     document.getElementById('who-form-back').addEventListener('click',()=>{whoMode='list';whoDraft={name:'',avatar:null,editId:null};renderWho();histDropIf('who-form');});
     const input=document.getElementById('profile-name');
     const sync=()=>{
       whoDraft.name=input.value;
-      const msg=editing?profileNameMessage(input.value,whoDraft.editId):profileClashMessage(input.value,whoDraft.avatar,null);
+      const msg=profileNameMessage(input.value,whoDraft.editId);
       const err=document.getElementById('profile-err');
       if(err){err.hidden=!msg;err.textContent=msg;}
-      const ok=editing?!!(input.value.trim()&&!msg):!!(input.value.trim()&&whoDraft.avatar&&!msg);
+      const ok=!!(input.value.trim()&&!msg);
       const go=document.getElementById('profile-save');
       if(go)go.disabled=!ok;
       const hintEl=document.getElementById('profile-hint');
       if(hintEl){
-        const next=msg||ok?'':(editing?'Type a name.':'Type a name and tap a Pokémon.');
+        const next=msg||ok?'':'Type a name.';
         hintEl.hidden=!next;
         hintEl.textContent=next;
       }
     };
     input.addEventListener('input',sync);
     input.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();trySaveProfile();}});
-    profilesEl.querySelectorAll('[data-avatar]').forEach(b=>b.addEventListener('click',()=>{
-      whoDraft.avatar='#'+b.dataset.avatar;
-      profilesEl.querySelectorAll('[data-avatar]').forEach(x=>x.classList.toggle('sel',x===b));
-      sync();
-    }));
     document.getElementById('profile-save').addEventListener('click',trySaveProfile);
     const rm=document.getElementById('edit-remove');
     if(rm&&editKid)rm.addEventListener('click',()=>{pendingDelete=editKid.id;whoMode='confirm';renderWho();});
@@ -5507,6 +5610,8 @@ let profiles={activeId:null,kids:[]};
 let openingWho=false;
 let whoMode='list';
 let whoDraft={name:'',avatar:null,editId:null};
+let addingTrainer=false;
+let heldTrainer=null;
 let pendingDelete=null;
 let parentUnlocked=false;
 let parentQuiz=null;
@@ -7059,6 +7164,9 @@ function render(){
   }
 
   if(st.phase==='starter'){
+    if(addingTrainer){
+      h=`<div class="hdr hdr-tight"><button type="button" class="big-back" id="starter-back">&#8592; Back</button><span class="hdr-right"><span class="new-trainer-pill">New trainer</span></span></div>`;
+    }
     h+=`<div class="starter-card"><div style="font-size:22px;font-weight:700;color:#1A1A2E;margin-bottom:3px;text-align:center">Choose your starter!</div><div style="font-size:16px;color:#374151;margin-bottom:14px;text-align:center">Pick your partner for this learning adventure</div>`;
     // Sits above the list so it's reachable without scrolling past every generation.
     h+=`<button class="starter-random" id="pick-random">&#127922; Surprise me!</button>`;
@@ -7074,8 +7182,14 @@ function render(){
     gameEl.innerHTML=h;
     GENS.forEach(genLines=>{genLines.forEach(li=>{document.getElementById(`pick-${li}`).addEventListener('click',()=>choosePickedStarter(li));});});
     const pr=document.getElementById('pick-random');if(pr)pr.addEventListener('click',pickRandomStarter);
-    const whoEarly=gameEl.querySelector('#who-btn');if(whoEarly)whoEarly.addEventListener('click',openProfiles);
-    wireNameAsk(gameEl);
+    if(addingTrainer){
+      document.getElementById('bottom-nav').style.display='none';
+      const sb=document.getElementById('starter-back');
+      if(sb)sb.addEventListener('click',backFromNewStarter);
+    } else {
+      const whoEarly=gameEl.querySelector('#who-btn');if(whoEarly)whoEarly.addEventListener('click',openProfiles);
+      wireNameAsk(gameEl);
+    }
     dockMute();
     return;
   }
@@ -7932,6 +8046,41 @@ function playCatch(pkIdx,shiny,onDone){
 // both: the suspense is the same whether or not he knows what is inside, and it is
 // the gesture the whole game is built on. The wobble and the pop are literally the
 // catch overlay's, so being given a Pokemon and catching one look like one act.
+// Reduced motion: no spinning rays and no wobble. The Pokémon and the
+// "is your Pokémon!" line stay up for about a second and a half.
+function playStarterRevealStill(ov,img,ball,lbl,rays,burst,wrap,winnerPi,name,shiny,onDone){
+  const token=momentGen;
+  let done=false;
+  function finish(){
+    if(done)return;done=true;
+    ov.classList.remove('active');
+    ov.style.cssText='';
+    img.style.cssText='';
+    ball.style.display='none';ball.style.animation='none';
+    wrap.style.animation='none';
+    rays.classList.remove('fast');
+    burst.style.animation='none';burst.style.opacity='0';
+    wrap.querySelectorAll('.sparkle').forEach(s=>s.remove());
+    _clearFanfare(ov);
+    if(token!==momentGen)return;
+    onDone();
+  }
+  ov.classList.add('active');
+  ov.style.opacity='1';
+  img.style.cssText='display:block;object-fit:contain;width:200px;height:200px;filter:none';
+  img.src=spriteURL(dexId(winnerPi),shiny);
+  ball.style.display='none';
+  ball.style.animation='none';
+  rays.classList.remove('fast');
+  burst.style.opacity='0';
+  burst.style.animation='none';
+  wrap.style.animation='none';
+  wrap.querySelectorAll('.sparkle').forEach(s=>s.remove());
+  _clearFanfare(ov);
+  lbl.textContent=`${shiny?'Shiny ':''}${name} is your Pok\u00e9mon!`;
+  setTimeout(finish,1500);
+  setTimeout(finish,4000);
+}
 function playStarterReveal(lineIdx,shiny,onDone){
   const ov=document.getElementById('pick-overlay');
   const img=document.getElementById('pick-img');
@@ -7942,9 +8091,14 @@ function playStarterReveal(lineIdx,shiny,onDone){
   const wrap=document.getElementById('pick-sprite-wrap');
   const winnerPi=LINES[lineIdx][0];
   const name=PKM[winnerPi].n;
+  if(window.matchMedia('(prefers-reduced-motion: reduce)').matches){
+    playStarterRevealStill(ov,img,ball,lbl,rays,burst,wrap,winnerPi,name,shiny,onDone);
+    return;
+  }
 
   // Same hazard as the other overlays: full screen, no dismiss control, so a throw
   // would strand him behind it. Idempotent finish + watchdog + wrapped steps.
+  const token=momentGen;
   let done=false,watchdog=null;
   function finish(){
     if(done)return;done=true;
@@ -7958,9 +8112,14 @@ function playStarterReveal(lineIdx,shiny,onDone){
     burst.style.animation='';burst.style.opacity='0';
     wrap.querySelectorAll('.sparkle').forEach(s=>s.remove());
     _clearFanfare(ov);
+    if(token!==momentGen)return;
     onDone();
   }
-  const step=(fn,ms)=>setTimeout(()=>{try{fn();}catch(e){finish();}},ms);
+  const step=(fn,ms)=>setTimeout(()=>{
+    if(done)return;
+    if(token!==momentGen){finish();return;}
+    try{fn();}catch(e){finish();}
+  },ms);
   watchdog=setTimeout(finish,700+BALL_SHAKE_MS+260+900+(shiny?2800:1200)+500+2500);
 
   try{
@@ -8051,6 +8210,7 @@ function pickStarter(lineIdx,shiny){
 }
 
 function enterAfterStarter(){
+  if(addingTrainer)commitNewTrainer();
   if(!activeKid())ensureProfile();
   // Tests and the starter buttons both land here, sometimes while the
   // "who's playing" screen is still the one on display.
@@ -8058,15 +8218,52 @@ function enterAfterStarter(){
   if(multiSubject()){
     st.subjectReturn='play';
     st.phase='subject';
-    save();
-    render();
   } else {
     st.subjectReturn=null;
     st.phase='play';
-    save();
-    loadQuestion();
   }
-  histPush('game');
+  const show=()=>{
+    save();
+    if(st.phase==='subject')render();
+    else loadQuestion();
+  };
+  // Name step and chooser drop out of Back once the trainer exists, so one
+  // Back returns to who's playing. The question waits until that stack is
+  // the one on screen.
+  if(collapseNewTrainerHistory(show))return;
+  show();
+  histPush(st.phase==='subject'?'subject':'game');
+}
+function collapseNewTrainerHistory(done){
+  if(!navReady||navSilent)return false;
+  const top=hist[hist.length-1];
+  if(top!=='who-form'&&top!=='new-starter')return false;
+  const landed=st.phase==='subject'?'subject':'game';
+  let drop=0;
+  while(hist.length&&(hist[hist.length-1]==='who-form'||hist[hist.length-1]==='new-starter')){
+    hist.pop();
+    drop++;
+  }
+  hist.push(landed);
+  if(drop<=1){
+    try{history.replaceState(histState(landed),'');}catch(e){}
+    done();
+    return true;
+  }
+  navLock=true;
+  let settled=false;
+  const finish=()=>{
+    if(settled)return;
+    settled=true;
+    window.removeEventListener('popstate',onPop);
+    try{history.pushState(histState(landed),'');}catch(e){}
+    navLock=false;
+    done();
+  };
+  const onPop=()=>finish();
+  window.addEventListener('popstate',onPop);
+  try{history.go(-drop);}catch(e){finish();}
+  return true;
 }
 
 // Mirrors openSubjectPicker: remember where he came from, take over the screen,
@@ -8652,8 +8849,8 @@ function hideMoments(){
 }
 function histState(screen){
   const state={pkq:screen,n:hist.length};
-  if(screen==='who-form'){
-    state.whoMode=whoMode;
+  if(screen==='who-form'||screen==='new-starter'){
+    state.whoMode=screen==='new-starter'?'create':whoMode;
     state.editId=whoDraft.editId;
     state.name=whoDraft.name;
     state.avatar=whoDraft.avatar;
@@ -8704,6 +8901,7 @@ function closePickers(){
 function applyHistory(screen,extra){
   hideMoments();
   if(screen==='who'){
+    if(addingTrainer)restoreParkedTrainer();
     whoMode='list';
     pendingDelete=null;
     whoDraft={name:'',avatar:null,editId:null};
@@ -8715,6 +8913,15 @@ function applyHistory(screen,extra){
   }
   if(screen==='who-form'){
     pauseGymTimer();
+    if(addingTrainer){
+      const name=(extra&&extra.name)||whoDraft.name||'';
+      restoreParkedTrainer();
+      whoMode=(extra&&extra.whoMode)||'create';
+      whoDraft={name,avatar:null,editId:(extra&&extra.editId)||null};
+      view='who';
+      renderWho();
+      return;
+    }
     const mode=extra&&extra.whoMode;
     if(mode==='edit'||mode==='create'){
       whoMode=mode;
@@ -8722,6 +8929,14 @@ function applyHistory(screen,extra){
     }
     view='who';
     renderWho();
+    return;
+  }
+  if(screen==='new-starter'){
+    pauseGymTimer();
+    whoMode='create';
+    whoDraft={name:(extra&&extra.name)||whoDraft.name||'',avatar:null,editId:null};
+    if(!addingTrainer)openStarterForNewTrainer();
+    else{view='game';render();}
     return;
   }
   if(screen==='parent'){
