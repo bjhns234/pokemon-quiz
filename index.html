@@ -4323,8 +4323,7 @@ function restoreTrainerQuestion(){
 }
 function bootInto(){
   view='game';
-  const owed=activeKid();
-  if(owed&&owed.id===pendingWelcomeId&&!st.q&&(st.phase==='play'||st.phase==='subject')){
+  if(welcomeOwed()&&!st.q&&(st.phase==='play'||st.phase==='subject')){
     showWelcome();
     return;
   }
@@ -4424,6 +4423,7 @@ function editProfile(id,name){
   histDropIf('who-form');
 }
 function deleteProfile(id){
+  pendingWelcomeIds.delete(id);
   const was=profiles.activeId===id;
   profiles.kids=profiles.kids.filter(k=>k.id!==id);
   pendingDelete=null;
@@ -4459,7 +4459,12 @@ function askResetProfile(){
 }
 function resetCurrentProfile(){
   const kid=activeKid();
-  if(kid&&kid.id===pendingWelcomeId)pendingWelcomeId=null;
+  if(kid)pendingWelcomeIds.delete(kid.id);
+  const ov=document.getElementById('welcome-overlay');
+  if(ov){
+    ov.classList.remove('active');
+    ov.setAttribute('aria-hidden','true');
+  }
   st=mkState();
   if(kid)kid.data=null;
   whoMode='list';
@@ -5673,10 +5678,9 @@ let whoDraft={name:'',avatar:null,editId:null};
 let addingTrainer=false;
 // Set only when this sitting just created the trainer. Not written to the
 // save: a reload, and every Pokédex from before this screen, skips it.
-// The id of the trainer whose reveal just finished, or null. Not saved.
-// Back and opening someone else leave it alone, so only that trainer
-// still has a welcome waiting.
-let pendingWelcomeId=null;
+// Ids of trainers whose reveal just finished and who have not tapped
+// Let's go. Not saved. A second new trainer does not erase the first.
+let pendingWelcomeIds=new Set();
 // Set by the reveal callback, read once commit has created the kid.
 let welcomeOnCommit=false;
 let heldTrainer=null;
@@ -8292,7 +8296,7 @@ function pickStarter(lineIdx,shiny){
 
 function welcomeOwed(){
   const kid=activeKid();
-  return !!(kid&&pendingWelcomeId&&kid.id===pendingWelcomeId);
+  return !!(kid&&pendingWelcomeIds.has(kid.id));
 }
 function showWelcome(){
   const tm=activeTM();
@@ -8310,7 +8314,7 @@ function showWelcome(){
 }
 function dismissWelcome(){
   if(!welcomeOwed())return;
-  pendingWelcomeId=null;
+  pendingWelcomeIds.delete(activeKid().id);
   const ov=document.getElementById('welcome-overlay');
   if(ov){
     ov.classList.remove('active');
@@ -8327,7 +8331,7 @@ function enterAfterStarter(){
   welcomeOnCommit=false;
   if(addingTrainer)commitNewTrainer();
   if(!activeKid())ensureProfile();
-  if(welcome&&activeKid())pendingWelcomeId=activeKid().id;
+  if(welcome&&activeKid())pendingWelcomeIds.add(activeKid().id);
   // Tests and the starter buttons both land here, sometimes while the
   // "who's playing" screen is still the one on display.
   view='game';

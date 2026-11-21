@@ -129,8 +129,8 @@ test("Let's go! lands on question 1 and Back from there is Who's playing",async(
   await expect(page.locator('.qtext')).toBeVisible();
   await expect(page.getByText("Who's playing?")).toBeHidden();
   await expect(page.locator('.starter-card')).toBeHidden();
-  const landed=await state(page,()=>({phase:st.phase,n:st.round.n,att:st.stats.math.att,pending:pendingWelcomeId}));
-  expect(landed).toEqual({phase:'play',n:0,att:0,pending:null});
+  const landed=await state(page,()=>({phase:st.phase,n:st.round.n,att:st.stats.math.att,pending:[...pendingWelcomeIds]}));
+  expect(landed).toEqual({phase:'play',n:0,att:0,pending:[]});
   await page.goBack();
   await expect(page.getByText("Who's playing?")).toBeVisible();
   await page.goForward();
@@ -328,6 +328,46 @@ test('a Gym sibling who is reset does not inherit the pending welcome',async({pa
   await page.locator('[data-pick]').filter({hasText:'Leo'}).click();
   await expect(page.locator('#welcome-overlay.active')).toBeVisible();
   await expect(page.locator('#welcome-img')).toHaveAttribute('src',/\/4\.png$/);
+  expect(errors).toEqual([]);
+});
+
+test('two new trainers each keep their own welcome',async({page})=>{
+  const errors=await openGame(page);
+  await startGame(page,'math');
+  await state(page,()=>{
+    const kid=activeKid();
+    kid.name='Maya';
+    kid.askName=false;
+    save();
+  });
+  await page.click('#who-btn');
+  await toWelcome(page,{name:'Leo',line:1});
+  await expect(page.locator('#welcome-img')).toHaveAttribute('src',/\/4\.png$/);
+  await page.goBack();
+  await toWelcome(page,{name:'Sam',line:2});
+  await expect(page.locator('#welcome-img')).toHaveAttribute('src',/\/7\.png$/);
+  await page.goBack();
+  await page.locator('[data-pick]').filter({hasText:'Leo'}).click();
+  await expect(page.locator('#welcome-overlay.active')).toBeVisible();
+  await expect(page.locator('#welcome-img')).toHaveAttribute('src',/\/4\.png$/);
+  await expect(page.locator('.qtext')).toBeHidden();
+  await page.click('#welcome-go');
+  await expect(page.locator('.qtext')).toBeVisible();
+  await page.click('#who-btn');
+  await page.locator('[data-pick]').filter({hasText:'Sam'}).click();
+  await expect(page.locator('#welcome-overlay.active')).toBeVisible();
+  await expect(page.locator('#welcome-img')).toHaveAttribute('src',/\/7\.png$/);
+  expect(errors).toEqual([]);
+});
+
+test('reset while the welcome is up hides the overlay',async({page})=>{
+  const errors=await openGame(page);
+  await toWelcome(page);
+  await state(page,()=>{resetCurrentProfile();});
+  await expect(page.locator('#welcome-overlay.active')).toHaveCount(0);
+  await expect(page.locator('#welcome-overlay')).toHaveAttribute('aria-hidden','true');
+  await expect(page.locator('.starter-card')).toBeVisible();
+  await expect(page.locator('#welcome-go')).toBeHidden();
   expect(errors).toEqual([]);
 });
 
