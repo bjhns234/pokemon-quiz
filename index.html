@@ -199,11 +199,15 @@ button.mon-strip:focus{outline:3px solid #1D4ED8;outline-offset:2px}
 .gen-section{margin-bottom:14px}
 .gen-label{font-size:14px;font-weight:700;color:#4B5563;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:6px;text-align:left}
 .starter-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.starter-opt{background:#F9FAFB;border:2px solid #E5E7EB;border-radius:12px;padding:8px 4px 10px;cursor:pointer;transition:all 0.18s;text-align:center;display:flex;flex-direction:column;align-items:center;font-family:inherit}
-.starter-opt:hover{transform:translateY(-3px);box-shadow:0 6px 16px rgba(0,0,0,0.1)}
-.fire-opt:hover{border-color:#FF5722;background:#FFF3E0}
-.water-opt:hover{border-color:#1976D2;background:#E3F2FD}
-.grass-opt:hover{border-color:#16A34A;background:#F0FDF4}
+.starter-opt{background:#F9FAFB;border:2px solid #E5E7EB;border-radius:12px;padding:8px 4px 10px;cursor:pointer;text-align:center;display:flex;flex-direction:column;align-items:center;font-family:inherit}
+.starter-opt:focus{outline:none}
+.starter-opt:focus-visible{outline:3px solid #1A1A2E;outline-offset:2px}
+@media (hover:hover){
+  .starter-opt:hover{transform:translateY(-3px);box-shadow:0 6px 16px rgba(0,0,0,0.1)}
+  .fire-opt:hover{border-color:#FF5722;background:#FFF3E0}
+  .water-opt:hover{border-color:#1976D2;background:#E3F2FD}
+  .grass-opt:hover{border-color:#16A34A;background:#F0FDF4}
+}
 .starter-opt-name{font-size:12px;font-weight:700;color:#1A1A2E;margin-top:5px;margin-bottom:3px}
 .starter-opt-type{font-size:10px;font-weight:600;padding:2px 7px;border-radius:20px;display:inline-block}
 .subj-ask{font-size:20px;font-weight:700;color:#1A1A2E;margin-bottom:3px;text-align:center}
@@ -1242,11 +1246,14 @@ button.mon-strip:focus{outline:3px solid #1D4ED8;outline-offset:2px}
   #pokedex-page .reset-short{display:inline}
   #pokedex-page .hdr-right{flex:0 0 auto}
   .new-trainer-pill{padding:6px 10px;font-size:14px;min-height:40px}
+  .hdr-tight>#starter-back{flex:0 1 auto;width:auto;max-width:40%;min-height:48px;padding-left:12px;padding-right:12px}
+  .starter-opt-type .type-emoji{display:none}
 }
 @media (min-width:768px) and (min-height:700px){
   .starter-opt-name{font-size:18px}
   .starter-opt-type{font-size:14px}
   .who-form .big-back,#starter-back{min-height:64px}
+  .who-form #profile-next{min-height:64px;font-size:20px}
 }
 @media (min-height:421px){
   .who-form .who-field{font-size:20px}
@@ -4613,7 +4620,7 @@ function renderWho(){
     h+=`<div class="card who-form">`;
     if(profiles.kids.length)h+=bigBackHTML('who-form-back','Back');
     h+=`<div class="parent-title">What's your name?</div>`;
-    h+=`<div class="who-form-foot"><label class="who-label" for="profile-name">Your name</label><input id="profile-name" class="who-field" maxlength="16" autocomplete="off" autocapitalize="words" enterkeyhint="done" value="${escapeHtml(whoDraft.name)}">`;
+    h+=`<div class="who-form-foot"><label class="sr-only" for="profile-name">Your name</label><input id="profile-name" class="who-field" maxlength="16" autocomplete="off" autocapitalize="words" enterkeyhint="done" value="${escapeHtml(whoDraft.name)}">`;
     h+=`<p class="parent-err" id="profile-err"${clash?'':' hidden'}>${escapeHtml(clash)}</p>`;
     h+=`<button type="button" class="who-go stick" id="profile-next"${ready?'':' disabled'}>Next</button></div></div></div>`;
     profilesEl.innerHTML=h;
@@ -7174,7 +7181,7 @@ function render(){
       h+=`<div class="gen-section"><div class="gen-label">Gen ${GEN_ROMAN[gi]} &mdash; ${GEN_NAMES[gi]}</div><div class="starter-row">`;
       genLines.forEach(li=>{
         const pk=PKM[LINES[li][0]];
-        h+=`<button class="starter-opt ${typeOptClass(pk.type)}" id="pick-${li}">${pk.svg(64)}<div class="starter-opt-name">${pk.n}</div><span class="starter-opt-type ${typeClass(pk.type)}">${typeEmoji(pk.type)} ${typeLabel(pk.type)}</span></button>`;
+        h+=`<button class="starter-opt ${typeOptClass(pk.type)}" id="pick-${li}">${pk.svg(64)}<div class="starter-opt-name">${pk.n}</div><span class="starter-opt-type ${typeClass(pk.type)}"><span class="type-emoji">${typeEmoji(pk.type)}</span> ${typeLabel(pk.type)}</span></button>`;
       });
       h+=`</div></div>`;
     });

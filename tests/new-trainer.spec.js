@@ -340,6 +340,116 @@ test('reduced motion skips the spin and the wobble',async({page})=>{
   expect(errors).toEqual([]);
 });
 
+test('starter cards are not picked or hovered when the chooser opens',async({page})=>{
+  const errors=await openGame(page);
+  // An iPad has no hover. A pointer sitting on a card must not light it up.
+  const cdp=await page.context().newCDPSession(page);
+  await cdp.send('Emulation.setEmulatedMedia',{features:[{name:'hover',value:'none'},{name:'pointer',value:'coarse'}]});
+  async function cardsAreResting(){
+    const info=await page.evaluate(()=>{
+      const cards=[...document.querySelectorAll('.starter-opt')];
+      const rules=[];
+      function walk(list,media){
+        for(const rule of list){
+          if(rule.selectorText)rules.push({sel:rule.selectorText,media});
+          else if(rule.cssRules)walk(rule.cssRules,rule.conditionText||media||'');
+        }
+      }
+      for(const sheet of document.styleSheets){
+        try{walk(sheet.cssRules,'');}catch(e){}
+      }
+      const hover=rules.filter(r=>/\.(starter-opt|fire-opt|water-opt|grass-opt):hover\b/.test(r.sel));
+      const focus=rules.filter(r=>/\.starter-opt:focus\b/.test(r.sel)&&!/:focus-visible/.test(r.sel));
+      return {
+        classes:cards.map(el=>el.className),
+        activeIsCard:!!(document.activeElement&&document.activeElement.classList.contains('starter-opt')),
+        borders:cards.map(el=>getComputedStyle(el).borderTopColor),
+        hover,
+        focus,
+      };
+    });
+    expect(info.classes.some(c=>/\bsel\b|\bselected\b|\bcurrent\b/.test(c))).toBe(false);
+    expect(info.activeIsCard).toBe(false);
+    info.borders.forEach(color=>expect(color).toBe('rgb(229, 231, 235)'));
+    expect(info.hover.length).toBeGreaterThan(0);
+    info.hover.forEach(rule=>expect(rule.media).toMatch(/hover:\s*hover/));
+    // A pointer tap must not paint a focus ring that looks like a pick.
+    info.focus.forEach(rule=>expect(rule.media+rule.sel).not.toMatch(/border|background/));
+  }
+  await page.click('#profile-new');
+  await page.fill('#profile-name','Maya');
+  await page.click('#profile-next');
+  await expect(page.locator('.starter-opt')).toHaveCount(27);
+  await cardsAreResting();
+
+  await page.evaluate(()=>pickStarter(0,false));
+  await expect(page.locator('.qtext')).toBeVisible();
+  await page.evaluate(()=>resetCurrentProfile());
+  await expect(page.locator('.starter-opt')).toHaveCount(27);
+  await expect(page.locator('#starter-back')).toHaveCount(0);
+  await cardsAreResting();
+  expect(errors).toEqual([]);
+});
+
+test('Back, New trainer, and sound fit on a phone',async({page})=>{
+  const errors=await openGame(page);
+  await page.click('#profile-new');
+  await page.fill('#profile-name','Maya');
+  await page.click('#profile-next');
+  for(const width of [375,390]){
+    await page.setViewportSize({width,height:width===375?667:844});
+    const fit=await page.evaluate(()=>{
+      const sels=['#starter-back','.new-trainer-pill','#mute-btn'];
+      const vw=document.documentElement.clientWidth;
+      const vh=document.documentElement.clientHeight;
+      const boxes=sels.map(sel=>{
+        const el=document.querySelector(sel);
+        const r=el.getBoundingClientRect();
+        return {sel,left:r.left,right:r.right,top:r.top,bottom:r.bottom,width:r.width,height:r.height};
+      });
+      return {vw,vh,boxes};
+    });
+    for(const box of fit.boxes){
+      expect(box.left,`${box.sel} left at ${width}`).toBeGreaterThanOrEqual(-1);
+      expect(box.right,`${box.sel} right at ${width}`).toBeLessThanOrEqual(fit.vw+1);
+      expect(box.top,`${box.sel} top at ${width}`).toBeGreaterThanOrEqual(-1);
+      expect(box.width,`${box.sel} width at ${width}`).toBeGreaterThan(24);
+    }
+    const [back,pill,mute]=fit.boxes;
+    expect(back.height,`Back height at ${width}`).toBeGreaterThanOrEqual(44);
+    expect(back.width,`Back stays content-sized at ${width}`).toBeLessThan(fit.vw*0.45);
+    expect(mute.right,`sound inset at ${width}`).toBeLessThanOrEqual(fit.vw-4);
+    for(const [a,b] of [[back,pill],[back,mute],[pill,mute]]){
+      const overlapX=Math.min(a.right,b.right)-Math.max(a.left,b.left);
+      const overlapY=Math.min(a.bottom,b.bottom)-Math.max(a.top,b.top);
+      expect(overlapX>1&&overlapY>1,`${a.sel} overlaps ${b.sel} at ${width}`).toBe(false);
+    }
+  }
+  expect(errors).toEqual([]);
+});
+
+test('Next is as tall as Back on iPad, and the name field stays labeled',async({page})=>{
+  const errors=await openGame(page);
+  await page.setViewportSize({width:768,height:1024});
+  await page.click('#profile-new');
+  const next=await page.locator('#profile-next').boundingBox();
+  expect(next.height).toBeGreaterThanOrEqual(64);
+  await expect(page.getByRole('textbox',{name:'Your name'})).toBeVisible();
+  await expect(page.locator('label[for="profile-name"]')).toHaveClass(/sr-only/);
+  expect(errors).toEqual([]);
+});
+
+test('a narrow phone drops the type emoji so the chip can stay one line',async({page})=>{
+  await openGame(page);
+  await page.setViewportSize({width:375,height:667});
+  await page.click('#profile-new');
+  await page.fill('#profile-name','Maya');
+  await page.click('#profile-next');
+  const display=await page.locator('.starter-opt-type .type-emoji').first().evaluate(el=>getComputedStyle(el).display);
+  expect(display).toBe('none');
+  await expect(page.locator('.starter-opt-type').first()).toContainText('Grass');
+});
+
 test('iPad cards and Back are big, and phones do not overflow',async({page})=>{
   const errors=await openGame(page);
   await page.setViewportSize({width:768,height:1024});
