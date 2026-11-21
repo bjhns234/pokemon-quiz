@@ -17,6 +17,32 @@ async function kidSnap(page){
     }));
   });
 }
+async function rawSave(page){
+  return page.evaluate(()=>localStorage.getItem('pkq-save'));
+}
+// The kid object as it is written in pkq-save, not a fresh stringify.
+function kidSlice(raw,id){
+  const at=raw.indexOf(`"id":"${id}"`);
+  if(at<0)throw new Error(`no kid ${id}`);
+  let start=raw.lastIndexOf('{',at);
+  let depth=0,inStr=false,esc=false;
+  for(let i=start;i<raw.length;i++){
+    const c=raw[i];
+    if(inStr){
+      if(esc)esc=false;
+      else if(c==='\\')esc=true;
+      else if(c==='"')inStr=false;
+      continue;
+    }
+    if(c==='"')inStr=true;
+    else if(c==='{')depth++;
+    else if(c==='}'){
+      depth--;
+      if(depth===0)return raw.slice(start,i+1);
+    }
+  }
+  throw new Error(`unclosed kid ${id}`);
+}
 
 async function nameMaya(page){
   await startGame(page,'math');
@@ -325,12 +351,15 @@ test('reduced motion skips the spin and the wobble',async({page})=>{
   await page.click('#pick-0');
   await expect(page.locator('#pick-label')).toHaveText('Bulbasaur is your Pokémon!',{timeout:800});
   const motion=await page.evaluate(()=>{
-    const rays=getComputedStyle(document.getElementById('pick-rays')).animationName;
+    const ray=document.getElementById('pick-rays');
+    const style=getComputedStyle(ray);
     const ball=document.getElementById('pick-ball');
     const ballAnim=getComputedStyle(ball).animationName;
-    return {rays,ballHidden:getComputedStyle(ball).display==='none',ballAnim};
+    return {rays:style.animationName,rayDisplay:style.display,ballHidden:getComputedStyle(ball).display==='none',ballAnim};
   });
   expect(motion.rays).toBe('none');
+  expect(motion.rayDisplay).toBe('none');
+  await expect(page.locator('#pick-rays')).toBeHidden();
   expect(motion.ballHidden).toBe(true);
   expect(motion.ballAnim).toBe('none');
   await expect(page.locator('.qtext')).toBeVisible({timeout:2500});
@@ -448,6 +477,111 @@ test('a narrow phone drops the type emoji so the chip can stay one line',async({
   const display=await page.locator('.starter-opt-type .type-emoji').first().evaluate(el=>getComputedStyle(el).display);
   expect(display).toBe('none');
   await expect(page.locator('.starter-opt-type').first()).toContainText('Grass');
+});
+
+test('Back on a tablet is a content-sized button, at least 64px tall',async({page})=>{
+  const errors=await openGame(page);
+  await page.click('#profile-new');
+  await page.fill('#profile-name','Maya');
+  await page.click('#profile-next');
+  for(const size of [{width:768,height:1024},{width:1024,height:768}]){
+    await page.setViewportSize(size);
+    const box=await page.evaluate(()=>{
+      const row=document.querySelector('#game .hdr').getBoundingClientRect();
+      const back=document.getElementById('starter-back').getBoundingClientRect();
+      return {row:row.width,width:back.width,height:back.height};
+    });
+    expect(box.width,`${size.width}x${size.height}`).toBeLessThanOrEqual(box.row*0.45);
+    expect(box.height,`${size.width}x${size.height}`).toBeGreaterThanOrEqual(64);
+  }
+  expect(errors).toEqual([]);
+});
+
+test('park and Back leave the raw save untouched, including a third kid',async({page})=>{
+  const errors=await openGame(page);
+  await nameMaya(page);
+  await state(page,()=>{
+    profiles.kids.push(
+      {id:'sam',name:'Sam',avatar:'#004',data:{v:1,starter:1,activeIdx:0,team:[{num:'#004',level:8,xp:2,shiny:false}],dex:['#004'],items:{candy:9,great:1},stats:{math:{cor:4,att:5,level:2,cs:0,ws:0},reading:{cor:0,att:0,level:1,cs:0,ws:0},science:{cor:0,att:0,level:1,cs:0,ws:0}},settings:{grade:2,round:5}}},
+      {id:'noa',name:'Noa',avatar:'#007',data:{v:1,starter:2,activeIdx:0,team:[{num:'#007',level:6,xp:1,shiny:false}],dex:['#007'],items:{candy:1,great:0},stats:{math:{cor:1,att:1,level:3,cs:0,ws:0},reading:{cor:0,att:0,level:1,cs:0,ws:0},science:{cor:0,att:0,level:1,cs:0,ws:0}},badges:{math:[1,2]},settings:{grade:'auto',round:15},log:{}}},
+    );
+    writeRoster();
+  });
+  const before=await rawSave(page);
+  await page.click('#who-btn');
+  await page.click('#profile-new');
+  await page.fill('#profile-name','Leo');
+  await page.click('#profile-next');
+  await page.click('#starter-back');
+  await page.click('#who-form-back');
+  expect(await rawSave(page)).toBe(before);
+
+  await page.click('#profile-new');
+  await page.fill('#profile-name','Leo');
+  await page.click('#profile-next');
+  await page.evaluate(()=>pickStarter(4,false));
+  await expect(page.locator('.qtext')).toBeVisible();
+  const after=await rawSave(page);
+  expect(kidSlice(after,'sam')).toBe(kidSlice(before,'sam'));
+  expect(kidSlice(after,'noa')).toBe(kidSlice(before,'noa'));
+  expect(kidSlice(after,'sam')).not.toBe(kidSlice(after,'noa'));
+  const leo=JSON.parse(after).kids.find(k=>k.name==='Leo').data;
+  expect(leo.stats.math.level).toBe(1);
+  expect(leo.settings).toEqual({grade:'auto',round:10});
+  expect(leo.items.candy).toBe(0);
+  expect(leo.route).toEqual({tier:1,step:0});
+  expect(leo.log).toEqual({});
+  expect(leo.bestStreak).toBe(0);
+  expect(leo.round&&leo.round.battleOwed).toBeFalsy();
+  expect(leo.team).toEqual([{num:'#155',level:5,xp:0,shiny:false}]);
+  expect(errors).toEqual([]);
+});
+
+test('browser Back and a reload during the reveal leave the raw save alone',async({page})=>{
+  test.setTimeout(20000);
+  const errors=await openGame(page);
+  await page.emulateMedia({reducedMotion:'no-preference'});
+  await nameMaya(page);
+  const before=await rawSave(page);
+  await page.click('#who-btn');
+  await page.click('#profile-new');
+  await page.fill('#profile-name','Leo');
+  await page.click('#profile-next');
+  expect(await rawSave(page)).toBe(before);
+  await page.click('#pick-0');
+  await expect(page.locator('#pick-overlay.active')).toBeVisible();
+  await page.goBack();
+  expect(await rawSave(page)).toBe(before);
+  expect(JSON.parse(await rawSave(page)).kids.map(k=>k.name)).toEqual(['Maya']);
+  await expect(page.locator('#profile-name')).toHaveValue('Leo');
+
+  await page.click('#profile-next');
+  await page.click('#pick-0');
+  await expect(page.locator('#pick-overlay.active')).toBeVisible();
+  await page.reload();
+  expect(await rawSave(page)).toBe(before);
+  expect(JSON.parse(await rawSave(page)).kids.map(k=>k.name)).toEqual(['Maya']);
+  expect(errors).toEqual([]);
+});
+
+test('Surprise me can land on any of the 27, even a sibling\'s',async({page})=>{
+  const errors=await openGame(page);
+  await nameMaya(page);
+  await page.click('#who-btn');
+  await page.click('#profile-new');
+  await page.fill('#profile-name','Leo');
+  await page.click('#profile-next');
+  await state(page,()=>{
+    window.__lines=[];
+    playStarterReveal=line=>{window.__lines.push(line);};
+  });
+  for(const value of [0,0.5,0.999999]){
+    await state(page,value=>{Math.random=()=>value;},value);
+    await page.click('#pick-random');
+  }
+  expect(await state(page,()=>window.__lines)).toEqual([0,13,26]);
+  expect(await state(page,()=>GENS.reduce((a,g)=>a.concat(g),[]).length)).toBe(27);
+  expect(errors).toEqual([]);
 });
 
 test('iPad cards and Back are big, and phones do not overflow',async({page})=>{

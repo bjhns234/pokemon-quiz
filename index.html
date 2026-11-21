@@ -28,6 +28,7 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#F0F4F8;height:10
 .hdr-tight .who-btn{min-width:0;overflow:hidden}
 .hdr-tight .who-btn span{min-width:0}
 .hdr-tight>.big-back{flex:1 1 auto;width:auto;min-width:0;margin-bottom:0}
+.hdr-tight>#starter-back{flex:0 0 auto;width:auto;max-width:40%;margin-bottom:0}
 .new-trainer-pill{display:inline-flex;align-items:center;justify-content:center;background:#F5F3FF;color:#4C1D95;border:2px solid #7C3AED;border-radius:999px;padding:8px 14px;min-height:44px;font-size:16px;font-weight:800;white-space:nowrap;line-height:1.2}
 .app-name{font-size:15px;font-weight:600;color:#1A1A2E;min-width:0}
 .card{background:#fff;border-radius:16px;padding:18px;margin-bottom:12px;box-shadow:0 2px 8px rgba(0,0,0,0.06)}
@@ -1259,7 +1260,7 @@ button.mon-strip:focus{outline:3px solid #1D4ED8;outline-offset:2px}
   .who-form .who-field{font-size:20px}
 }
 @media (prefers-reduced-motion:reduce){
-  #pick-rays,#pick-rays.fast{animation:none}
+  #pick-rays,#pick-rays.fast{animation:none;display:none}
   #pick-ball,#pick-sprite-wrap,#pick-burst{animation:none !important}
 }
 </style>
@@ -8065,6 +8066,7 @@ function playStarterRevealStill(ov,img,ball,lbl,rays,burst,wrap,winnerPi,name,sh
     img.style.cssText='';
     ball.style.display='none';ball.style.animation='none';
     wrap.style.animation='none';
+    rays.style.display='';
     rays.classList.remove('fast');
     burst.style.animation='none';burst.style.opacity='0';
     wrap.querySelectorAll('.sparkle').forEach(s=>s.remove());
@@ -8078,6 +8080,7 @@ function playStarterRevealStill(ov,img,ball,lbl,rays,burst,wrap,winnerPi,name,sh
   img.src=spriteURL(dexId(winnerPi),shiny);
   ball.style.display='none';
   ball.style.animation='none';
+  rays.style.display='none';
   rays.classList.remove('fast');
   burst.style.opacity='0';
   burst.style.animation='none';
@@ -8115,6 +8118,7 @@ function playStarterReveal(lineIdx,shiny,onDone){
     img.style.cssText='';
     ball.style.display='none';ball.style.animation='';
     wrap.style.animation='';
+    rays.style.display='';
     rays.classList.remove('fast');
     burst.style.animation='';burst.style.opacity='0';
     wrap.querySelectorAll('.sparkle').forEach(s=>s.remove());
@@ -8136,6 +8140,7 @@ function playStarterReveal(lineIdx,shiny,onDone){
   // be the reveal happening before the reveal -- which is what the old version did
   // on a deliberate pick, where the sprite was up before anything opened.
   img.style.cssText='display:none';
+  rays.style.display='';
   ball.innerHTML=BALL_SVG;
   ball.style.display='block';
   ball.style.animation='none';ball.offsetWidth;
