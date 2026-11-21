@@ -698,10 +698,95 @@ button.mon-strip:focus{outline:3px solid #1D4ED8;outline-offset:2px}
 .round-line{font-size:22px;font-weight:800;color:#1F2937;line-height:1.25;margin:0 0 4px}
 .round-xp,.round-bonus{font-size:18px;font-weight:700;color:#1F2937;margin:2px 0}
 .round-bonus{color:#065F46}
-.round-again,.round-leave{display:flex;align-items:center;justify-content:center;width:100%;min-height:64px;border-radius:14px;font-family:inherit;font-size:20px;font-weight:800;cursor:pointer;margin-top:8px}
-.round-again{background:#1A1A2E;color:#fff;border:none}
+.round-again,.round-leave,.round-gym{display:flex;align-items:center;justify-content:center;width:100%;min-height:64px;border-radius:14px;font-family:inherit;font-size:20px;font-weight:800;cursor:pointer;margin-top:8px}
+.round-again{background:#1A1A2E;color:#fff;border:none;min-height:76px}
 .round-leave{background:#fff;color:#1A1A2E;border:2px solid #1A1A2E}
+.round-gym{background:#7C3AED;color:#fff;border:none;min-height:76px;font-size:22px}
 .round-actions{display:flex;flex-direction:column;gap:0}
+.round-actions.has-gym .round-split{display:flex;gap:8px}
+.round-actions.has-gym .round-again,
+.round-actions.has-gym .round-leave{width:auto;flex:1 1 0;min-height:64px;margin-top:0}
+.round-actions.has-gym .round-split{margin-top:8px}
+/* The route is display only. Nothing on it takes a tap. */
+.route-map{pointer-events:none;display:flex;flex-direction:column;align-items:center;background:#ECFDF5;border:3px solid #86EFAC;border-radius:16px;padding:8px 10px 10px;margin:8px 0;box-sizing:border-box;width:100%}
+.route-label{font-size:20px;font-weight:800;color:#14532D;margin:0 0 4px;line-height:1.2}
+.route-caption{font-size:24px;font-weight:800;color:#1A1A2E;line-height:1.2;margin:16px 0 0;text-align:center;max-width:100%}
+.route-track{position:relative;flex:1 1 auto;width:100%;min-height:0;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);align-items:center;justify-items:center}
+#route-path{position:absolute;inset:0;width:100%;height:100%;overflow:visible;z-index:0}
+#route-path path{fill:none;stroke:#166534;stroke-width:3;stroke-dasharray:2 8;stroke-linecap:round}
+.route-node{position:relative;z-index:1;width:60px;height:60px;border-radius:50%;display:flex;align-items:center;justify-content:center;box-sizing:border-box}
+.route-node[data-on="0"]{opacity:.38}
+.route-gym-node,.route-gym-node[data-on="0"]{opacity:1}
+.route-house{background:#FDE68A;border:3px solid #D97706}
+.route-home{font-size:28px;line-height:1}
+.route-grass{background:#4ADE80;border:3px solid #166534}
+.route-trainer{background:#C2410C;border:3px solid #7C2D12;color:#fff}
+.route-cap{font-size:22px;line-height:1}
+.route-star{position:absolute;top:-6px;right:-8px;font-size:20px;line-height:1}
+.route-gym-node{width:110px;height:110px;background:transparent;border:none;flex-direction:column;border-radius:0}
+.route-gym-label{font-size:18px;font-weight:800;color:#5B21B6;line-height:1}
+#route-map .gym-ring{width:110px;height:110px;margin:0}
+.route-badge{font-size:18px;font-weight:800;color:#5B21B6;line-height:1.1;text-align:center}
+.route-token{position:absolute;left:50%;bottom:0;width:72px;height:72px;transform:translateX(-50%);z-index:2}
+.route-token img{width:72px;height:72px;object-fit:contain;display:block}
+/* At the door the star has to stay visible, so the partner waits just outside the ring. */
+.route-gym-node .route-token{left:0;bottom:auto;top:50%;width:72px;height:72px;transform:translate(-100%,-50%)}
+.route-gym-node .route-token img{width:72px;height:72px}
+.route-node[data-step="0"]{grid-area:1/1}
+.route-node[data-step="1"]{grid-area:1/2}
+.route-node[data-step="2"]{grid-area:1/3}
+.route-node[data-step="3"]{grid-area:2/3}
+.route-node[data-step="4"]{grid-area:2/2}
+.route-node[data-step="5"]{grid-area:2/1}
+.route-node[data-step="6"]{grid-area:3/2}
+@keyframes route-arc{0%{transform:translateX(-50%) translateY(0)}40%{transform:translateX(-50%) translateY(-14px)}100%{transform:translateX(-50%) translateY(0)}}
+@keyframes route-arc-gym{0%{transform:translate(-100%,-50%) translateY(0)}40%{transform:translate(-100%,-50%) translateY(-14px)}100%{transform:translate(-100%,-50%) translateY(0)}}
+@keyframes route-halo{0%,100%{filter:none}50%{filter:drop-shadow(0 0 8px #7C3AED)}}
+.route-token.hop{animation:route-arc 600ms ease-out}
+.route-gym-node .route-token.hop{animation-name:route-arc-gym}
+.route-token.hop-chain{animation-duration:250ms}
+#route-map .gym-ring-val{transition:stroke-dasharray 500ms ease}
+#route-map .gym-ring.ready{animation:route-halo 600ms ease-in-out 3}
+@media (min-width:768px) and (orientation:portrait){
+  #round-done{padding:8px 10px 8px}
+  .route-map{width:576px;max-width:100%;height:520px;flex:0 0 520px;margin-left:auto;margin-right:auto}
+}
+@media (orientation:landscape) and (min-width:1000px) and (max-height:860px){
+  body:has(#game[style*="flex"]):has(#round-done) .wrap,
+  body:has(#round-done) .wrap{max-width:980px}
+  #app-main:has(#round-done){display:flex;flex-direction:column;overflow:hidden;padding:6px 12px}
+  #game:has(#round-done){flex:1 1 auto;min-height:0;overflow:hidden;display:flex;flex-direction:column}
+  #game:has(#round-done)>.hdr{flex:0 0 auto;margin-bottom:4px}
+  #round-done{flex:1 1 auto;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) 460px;grid-template-areas:"summary map" "actions actions";align-items:center;column-gap:12px;padding:6px 8px;margin:0;overflow:hidden}
+  #round-done .round-summary{grid-area:summary}
+  #round-done .route-map{grid-area:map;width:460px;height:440px;flex:0 0 auto;margin:0}
+  #round-done .route-track{padding-bottom:8px}
+  #round-done .route-gym-node{margin-top:28px}
+  #round-done .route-caption{margin-top:18px}
+  #round-done .round-actions{grid-area:actions}
+}
+@media (max-width:700px){
+  .route-map{height:auto;padding:6px 10px 8px;margin:6px 0;max-width:100%}
+  .route-track{display:flex;flex-direction:row;align-items:flex-end;justify-content:space-between;min-height:64px;padding:52px 2px 22px}
+  .route-node{width:36px;height:36px;grid-area:auto}
+  .route-gym-node{width:36px;height:36px;margin-top:0}
+  #route-map .gym-ring{width:36px;height:36px}
+  .route-cap{font-size:18px}
+  .route-star{font-size:18px;top:-10px;right:-6px}
+  .route-home{font-size:20px}
+  .route-token,.route-token img{width:48px;height:48px}
+  .route-gym-node .route-token{left:50%;top:0;bottom:auto;width:48px;height:48px;transform:translate(-50%,-100%)}
+  .route-gym-node .route-token img{width:48px;height:48px}
+  @keyframes route-arc-gym-phone{0%{transform:translate(-50%,-100%) translateY(0)}40%{transform:translate(-50%,-100%) translateY(-14px)}100%{transform:translate(-50%,-100%) translateY(0)}}
+  .route-gym-node .route-token.hop{animation-name:route-arc-gym-phone}
+  .route-gym-label{position:absolute;top:38px;left:50%;transform:translateX(-50%);font-size:18px;white-space:nowrap}
+  .route-badge{font-size:18px}
+  .route-caption{margin-top:4px}
+}
+@media (prefers-reduced-motion:reduce){
+  .route-token.hop,.route-gym-node .route-token.hop,#route-map .gym-ring.ready{animation:none}
+  #route-map .gym-ring-val{transition:none}
+}
 .who-farewell{font-size:20px;font-weight:800;color:#065F46;text-align:center;margin:0 0 8px}
 @media (max-width:560px){
   .round-hero img{width:120px;height:120px}
@@ -747,7 +832,8 @@ button.mon-strip:focus{outline:3px solid #1D4ED8;outline-offset:2px}
 .progress-card{margin-bottom:12px}
 .prog-title{font-size:24px;font-weight:800;color:#1A1A2E;margin:0 0 2px;line-height:1.2}
 .prog-sub{font-size:15px;font-weight:600;color:#374151;line-height:1.4;margin:0 0 12px}
-.prog-gym{display:flex;gap:10px;align-items:flex-start;background:#F5F3FF;border-radius:12px;padding:10px 12px;margin:0 0 12px;font-size:16px;font-weight:600;line-height:1.4;color:#1A1A2E}
+.prog-gym{display:flex;gap:10px;align-items:flex-start;background:#F5F3FF;border-radius:12px;padding:10px 12px;margin:0 0 8px;font-size:16px;font-weight:600;line-height:1.4;color:#1A1A2E}
+.prog-route{font-size:16px;font-weight:700;color:#1A1A2E;line-height:1.4;margin:0 0 12px}
 .prog-gym div{min-width:0}
 .prog-gym b{color:#5B21B6}
 .prog-medal{flex:0 0 auto;font-size:16px;line-height:1.4}
@@ -2924,6 +3010,7 @@ function mkState(saved){
     trainerStars:[],
     trainerNext:0,
     trainer:null,
+    route:null,
   };
   if(saved){
     s.starter=saved.starter;
@@ -2957,6 +3044,7 @@ function mkState(saved){
     s.trainerStars=Array.isArray(saved.trainerStars)?saved.trainerStars:[];
     s.trainerNext=Math.max(0,saved.trainerNext|0);
     s.trainer=saved.trainer||null;
+    s.route=saved.route||null;
     if(saved.reviewCount){
       SUBS.forEach(sub=>{s.reviewCount[sub]=Math.max(0,saved.reviewCount[sub]|0);});
     }
@@ -2971,6 +3059,7 @@ function mkState(saved){
     // the round-done screen, which is also how a closed round looks.
     s.phase=saved.award?'award':saved.gym?'gym':saved.trainer?'trainer':roundScreen?'round':saved.team.length>0?'play':'starter';
   }
+  if(!s.route)s.route=defaultRoute(s.stats,s.log,s.redo);
   parkHiddenSubject(s);
   return s;
 }
@@ -3084,12 +3173,20 @@ function gamePayload(){
     if(rr.bonus&&rr.bonus.name)payload.round.bonus={name:String(rr.bonus.name).slice(0,40),caught:!!rr.bonus.caught};
     // The bonus slot was a trainer battle, so a reload must not start a catch.
     if(rr.settled)payload.round.settled=true;
+    // A finish landed on a trainer or a closed door, and the battle has not
+    // started yet because an evolution or a wild fight is still on screen.
+    if(rr.battleOwed)payload.round.battleOwed=true;
   }
   // Optional. Missing on old saves. Omitted again while they're empty,
   // so a Pokédex from before trainer battles still round-trips.
   if((st.roundsDone|0)>0)payload.roundsDone=st.roundsDone|0;
   if(st.trainerStars&&st.trainerStars.length)payload.trainerStars=st.trainerStars.slice();
   if((st.trainerNext|0)>0)payload.trainerNext=st.trainerNext|0;
+  if(st.route&&(st.route.tier|0)>=1){
+    payload.route={tier:st.route.tier|0,step:Math.max(0,Math.min(6,st.route.step|0))};
+    if(st.route.announce==='new'||st.route.announce==='shortcut')payload.route.announce=st.route.announce;
+    if(st.route.debut)payload.route.debut=true;
+  }
   const battle=trainerPayload();
   if(battle)payload.trainer=battle;
   return payload;
@@ -3198,6 +3295,7 @@ function parseRound(raw,pref){
     settled:raw.settled===true,
     bonusPending:raw.settled===true?false:!bonus&&(!!raw.bonusPending||((n>=len||!!raw.closed)&&right>=roundGoal(!!raw.endAfter&&n<len?len0:len))),
     bonus,
+    battleOwed:raw.battleOwed===true,
   };
 }
 // Fixed roster, in the order they battle. Ace Trainer Kim waits at the Gym
@@ -3217,9 +3315,142 @@ const TRAINER_PRIZE=30;
 function routeTrainers(){return TRAINERS.filter(t=>!t.door);}
 // The one switch the map PR replaces. Today a trainer battle is the 2nd,
 // 5th, 8th… finished round for this child. `finished` is that count.
-function trainerBattleDue(finished){
-  const n=finished|0;
-  return n>=2&&((n-2)%3)===0;
+// The map decides. A count of finished rounds no longer starts a battle.
+function trainerBattleDue(){
+  return !!routeBattleKind();
+}
+function routePair(tier){
+  const route=routeTrainers();
+  const n=Math.max(1,tier|0);
+  const i=((n-1)*2)%route.length;
+  return [route[i],route[(i+1)%route.length]];
+}
+function mathGate(){
+  const tier=(st.stats&&st.stats.math&&st.stats.math.level)|0||1;
+  const redo=st.redo&&st.redo.math;
+  const snap=masterySnapshot(st.log||{},'math',tier,redo&&(redo.tier|0)===tier?redo:null);
+  return snap.gate||snap;
+}
+function ringIsFull(gate){
+  const g=gate||mathGate();
+  return !!(g&&(g.open||ringFill(g)>=0.999));
+}
+function routeBadgeEnd(){
+  const tier=(st.stats&&st.stats.math&&st.stats.math.level)|0||1;
+  if(tier>=maxLevel('math'))return true;
+  const lock=mathLock();
+  return !!(lock&&tier>=lock&&hasBadge('math',tier));
+}
+function routeBadgeName(){
+  const tier=(st.stats.math.level)|0||1;
+  if(hasBadge('math',tier))return badgeName('math',tier);
+  const list=(st.badges&&st.badges.math)||[];
+  if(list.length)return badgeName('math',Math.max.apply(null,list));
+  return badgeName('math',tier);
+}
+function routeCanOpenGym(){
+  if(routeBadgeEnd())return false;
+  const tier=(st.stats.math.level)|0||1;
+  if(hasBadge('math',tier))return false;
+  if(!ringIsFull())return false;
+  const o=st.gymOffer&&st.gymOffer.math;
+  if(o&&(o.cool|0)>0)return false;
+  if(o&&(o.tier|0)!==tier)return false;
+  return true;
+}
+function ensureRoute(){
+  if(st.route&&(st.route.tier|0)>=1&&typeof st.route.step==='number')return st.route;
+  const tier=(st.stats&&st.stats.math&&st.stats.math.level)|0||1;
+  st.route={tier,step:ringIsFull()?6:0};
+  return st.route;
+}
+function routeBattleKind(){
+  ensureRoute();
+  if(st.route.debut)return null;
+  const step=st.route.step|0;
+  if(step===2||step===5)return 'route';
+  if(step===6&&!routeCanOpenGym())return 'door';
+  return null;
+}
+function advanceRouteForFinish(){
+  ensureRoute();
+  const level=(st.stats&&st.stats.math&&st.stats.math.level)|0;
+  const from=st.route.step|0;
+  const landing=from<6?from+1:6;
+  // He already climbed past this route. Reaching its door must not offer
+  // the higher Gym, and must not keep walking the old path.
+  if(level>(st.route.tier|0)&&landing>=6){
+    st.route={tier:level,step:0,debut:true};
+  }
+  if(st.route.debut){
+    st.route.debut=false;
+    st.route.announce='new';
+    st.route.hopFrom=st.route.step|0;
+    if((st.route.step|0)<6)st.route.step=(st.route.step|0)+1;
+    return;
+  }
+  st.route.hopFrom=from;
+  st.route.step=landing;
+  if(st.route.announce==='new'||st.route.announce==='shortcut')st.route.announce=null;
+}
+function settleRouteMap(){
+  ensureRoute();
+  if(st.route.announce==='new')return;
+  if((st.route.step|0)>=6)return;
+  if(!routeCanOpenGym())return;
+  st.route.hopFrom=st.route.step|0;
+  st.route.step=6;
+  st.route.announce='shortcut';
+}
+function noteRouteClimb(){
+  ensureRoute();
+  if(routeBadgeEnd())return;
+  const to=(st.stats.math.level)|0||1;
+  // Climbing back onto the route he is already walking leaves the token.
+  // A higher tier waits until a finish lands on this route's door.
+  if(to<=(st.route.tier|0))return;
+  if((st.route.step|0)<6)return;
+  st.route={tier:to,step:0,debut:true};
+}
+function defaultRoute(stats,log,redo){
+  const tier=Math.max(1,(stats&&stats.math&&stats.math.level)|0||1);
+  const redoM=redo&&redo.math;
+  const snap=masterySnapshot(log||{},'math',tier,redoM&&(redoM.tier|0)===tier?redoM:null);
+  const gate=snap.gate||snap;
+  const full=!!(gate.open||ringFill(gate)>=0.999);
+  return {tier,step:full?6:0};
+}
+function parseRoute(raw,stats,log,redo){
+  const tierNow=Math.max(1,(stats&&stats.math&&stats.math.level)|0||1);
+  if(raw&&typeof raw==='object'&&raw.step!=null&&raw.step!==''){
+    const tier=Math.max(1,Math.min(maxLevel('math'),(raw.tier|0)||tierNow));
+    const step=Math.max(0,Math.min(6,raw.step|0));
+    const out={tier,step};
+    if(raw.announce==='new'||raw.announce==='shortcut')out.announce=raw.announce;
+    if(raw.debut)out.debut=true;
+    return out;
+  }
+  return defaultRoute(stats,log,redo);
+}
+function routeCaptionText(){
+  ensureRoute();
+  const step=st.route.step|0;
+  // A silent climb lands him on the new house before the next finish.
+  // That house is the introduction, so the caption says so while debut lasts.
+  if(st.route.announce==='new'||(st.route.debut&&step===0))return 'New route! Route '+(st.route.tier|0);
+  if(step>=6&&routeBadgeEnd())return 'You have the '+routeBadgeName()+'!';
+  if(st.route.announce==='shortcut')return 'Shortcut! The Gym is open!';
+  if(step>=6&&routeCanOpenGym())return 'The Gym is open!';
+  if(step>=6&&!ringIsFull())return 'The Gym opens when the star is full.';
+  if(step>=6)return 'Next stop: the Gym!';
+  const next=step+1;
+  if(next===2||next===5){
+    const pair=routePair(st.route.tier);
+    const t=next===2?pair[0]:pair[1];
+    return 'Next stop: '+t.name+'!';
+  }
+  if(next===6)return 'Next stop: the Gym!';
+  return 'Next stop: grass!';
 }
 function trainerById(id){return TRAINERS.find(t=>t.id===id)||null;}
 function parseStars(raw){
@@ -3234,7 +3465,7 @@ function parseStars(raw){
 function parseTrainer(raw){
   if(!raw||typeof raw!=='object')return null;
   const t=trainerById(raw.id);
-  if(!t||t.door)return null;
+  if(!t)return null;
   const over=raw.over==='win'||raw.over==='lose'?raw.over:null;
   let q=null;
   const src=raw.q;
@@ -3470,6 +3701,7 @@ function parseGameSave(data){
       trainerStars:parseStars(data.trainerStars),
       trainerNext:Math.max(0,data.trainerNext|0),
       trainer:parseTrainer(data.trainer),
+      route:parseRoute(data.route,stats,placedLog,parseRedo(data.redo)),
     };
   }catch(e){
     // corrupt or half-written save: start fresh rather than fail to a blank screen
@@ -4047,8 +4279,13 @@ function bootInto(){
     render();
     return;
   }
+  if(st.round&&st.round.battleOwed&&st.phase!=='gym'&&st.phase!=='award'){
+    beginTrainerBattle();
+    render();
+    return;
+  }
   if(st.round&&st.round.bonusPending&&!(st.round.bonus&&st.round.bonus.name)){
-    if(trainerBattleDue(st.roundsDone|0)&&st.phase!=='gym'&&st.phase!=='award'){
+    if(trainerBattleDue()&&st.phase!=='gym'&&st.phase!=='award'){
       st.bonusWild=false;
       st.round.bonusPending=false;
       st.round.settled=true;
@@ -4659,19 +4896,23 @@ function ringFill(snap){
   }
   return Math.max(0,Math.min(1,Math.min(attempts,days,acc)));
 }
+function ringMarkup(snap, extra){
+  const gate=snap&&(snap.gate||snap)||{};
+  const fill=ringFill(gate);
+  const state=fill<=0?'empty':fill>=0.999?'full':'partial';
+  const circ=75.3982;
+  const dash=(fill*circ).toFixed(2);
+  const mark='<path class="gym-ring-mark" d="M16 9.2l1.35 2.9 3.15.35-2.35 2.15.7 3.05L16 16.15l-2.85 1.5.7-3.05-2.35-2.15 3.15-.35z"/>';
+  return `<span class="gym-ring${extra||''}" role="img" aria-label="Gym badge: getting closer." data-state="${state}" data-fill="${fill.toFixed(3)}"><svg viewBox="0 0 32 32" aria-hidden="true" focusable="false"><circle class="gym-ring-track" cx="16" cy="16" r="12"/><circle class="gym-ring-solid" cx="16" cy="16" r="12"/><circle class="gym-ring-val" cx="16" cy="16" r="12" stroke-dasharray="${dash} ${circ.toFixed(2)}" transform="rotate(-90 16 16)"/>${mark}</svg></span>`;
+}
 function masteryRingHTML(){
   const sub=(st.q&&subjectOn(st.q.subject))?st.q.subject:(enabledSubjects()[0]||'math');
   if(!st.stats[sub]||st.stats[sub].level>=maxLevel(sub))return '';
   const redo=st.redo&&st.redo[sub];
   const snap=masterySnapshot(st.log,sub,st.stats[sub].level,redo&&redo.tier===(st.stats[sub].level|0)?redo:null);
-  const fill=ringFill(snap.gate||snap);
-  const state=fill<=0?'empty':fill>=0.999?'full':'partial';
   const glow=st.masteryGlow===sub;
   if(glow)st.masteryGlow='';
-  const circ=75.3982;
-  const dash=(fill*circ).toFixed(2);
-  const mark='<path class="gym-ring-mark" d="M16 9.2l1.35 2.9 3.15.35-2.35 2.15.7 3.05L16 16.15l-2.85 1.5.7-3.05-2.35-2.15 3.15-.35z"/>';
-  return `<span class="gym-ring${glow?' glow':''}" role="img" aria-label="Gym badge: getting closer." data-state="${state}" data-fill="${fill.toFixed(3)}"><svg viewBox="0 0 32 32" aria-hidden="true" focusable="false"><circle class="gym-ring-track" cx="16" cy="16" r="12"/><circle class="gym-ring-solid" cx="16" cy="16" r="12"/><circle class="gym-ring-val" cx="16" cy="16" r="12" stroke-dasharray="${dash} ${circ.toFixed(2)}" transform="rotate(-90 16 16)"/>${mark}</svg></span>`;
+  return ringMarkup(snap, glow?' glow':'');
 }
 // The Parents Gym line uses the same tally as the gate.
 const MASTERY_GYM=true;
@@ -4715,6 +4956,24 @@ function gymLineText(sub,tier,log,extra){
   if(sum.open)return `${gymGradeLabel(tier)} Gym: ready! ${phrase}.`;
   if(fresh)return `${gymGradeLabel(tier)} Gym: just started. Opens at 85% right (needs 30+ tries on 2+ days).`;
   return `${gymGradeLabel(tier)} Gym: ${phrase}. Opens at 85% (needs 30+ tries on 2+ days).`;
+}
+function routeReportLine(kid){
+  const live=!!(kid&&kid.id===profiles.activeId&&st&&st.route);
+  let route, stars;
+  if(live){
+    route=st.route;
+    stars=st.trainerStars||[];
+  }else{
+    const data=(kid&&kid.data)||{};
+    stars=parseStars(data.trainerStars);
+    route=data.route&&typeof data.route==='object'?data.route:null;
+    if(!route){
+      const stats=data.stats||{};
+      route=defaultRoute(stats,data.log,parseRedo(data.redo));
+    }
+  }
+  const n=stars.length;
+  return `Route ${route.tier|0||1}: step ${route.step|0} of 6. Trainers beaten: ${n} so far.`;
 }
 function gymLineHTML(kid){
   if(!MASTERY_GYM)return '';
@@ -4844,6 +5103,7 @@ function progressCardHTML(kid){
   h+=movesHTML(kid);
   if(!started)return h+`</div>`;
   h+=gymLineHTML(kid);
+  h+=`<p class="prog-route">${escapeHtml(routeReportLine(kid))}</p>`;
   const all=progressRows(kid);
   const open=!!progressOpen[kid.id];
   const shown=open?all:all.slice(0,8);
@@ -5369,6 +5629,7 @@ function maybeMasteryAdvance(sub){
     if(st.redo&&st.redo[sub]&&st.redo[sub].tier!==s.level)delete st.redo[sub];
     const off=st.gymOffer[sub];
     if(off&&off.tier!==s.level)st.gymOffer[sub]=null;
+    if(sub==='math')noteRouteClimb();
     return;
   }
   s.cs=0;
@@ -5612,6 +5873,18 @@ function finishGymWin(){
   st.trainer=null;
   tallyFinishedRound();
   st.round=freshRound(st.roundPref||10);
+  if(sub==='math'){
+    const now=st.stats.math.level|0;
+    if(now>tier){
+      st.route={tier:now,step:0,debut:true};
+    }else{
+      ensureRoute();
+      st.route.tier=now||st.route.tier;
+      st.route.step=6;
+      st.route.debut=false;
+      st.route.announce=null;
+    }
+  }
 }
 function finishGymLose(){
   const g=st.gym;
@@ -6156,6 +6429,7 @@ function roundDotsHTML(){
 const ROUND_TAP_PAUSE=800;
 function enterRoundScreen(){
   if(st.phase!=='round')st.armAt=Date.now()+ROUND_TAP_PAUSE;
+  settleRouteMap();
   st.phase='round';
   const r=st.round;
   if(r){r.closed=true;r.bonusPending=false;r.holdWild=false;}
@@ -6184,8 +6458,8 @@ function openRoundFinale(){
   }
   const goalLen=r.endAfter?roundLengthValue(st.roundPref):roundLengthValue(r.len);
   const earned=(r.right|0)>=roundGoal(goalLen)&&!!activeTM()&&!(st.phase==='wild'&&st.wild);
-  // A trainer round spends the bonus-catch slot on the battle.
-  if(earned&&trainerBattleDue(st.roundsDone|0)&&st.phase!=='gym'&&st.phase!=='award'){
+  // Landing on a trainer, or waiting at a closed door, spends the catch on a battle.
+  if(trainerBattleDue()&&st.phase!=='gym'&&st.phase!=='award'){
     st.bonusWild=false;
     r.bonusPending=false;
     r.bonus=null;
@@ -6230,12 +6504,15 @@ function tallyFinishedRound(){
   if(r.tallied||r.closed)return;
   r.tallied=true;
   st.roundsDone=(st.roundsDone|0)+1;
+  advanceRouteForFinish();
+  r.battleOwed=!!routeBattleKind();
 }
 function beginTrainerBattle(){
-  const route=routeTrainers();
-  const ix=Math.max(0,st.trainerNext|0);
-  const t=route[ix%route.length];
-  st.trainerNext=ix+1;
+  ensureRoute();
+  const kind=routeBattleKind();
+  const step=st.route.step|0;
+  const pair=routePair(st.route.tier);
+  const t=kind==='door'?trainerById('kim'):(step===5?pair[1]:pair[0]);
   st.trainer={
     id:t.id,hits:0,qn:0,gained:0,over:null,intro:true,miss:false,
     showHit:false,prize:false,level:wildLevel(),q:null,results:[],
@@ -6247,7 +6524,7 @@ function beginTrainerBattle(){
   st.q=null;
   st.armAt=0;
   const r=st.round;
-  if(r){r.settled=true;r.bonusPending=false;r.bonus=null;}
+  if(r){r.settled=true;r.bonusPending=false;r.bonus=null;r.battleOwed=false;}
 }
 function workedAnswerLine(q){
   if(!q)return 'Good try!';
@@ -6339,8 +6616,11 @@ function finishTrainer(outcome){
     b.prize=true;
     const tm=activeTM();
     if(tm){tm.xp+=TRAINER_PRIZE;applyLevelUps();}
-    if(!st.trainerStars)st.trainerStars=[];
-    if(st.trainerStars.indexOf(b.id)<0)st.trainerStars.push(b.id);
+    const meta=trainerById(b.id);
+    if(meta&&!meta.door){
+      if(!st.trainerStars)st.trainerStars=[];
+      if(st.trainerStars.indexOf(b.id)<0)st.trainerStars.push(b.id);
+    }
   }
   st.armAt=Date.now()+ROUND_TAP_PAUSE;
 }
@@ -6419,10 +6699,11 @@ function trainerHTML(){
     const xp=win?TRAINER_PRIZE:(b.gained|0);
     const title=win?`You beat ${t.name}!`:`${t.mon} ran back to ${t.kid}.`;
     const sub=win?`${t.mon} is all tired out. Great math!`:hits>0?`Nice try! You got ${hits} hit${hits===1?'':'s'}.`:'Nice try!';
-    const extra=win?'<p class="trainer-star">&#11088; You earned a trainer star!</p>':'<p class="trainer-line">Every try makes you stronger.</p>';
+    const stamped=win&&t&&!t.door;
+    const extra=stamped?'<p class="trainer-star">&#11088; Trainer star on your map</p>':(win?'':'<p class="trainer-line">Every try makes you stronger.</p>');
     const xpLine=win||xp>0?`<p class="trainer-xp" id="trainer-xp">+${xp} XP</p>`:'';
     const foe=win?' trainer-foe fainted':' trainer-foe';
-    return `<div class="card trainer-card trainer-result" id="trainer-result"><div class="trainer-pill">Trainer Battle</div><div class="${foe.trim()}">${pkImg(t.dex,150)}</div><h2 class="trainer-title">${escapeHtml(title)}</h2><p class="trainer-line">${escapeHtml(sub)}</p>${extra}${xpLine}<button type="button" class="trainer-go" id="trainer-map">Keep going</button></div>`;
+    return `<div class="card trainer-card trainer-result" id="trainer-result"><div class="trainer-pill">Trainer Battle</div><div class="${foe.trim()}">${pkImg(t.dex,150)}</div><h2 class="trainer-title">${escapeHtml(title)}</h2><p class="trainer-line">${escapeHtml(sub)}</p>${extra}${xpLine}<button type="button" class="trainer-go" id="trainer-map">See your map</button></div>`;
   }
   const hp=Math.max(0,TRAINER_HITS-(b.hits|0));
   const pct=Math.round(hp/TRAINER_HITS*100);
@@ -6449,6 +6730,7 @@ function playRoundAgain(){
   st.trainer=null;
   st.phase='play';
   st.round=freshRound(st.roundPref||10);
+  if(st.route){st.route.announce=null;st.route.hopFrom=null;}
   roundFarewell='';
   save();
   loadQuestion();
@@ -6474,23 +6756,114 @@ function doneForNow(){
   st.q=null;
   st.phase='play';
   st.round=freshRound(st.roundPref||10);
+  if(st.route){st.route.announce=null;st.route.hopFrom=null;}
   save();
   whoMode='list';
   pendingDelete=null;
   view='who';
   renderWho();
 }
+function routeMapHTML(){
+  ensureRoute();
+  const step=st.route.step|0;
+  const tier=st.route.tier|0||1;
+  const pair=routePair(tier);
+  const stars=st.trainerStars||[];
+  const tm=activeTM();
+  const from=typeof st.route.hopFrom==='number'?st.route.hopFrom:null;
+  const dist=from==null?0:Math.abs(step-from);
+  const hop=dist>1?' hop hop-chain':dist===1?' hop':'';
+  if(from!=null)st.route.hopFrom=null;
+  const token=tm?`<div id="route-token" class="route-token${hop}" data-step="${step}" data-from="${from==null?'':from}"><span id="round-celebrate">${pkSprite(tm.pi,72,!!tm.shiny)}</span></div>`:'';
+  const kinds=['house','grass','trainer','grass','grass','trainer','gym'];
+  let nodes='';
+  for(let i=0;i<7;i++){
+    const on=i<=step?'1':'0';
+    const here=i===step?token:'';
+    const kind=kinds[i];
+    if(kind==='trainer'){
+      const t=i===2?pair[0]:pair[1];
+      const star=stars.indexOf(t.id)>=0;
+      nodes+=`<div class="route-node route-trainer" data-step="${i}" data-kind="trainer" data-id="${t.id}" data-on="${on}" data-star="${star?'1':'0'}"><span class="route-cap" aria-hidden="true">&#129506;</span>${star?'<span class="route-star" aria-hidden="true">⭐</span>':''}${here}</div>`;
+    }else if(kind==='gym'){
+      const ended=routeBadgeEnd();
+      const ready=!ended&&routeCanOpenGym()&&step>=6;
+      const body=ended
+        ?`<span class="route-badge">${escapeHtml(routeBadgeName())}</span>`
+        :ringMarkup(mathGate(),ready?' ready':'');
+      nodes+=`<div class="route-node route-gym-node" data-step="6" data-kind="gym" data-on="${on}">${body}<span class="route-gym-label">Gym</span>${here}</div>`;
+    }else if(kind==='house'){
+      nodes+=`<div class="route-node route-house" data-step="0" data-kind="house" data-on="${on}"><span class="route-home" aria-hidden="true">&#127968;</span>${here}</div>`;
+    }else{
+      nodes+=`<div class="route-node route-grass" data-step="${i}" data-kind="grass" data-on="${on}">${here}</div>`;
+    }
+  }
+  return `<div id="route-map" class="route-map" data-step="${step}" data-route="${tier}"><p class="route-label" id="route-label">Route ${tier}</p><div class="route-track"><svg id="route-path" aria-hidden="true"><path d=""></path></svg>${nodes}</div><p id="route-caption" class="route-caption">${escapeHtml(routeCaptionText())}</p></div>`;
+}
+function drawRoutePath(){
+  const track=document.querySelector('.route-track');
+  const svg=document.getElementById('route-path');
+  const path=svg&&svg.querySelector('path');
+  if(!track||!path)return;
+  const tr=track.getBoundingClientRect();
+  if(tr.width<2||tr.height<2)return;
+  svg.setAttribute('viewBox',`0 0 ${tr.width.toFixed(1)} ${tr.height.toFixed(1)}`);
+  const nodes=[...track.querySelectorAll('.route-node')].sort((a,b)=>(a.dataset.step|0)-(b.dataset.step|0));
+  const pts=nodes.map(el=>{
+    const r=el.getBoundingClientRect();
+    return {el,x:r.left+r.width/2-tr.left,y:r.top+r.height/2-tr.top};
+  });
+  if(pts.length>=2){
+    const gym=pts[pts.length-1];
+    const prev=pts[pts.length-2];
+    const ring=gym.el.querySelector('.gym-ring');
+    const rr=ring?ring.getBoundingClientRect():gym.el.getBoundingClientRect();
+    const cx=rr.left+rr.width/2-tr.left;
+    const cy=rr.top+rr.height/2-tr.top;
+    const dx=cx-prev.x,dy=cy-prev.y;
+    const span=Math.hypot(dx,dy)||1;
+    const reach=rr.width/2+2;
+    gym.x=cx-(dx/span)*reach;
+    gym.y=cy-(dy/span)*reach;
+  }
+  const d=pts.map((p,i)=>`${i?'L':'M'}${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ');
+  path.setAttribute('d',d);
+}
+if(!window.__routePathResize){
+  window.__routePathResize=true;
+  window.addEventListener('resize',()=>drawRoutePath());
+}
+function battleGymFromMap(){
+  if(Date.now()<(st.armAt||0))return;
+  if(!routeCanOpenGym())return;
+  const sub='math';
+  const tier=st.stats[sub].level|0;
+  st.award=null;
+  st.trainer=null;
+  st.wild=null;
+  st.wildEscape=false;
+  st.bonusWild=false;
+  st.gymSnooze[sub]=false;
+  st.gymOffer[sub]=null;
+  st.gym={sub,tier,queue:gymQueue(sub,tier),qi:0,kid:GYM_KID_HP,lead:GYM_LEAD_HP,solved:false,over:null};
+  st.phase='gym';
+  st.q=null;
+  save();
+  dealGymQuestion();
+}
 function roundScreenHTML(){
   const r=activeRound();
   const tm=activeTM();
   const name=tm?PKM[tm.pi].n:'your Pokémon';
-  const marks=(r.marks||[]).map(ok=>`<span class="round-mark" data-right="${ok?'1':'0'}">${ok?'✓':'○'}</span>`).join('');
+  const marks=(r.marks||[]).map(ok=>ok?1:0).sort((a,b)=>b-a).map(ok=>`<span class="round-mark" data-right="${ok?'1':'0'}">${ok?'✓':'○'}</span>`).join('');
   const bonus=r.bonus&&r.bonus.name
     ?`<p id="round-bonus" class="round-bonus">${escapeHtml(r.bonus.caught?`${r.bonus.name} joined your team!`:`${r.bonus.name} got away this time. Great work!`)}</p>`
     :'';
   const line=`${r.right|0} of ${r.n|0} right. You and ${name} kept going!`;
-  const xpLine=r.settled?`+${r.xp|0} XP`:`${r.xp|0} XP`;
-  return `<div class="card round-card" id="round-done"><div class="round-hero" id="round-celebrate">${tm?pkSprite(tm.pi,150,!!tm.shiny):''}</div><h2 id="round-title" class="round-title">Round done!</h2><div class="round-marks">${marks}</div><p id="round-line" class="round-line">${escapeHtml(line)}</p><p id="round-xp" class="round-xp">${xpLine}</p>${bonus}<button type="button" class="round-again" id="round-again">Play again</button><button type="button" class="round-leave" id="round-done-exit">Done</button></div>`;
+  const xpLine=`+${r.xp|0} XP`;
+  const gym=routeCanOpenGym()&&(ensureRoute().step|0)>=6;
+  const gymBtn=gym?'<button type="button" class="round-gym" id="route-gym">Battle the Gym!</button>':'';
+  return `<div class="card round-card" id="round-done"><div class="round-summary"><h2 id="round-title" class="round-title">Round done!</h2><div class="round-marks">${marks}</div><p id="round-line" class="round-line">${escapeHtml(line)}</p><p id="round-xp" class="round-xp">${xpLine}</p>${bonus}</div>${routeMapHTML()}<div class="round-actions${gym?' has-gym':''}">${gymBtn}<div class="round-split"><button type="button" class="round-again" id="round-again">Play again</button><button type="button" class="round-leave" id="round-done-exit">Done</button></div></div></div>`;
 }
 function qCardHTML(resultMsg,btnLabel){
   if(!st.q)return'';
@@ -6676,6 +7049,9 @@ function render(){
     if(again)again.addEventListener('click',playRoundAgain);
     const leave=gameEl.querySelector('#round-done-exit');
     if(leave)leave.addEventListener('click',doneForNow);
+    const gymGo=gameEl.querySelector('#route-gym');
+    if(gymGo)gymGo.addEventListener('click',battleGymFromMap);
+    drawRoutePath();
     const whoRound=gameEl.querySelector('#who-btn');
     if(whoRound)whoRound.addEventListener('click',openProfiles);
     dockMute();

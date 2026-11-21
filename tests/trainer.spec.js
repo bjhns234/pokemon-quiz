@@ -19,11 +19,15 @@ async function boot(page){
   return errors;
 }
 
-// `done` is how many rounds this child has already finished. One more clean
-// answer closes a round that already has 6 right, so the line of 7 is met.
-async function closeQualified(page,done){
-  await state(page,done=>{
-    st.roundsDone=done|0;
+// `step` is where the token stands before this finish. 1 lands on Joey,
+// 4 lands on Mia, 5 lands on the Gym door, and 0 or 3 keeps the bonus catch.
+async function closeQualified(page,step){
+  await state(page,before=>{
+    if(!st.route)st.route={tier:1,step:0};
+    st.route.tier=1;
+    st.route.debut=false;
+    st.route.announce=null;
+    st.route.step=Math.max(0,Math.min(6,before==null?1:before|0));
     st.round=freshRound(10);
     st.round.n=9;
     st.round.right=6;
@@ -35,8 +39,9 @@ async function closeQualified(page,done){
     st.wild=null;
     st.wildEscape=false;
     if(st.phase!=='play')st.phase='play';
+    st.cor=false;st.tries=0;st.wrong=[];st.helped=false;
     Math.random=()=>0.99;
-  },done);
+  },step);
   await answer(page,true);
 }
 
@@ -47,10 +52,18 @@ async function openBattle(page,done){
   await expect(page.locator('.qtext')).toBeVisible();
 }
 
-test('finished rounds 2, 5, and 8 are the trainer rounds',async({page})=>{
+test('route steps 2 and 5, and a closed door, are the trainer battles',async({page})=>{
   const errors=await boot(page);
-  const flags=await state(page,()=>[0,1,2,3,4,5,6,7,8,9,10,11].map(trainerBattleDue));
-  expect(flags).toEqual([false,false,true,false,false,true,false,false,true,false,false,true]);
+  const flags=await state(page,()=>{
+    const out=[];
+    st.route={tier:1,step:0};
+    st.badges.math=[];
+    st.gymOffer.math=null;
+    st.log={};
+    for(let s=0;s<=6;s++){st.route.step=s;out.push(!!trainerBattleDue());}
+    return out;
+  });
+  expect(flags).toEqual([false,false,true,false,false,true,true]);
   expect(await state(page,()=>routeTrainers().map(t=>t.id))).toEqual(['joey','mia','sam','ben','liz']);
   expect(await state(page,()=>TRAINERS.some(t=>t.id==='kim'&&t.door))).toBe(true);
 
@@ -79,9 +92,10 @@ test('finished rounds 2, 5, and 8 are the trainer rounds',async({page})=>{
   expect(await state(page,()=>st.trainer.id)).toBe('mia');
 
   await state(page,()=>{st.trainer=null;st.phase='play';return loadQuestion();});
-  await closeQualified(page,7);
+  await closeQualified(page,5);
   await expect(page.locator('#trainer-go')).toBeVisible();
-  expect(await state(page,()=>st.roundsDone)).toBe(8);
+  await expect(page.locator('#trainer-card')).toContainText('Ace Trainer Kim');
+  expect(await state(page,()=>st.roundsDone)).toBe(5);
   expect(await state(page,()=>st.phase)).toBe('trainer');
   expect(errors).toEqual([]);
 });
@@ -110,8 +124,8 @@ test('two hits win on question 2, and the prize is XP plus a star',async({page})
   await expect(page.locator('#trainer-result')).toContainText('You beat Youngster Joey!');
   await expect(page.locator('#trainer-result')).toContainText('Rattata is all tired out. Great math!');
   await expect(page.locator('#trainer-result')).toContainText('+30 XP');
-  await expect(page.locator('#trainer-result')).toContainText('You earned a trainer star!');
-  await expect(page.getByRole('button',{name:'Keep going'})).toBeVisible();
+  await expect(page.locator('#trainer-result')).toContainText('Trainer star on your map');
+  await expect(page.getByRole('button',{name:'See your map'})).toBeVisible();
   expect(await state(page,()=>st.trainerStars)).toEqual(['joey']);
   expect(await state(page,()=>activeTM().xp)).toBe(afterWin);
   expect(await state(page,()=>st.team.some(t=>PKM[t.pi].n==='Rattata'))).toBe(false);
@@ -128,12 +142,15 @@ test('two hits win on question 2, and the prize is XP plus a star',async({page})
   const roundXp=await state(page,()=>st.round.xp|0);
   await expect(page.locator('#round-xp')).toHaveText(`+${roundXp} XP`);
   const shown=await page.locator('.round-mark').allTextContents();
-  const order=await state(page,()=>st.round.marks.map(m=>m?'✓':'○'));
+  const order=await state(page,()=>{
+    const marks=st.round.marks.map(m=>m?'✓':'○');
+    return marks.filter(m=>m==='✓').concat(marks.filter(m=>m==='○'));
+  });
   expect(shown.map(s=>s.trim())).toEqual(order);
   const saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('pkq-save')).kids[0].data);
   expect(saved.v).toBe(1);
   expect(saved.trainerStars).toEqual(['joey']);
-  expect(saved.roundsDone).toBe(2);
+  expect(saved.roundsDone).toBe(1);
   expect(errors).toEqual([]);
 });
 
@@ -241,7 +258,7 @@ test('three questions without two hits lets the Pokémon get away',async({page})
   await expect(page.locator('#trainer-result')).toContainText('Every try makes you stronger.');
   await expect(page.locator('#trainer-xp')).toHaveCount(0);
   expect(await state(page,()=>st.trainerStars||[])).toEqual([]);
-  await expect(page.getByRole('button',{name:'Keep going'})).toBeVisible();
+  await expect(page.getByRole('button',{name:'See your map'})).toBeVisible();
   await expect(page.getByRole('button',{name:/rematch|battle again/i})).toHaveCount(0);
 
   await state(page,()=>{st.trainer=null;st.phase='play';st.roundsDone=1;return loadQuestion();});
@@ -269,7 +286,7 @@ test('a trainer round battles instead of the bonus catch',async({page})=>{
   expect(await state(page,()=>st.bonusWild)).toBe(false);
   expect(await state(page,()=>st.phase)).toBe('trainer');
   const saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('pkq-save')).kids[0].data);
-  expect(saved.roundsDone).toBe(2);
+  expect(saved.roundsDone).toBe(1);
   expect(saved.trainer.id).toBe('joey');
   expect(saved.v).toBe(1);
   expect(errors).toEqual([]);
@@ -323,6 +340,7 @@ test('an evolution from the last question plays before the battle',async({page})
     const tm=activeTM();
     tm.pi=0;tm.level=15;tm.xp=xpToNext(15)-5;tm.shiny=false;
     st.pendingEvo=null;st.streak=0;st.roundsDone=1;
+    st.route={tier:1,step:1};
     st.round=freshRound(10);
     st.round.n=9;st.round.right=8;st.round.marks=Array(9).fill(1);
     Math.random=()=>0.99;
@@ -405,6 +423,7 @@ test('a round-ending wild evolves before that wild fight continues',async({page}
     const tm=activeTM();
     tm.pi=0;tm.level=15;tm.xp=xpToNext(15)-10;tm.shiny=false;
     st.pendingEvo=null;st.streak=4;st.roundsDone=1;
+    st.route={tier:1,step:1};
     st.round=freshRound(10);
     st.round.n=9;st.round.right=8;st.round.marks=Array(9).fill(1);
     const pi=PKM.findIndex(p=>p.n==='Pidgey');
@@ -437,6 +456,7 @@ test('a wild already out finishes before the trainer battle',async({page})=>{
   const errors=await boot(page);
   await state(page,()=>{
     st.roundsDone=1;
+    st.route={tier:1,step:1};
     st.round=freshRound(10);
     st.round.n=9;st.round.right=8;st.round.marks=Array(9).fill(1);
     st.streak=0;st.pendingEvo=null;
