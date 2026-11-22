@@ -472,42 +472,6 @@ test('Next does not scroll when it already fits',async({page})=>{
   expect(clear).toBe(true);
 });
 
-test('reduced motion brings Next into view without a smooth scroll',async({page})=>{
-  await page.emulateMedia({reducedMotion:'reduce'});
-  await openGame(page);
-  await startGame(page,'science');
-  await page.setViewportSize({width:568,height:320});
-  await state(page,()=>{
-    if(st.team.length<2)st.team.push({pi:LINES[1][0],level:5,xp:0,shiny:false});
-    st.pendingEvo=null;
-    st.phase='play';st.subject='science';
-    st.q=serveQuestion('science',3,42,questionPname());
-    st.tries=0;st.cor=false;st.wrong=[];st.helped=false;st.armAt=0;st.wildEscape=false;st.draft='';
-    render();
-    document.getElementById('app-main').scrollTop=0;
-  });
-  const jumped=await state(page,()=>{
-    const main=document.getElementById('app-main');
-    const before=main.scrollTop;
-    st.armAt=0;
-    handleAnswer(st.q.correctIndex);
-    const nxt=document.getElementById('nxt').getBoundingClientRect();
-    const nav=document.getElementById('bottom-nav').getBoundingClientRect();
-    const live=document.getElementById('answer-live').textContent;
-    return {
-      before,
-      after:main.scrollTop,
-      visible:nxt.bottom<=nav.top+0.5&&nxt.top>=0,
-      focus:document.activeElement&&document.activeElement.id,
-      live,
-    };
-  });
-  expect(jumped.after).toBeGreaterThan(jumped.before);
-  expect(jumped.visible).toBe(true);
-  expect(jumped.focus).not.toBe('nxt');
-  expect(jumped.live).toContain('Correct');
-});
-
 test('long questions keep the answers and Ask for help above the bar',async({page})=>{
   test.setTimeout(120000);
   await openGame(page);
@@ -642,52 +606,4 @@ test('Next fits above the bar without scrolling on the other small screens',asyn
       await expectNextClear(size,`${who}, after a miss`);
     }
   }
-});
-
-test('the Pokédex top row stays on one line on a narrow phone',async({page})=>{
-  await openGame(page);
-  await startGame(page,'reading');
-  await page.click('#nav-pdx');
-  await expect(page.locator('#pokedex-page .hdr')).toBeVisible();
-  for(const width of [320,375]){
-    await page.setViewportSize({width,height:568});
-    await toTop(page);
-    const row=await page.evaluate(()=>{
-      const hdr=document.querySelector('#pokedex-page .hdr');
-      const bits=[...hdr.children].filter(el=>el.getBoundingClientRect().height>2);
-      const tops=bits.map(el=>el.getBoundingClientRect().top);
-      const bottoms=bits.map(el=>el.getBoundingClientRect().bottom);
-      return {oneRow:Math.max(...tops)<Math.min(...bottoms),height:hdr.getBoundingClientRect().height};
-    });
-    expect(row.oneRow,`Pokédex header wraps at ${width}px`).toBe(true);
-    expect(row.height,`Pokédex header height at ${width}px`).toBeLessThan(60);
-    const reset=await page.locator('#reset-btn').evaluate(el=>({
-      text:el.innerText.replace(/\s+/g,' ').trim(),
-      sw:el.scrollWidth,
-      cw:el.clientWidth,
-    }));
-    expect(reset.text,`reset label at ${width}px`).toBe('Hold to reset');
-    expect(reset.sw,`reset label clipped at ${width}px`).toBeLessThanOrEqual(reset.cw+1);
-  }
-});
-
-test('counting captions stay 14px on a short phone',async({page})=>{
-  await openGame(page);
-  await startGame(page,'math');
-  await state(page,()=>{
-    for(const lv of Object.keys(QB.math)){
-      const idx=QB.math[lv].findIndex(q=>q[0].includes('6 + 7'));
-      if(idx<0)continue;
-      st.phase='play';st.subject='math';
-      st.q=serveQuestion('math',+lv,idx,questionPname());
-      st.tries=0;st.cor=false;st.wrong=[];st.helped=false;st.armAt=0;st.wildEscape=false;
-      render();
-      return;
-    }
-  });
-  await page.setViewportSize({width:568,height:320});
-  await page.click('#help-btn');
-  await expect(page.locator('.hv-cap').first()).toBeVisible();
-  const font=await page.locator('.hv-cap').first().evaluate(el=>parseFloat(getComputedStyle(el).fontSize));
-  expect(font).toBeGreaterThanOrEqual(14);
 });

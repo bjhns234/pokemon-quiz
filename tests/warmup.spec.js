@@ -2,11 +2,9 @@
 // drop a level. A real drop is one tier, and only when the current tier's
 // own tape is under 60% over the last 20 tries on 2 local days.
 const {test,expect}=require('@playwright/test');
-const fs=require('fs');
 const {openGame,startGame,state,answer,nextQuestion}=require('./helpers');
 
 const DAY=new Date(2026,10,18,9,0,0);
-const ART='/opt/cursor/artifacts';
 
 async function boot(page){
   await page.clock.install({time:DAY});
@@ -344,8 +342,6 @@ test('under 60% over 20 tries on 2 days drops one tier, silently, with a Parents
   expect(gym).not.toContain('Opens at 85%');
   expect(gym).not.toMatch(/\bGym\b/);
   await line.scrollIntoViewIfNeeded();
-  fs.mkdirSync(ART,{recursive:true});
-  await page.screenshot({path:ART+'/parents_drop_log_768x1024.png'});
   expect(errors).toEqual([]);
 });
 
@@ -589,7 +585,6 @@ test('the warm-up start fits a tablet, a sideways tablet, and a phone',async({pa
   await state(page,()=>{st.armAt=0;render();});
   await expect(page.locator('.warmup-say')).toContainText("Let's do a quick warm-up!");
   await expect(page.locator('.warmup-tag')).toBeVisible();
-  fs.mkdirSync(ART,{recursive:true});
   const sizes=[
     {width:768,height:1024,name:'warmup_start_768x1024.png'},
     {width:1024,height:768,name:'warmup_start_1024x768.png'},
@@ -619,7 +614,6 @@ test('the warm-up start fits a tablet, a sideways tablet, and a phone',async({pa
     expect(fit.sayIn,size.name).toBe(true);
     expect(fit.tagIn,size.name).toBe(true);
     expect(fit.red,size.name).toBe(false);
-    await page.screenshot({path:ART+'/'+size.name});
   }
   await page.setViewportSize({width:768,height:1024});
   await page.emulateMedia({reducedMotion:'reduce'});
@@ -692,8 +686,6 @@ test('Back to it fits the tablet',async({page})=>{
   });
   expect(gap.beforeH).toBe(0);
   expect(gap.gap).toBeLessThan(16);
-  fs.mkdirSync(ART,{recursive:true});
-  await page.screenshot({path:ART+'/warmup_back_768x1024.png'});
   await state(page,()=>{st.q.back=false;st.streak=0;render();});
   const reserved=await page.evaluate(()=>{
     const card=document.querySelector('#game .qcard');

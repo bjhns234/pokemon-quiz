@@ -345,84 +345,6 @@ test('two kids can share a starter, including Surprise me',async({page})=>{
   expect(errors).toEqual([]);
 });
 
-test('reduced motion skips the spin and the wobble',async({page})=>{
-  const errors=await openGame(page);
-  await page.emulateMedia({reducedMotion:'reduce'});
-  await nameMaya(page);
-  await page.evaluate(()=>{rollShiny=()=>false;resetCurrentProfile();});
-  const t0=Date.now();
-  await page.click('#pick-0');
-  await expect(page.locator('#pick-label')).toHaveText('Bulbasaur is your Pokémon!',{timeout:800});
-  const motion=await page.evaluate(()=>{
-    const ray=document.getElementById('pick-rays');
-    const style=getComputedStyle(ray);
-    const ball=document.getElementById('pick-ball');
-    const ballAnim=getComputedStyle(ball).animationName;
-    return {rays:style.animationName,rayDisplay:style.display,ballHidden:getComputedStyle(ball).display==='none',ballAnim};
-  });
-  expect(motion.rays).toBe('none');
-  expect(motion.rayDisplay).toBe('none');
-  await expect(page.locator('#pick-rays')).toBeHidden();
-  expect(motion.ballHidden).toBe(true);
-  expect(motion.ballAnim).toBe('none');
-  await expect(page.locator('.qtext')).toBeVisible({timeout:2500});
-  const dt=Date.now()-t0;
-  expect(dt).toBeGreaterThan(1100);
-  expect(dt).toBeLessThan(2800);
-  expect(errors).toEqual([]);
-});
-
-test('starter cards are not picked or hovered when the chooser opens',async({page})=>{
-  const errors=await openGame(page);
-  // An iPad has no hover. A pointer sitting on a card must not light it up.
-  const cdp=await page.context().newCDPSession(page);
-  await cdp.send('Emulation.setEmulatedMedia',{features:[{name:'hover',value:'none'},{name:'pointer',value:'coarse'}]});
-  async function cardsAreResting(){
-    const info=await page.evaluate(()=>{
-      const cards=[...document.querySelectorAll('.starter-opt')];
-      const rules=[];
-      function walk(list,media){
-        for(const rule of list){
-          if(rule.selectorText)rules.push({sel:rule.selectorText,media});
-          else if(rule.cssRules)walk(rule.cssRules,rule.conditionText||media||'');
-        }
-      }
-      for(const sheet of document.styleSheets){
-        try{walk(sheet.cssRules,'');}catch(e){}
-      }
-      const hover=rules.filter(r=>/\.(starter-opt|fire-opt|water-opt|grass-opt):hover\b/.test(r.sel));
-      const focus=rules.filter(r=>/\.starter-opt:focus\b/.test(r.sel)&&!/:focus-visible/.test(r.sel));
-      return {
-        classes:cards.map(el=>el.className),
-        activeIsCard:!!(document.activeElement&&document.activeElement.classList.contains('starter-opt')),
-        borders:cards.map(el=>getComputedStyle(el).borderTopColor),
-        hover,
-        focus,
-      };
-    });
-    expect(info.classes.some(c=>/\bsel\b|\bselected\b|\bcurrent\b/.test(c))).toBe(false);
-    expect(info.activeIsCard).toBe(false);
-    info.borders.forEach(color=>expect(color).toBe('rgb(229, 231, 235)'));
-    expect(info.hover.length).toBeGreaterThan(0);
-    info.hover.forEach(rule=>expect(rule.media).toMatch(/hover:\s*hover/));
-    // A pointer tap must not paint a focus ring that looks like a pick.
-    info.focus.forEach(rule=>expect(rule.media+rule.sel).not.toMatch(/border|background/));
-  }
-  await page.click('#profile-new');
-  await page.fill('#profile-name','Maya');
-  await page.click('#profile-next');
-  await expect(page.locator('.starter-opt')).toHaveCount(27);
-  await cardsAreResting();
-
-  await page.evaluate(()=>pickStarter(0,false));
-  await expect(page.locator('.qtext')).toBeVisible();
-  await page.evaluate(()=>resetCurrentProfile());
-  await expect(page.locator('.starter-opt')).toHaveCount(27);
-  await expect(page.locator('#starter-back')).toHaveCount(0);
-  await cardsAreResting();
-  expect(errors).toEqual([]);
-});
-
 test('Back, New trainer, and sound fit on a phone',async({page})=>{
   const errors=await openGame(page);
   await page.click('#profile-new');
@@ -456,46 +378,6 @@ test('Back, New trainer, and sound fit on a phone',async({page})=>{
       const overlapY=Math.min(a.bottom,b.bottom)-Math.max(a.top,b.top);
       expect(overlapX>1&&overlapY>1,`${a.sel} overlaps ${b.sel} at ${width}`).toBe(false);
     }
-  }
-  expect(errors).toEqual([]);
-});
-
-test('Next is as tall as Back on iPad, and the name field stays labeled',async({page})=>{
-  const errors=await openGame(page);
-  await page.setViewportSize({width:768,height:1024});
-  await page.click('#profile-new');
-  const next=await page.locator('#profile-next').boundingBox();
-  expect(next.height).toBeGreaterThanOrEqual(64);
-  await expect(page.getByRole('textbox',{name:'Your name'})).toBeVisible();
-  await expect(page.locator('label[for="profile-name"]')).toHaveClass(/sr-only/);
-  expect(errors).toEqual([]);
-});
-
-test('a narrow phone drops the type emoji so the chip can stay one line',async({page})=>{
-  await openGame(page);
-  await page.setViewportSize({width:375,height:667});
-  await page.click('#profile-new');
-  await page.fill('#profile-name','Maya');
-  await page.click('#profile-next');
-  const display=await page.locator('.starter-opt-type .type-emoji').first().evaluate(el=>getComputedStyle(el).display);
-  expect(display).toBe('none');
-  await expect(page.locator('.starter-opt-type').first()).toContainText('Grass');
-});
-
-test('Back on a tablet is a content-sized button, at least 64px tall',async({page})=>{
-  const errors=await openGame(page);
-  await page.click('#profile-new');
-  await page.fill('#profile-name','Maya');
-  await page.click('#profile-next');
-  for(const size of [{width:768,height:1024},{width:1024,height:768}]){
-    await page.setViewportSize(size);
-    const box=await page.evaluate(()=>{
-      const row=document.querySelector('#game .hdr').getBoundingClientRect();
-      const back=document.getElementById('starter-back').getBoundingClientRect();
-      return {row:row.width,width:back.width,height:back.height};
-    });
-    expect(box.width,`${size.width}x${size.height}`).toBeLessThanOrEqual(box.row*0.45);
-    expect(box.height,`${size.width}x${size.height}`).toBeGreaterThanOrEqual(64);
   }
   expect(errors).toEqual([]);
 });

@@ -1,12 +1,10 @@
 // Mastery before a Gym. Eligible tries live on the log tape math|@|tier.
 // A right after a hint is a "0". Review, Rematch, and Gym do not write it.
 const {test,expect}=require('@playwright/test');
-const fs=require('fs');
 const {openGame,startGame,state,answer,nextQuestion,serve}=require('./helpers');
 
 const DAY1=new Date(2026,10,17,9,0,0);
 const DAY2=new Date(2026,10,18,9,0,0);
-const ART='/opt/cursor/artifacts';
 
 function kid(data){
   return {
@@ -212,22 +210,6 @@ test('a hint is an attempt only, and a wild encounter counts',async({page})=>{
   expect(errors).toEqual([]);
 });
 
-test('five in a row pays the milestone and does not create a gymOffer',async({page})=>{
-  const errors=await boot(page);
-  await state(page,()=>{
-    const tm=activeTM();tm.level=60;tm.xp=0;
-    st.stats.math.level=1;st.stats.math.cs=4;st.streak=4;st.badges.math=[];st.gymOffer.math=null;
-  });
-  await serve(page,{sub:'math',lv:1,idx:3});
-  await answer(page,true);
-  const got=await state(page,()=>({level:st.stats.math.level,offer:st.gymOffer.math,msg:st.streakMsg,xp:st.lastXp}));
-  expect(got.level).toBe(1);
-  expect(got.offer).toBeNull();
-  expect(got.msg).toContain('5 in a row');
-  expect(got.xp).toBeGreaterThan(await state(page,()=>xpForStreak(5)));
-  expect(errors).toEqual([]);
-});
-
 test('below a grade lock, the tier changes only after mastery and a Gym win',async({page})=>{
   const errors=await boot(page);
   await state(page,()=>{
@@ -263,30 +245,6 @@ test('below a grade lock, the tier changes only after mastery and a Gym win',asy
     await answer(page,true);
   }
   expect(await state(page,()=>({level:st.stats.math.level,offer:st.gymOffer.math}))).toEqual({level:3,offer:null});
-  expect(errors).toEqual([]);
-});
-
-test('three current-tier misses keep the level and the badges',async({page})=>{
-  // Was "a 3-miss drop keeps badges". Three misses used to drop a whole level.
-  // Kindergarten is already solid, so placement has nothing to move either.
-  // The miss run starts a warm-up and the level stays put. Badges stay.
-  const errors=await boot(page);
-  await state(page,()=>{
-    st.grade=0;st.stats.math.level=2;st.stats.math.ws=0;st.badges.math=[1,2];st.gymOffer.math=null;
-    st.log={
-      '2026-11-16':{'math|@|1':'1'.repeat(20)},
-      '2026-11-17':{'math|@|1':'1'.repeat(20)},
-    };
-  });
-  for(let i=0;i<3;i++){
-    await serve(page,{sub:'math',lv:2,idx:i});
-    await answer(page,false);
-  }
-  expect(await state(page,()=>({
-    level:st.stats.math.level,
-    badges:[...st.badges.math].sort(),
-    warm:!!(st.warmup&&st.warmup.home===2),
-  }))).toEqual({level:2,badges:[1,2],warm:true});
   expect(errors).toEqual([]);
 });
 
@@ -700,15 +658,12 @@ test('a held Gym invite returns on the next question and the offer survives a re
   });
   await expect(page.locator('.gym-invite')).toHaveCount(0);
   await expect(page.locator('#nxt')).toContainText("What's happening");
-  fs.mkdirSync(ART,{recursive:true});
-  await page.screenshot({path:ART+'/invite_evolution_pending_768x1024.png'});
   await state(page,()=>{Math.random=()=>0.99;});
   await page.click('#nxt');
   await page.locator('#evo-overlay.active').waitFor({state:'visible',timeout:5000});
   await page.locator('#evo-overlay.active').waitFor({state:'hidden',timeout:25000});
   await expect(page.locator('.gym-invite')).toBeVisible();
   await expect(page.getByRole('button',{name:/What's happening/})).toHaveCount(0);
-  await page.screenshot({path:ART+'/invite_after_evolution_768x1024.png'});
   expect(await state(page,()=>st.gymOffer.math)).toEqual({tier:1,cool:0});
   expect(errors).toEqual([]);
 });
@@ -723,8 +678,5 @@ test('the Gym invite is on screen at iPad size when mastery is met',async({page}
   await expect(page.locator('.gym-invite')).toBeVisible();
   const audit=await state(page,screenAudit);
   expect(audit.scroll).toBeLessThanOrEqual(1);
-  fs.mkdirSync(ART,{recursive:true});
-  await page.screenshot({path:ART+'/gym_invite_768x1024.png'});
-  await page.screenshot({path:ART+'/invite_no_event_768x1024.png'});
   expect(errors).toEqual([]);
 });

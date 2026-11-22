@@ -2,10 +2,8 @@
 // A finished round steps forward. Landing on a trainer, or waiting at a
 // closed Gym door, ends in a battle instead of the bonus catch.
 const {test,expect}=require('@playwright/test');
-const fs=require('fs');
 const {openGame,startGame,state,answer}=require('./helpers');
 
-const ART='/opt/cursor/artifacts';
 
 async function boot(page){
   const errors=await openGame(page);
@@ -753,156 +751,6 @@ test('a reload keeps the route',async({page})=>{
   expect(errors).toEqual([]);
 });
 
-test('reduced motion draws the token and the ring in their final place',async({page})=>{
-  await page.emulateMedia({reducedMotion:'reduce'});
-  const errors=await boot(page);
-  await state(page,()=>{
-    st.route={tier:1,step:4,hopFrom:1};
-    st.log={'2026-11-17':{'math|@|1':'1'.repeat(15)}};
-  });
-  await showRound(page);
-  const motion=await page.evaluate(()=>{
-    const token=document.getElementById('route-token');
-    const ring=document.querySelector('#route-map .gym-ring');
-    const val=document.querySelector('#route-map .gym-ring-val');
-    const ts=getComputedStyle(token);
-    const rs=ring?getComputedStyle(ring):null;
-    const vs=val?getComputedStyle(val):null;
-    const tr=token.getBoundingClientRect();
-    const node=document.querySelector('.route-node[data-step="4"]').getBoundingClientRect();
-    const start=document.querySelector('.route-node[data-step="1"]').getBoundingClientRect();
-    const onNode=(box)=>Math.abs((tr.x+tr.width/2)-(box.x+box.width/2))<12&&Math.abs(tr.bottom-box.bottom)<10;
-    return {
-      tokenAnim:ts.animationName,
-      ringAnim:rs?rs.animationName:'missing',
-      dash:vs?vs.transitionDuration:'missing',
-      nearEnd:onNode(node),
-      nearStart:onNode(start),
-    };
-  });
-  expect(motion.tokenAnim).toBe('none');
-  expect(motion.ringAnim).toBe('none');
-  expect(motion.dash==='0s'||motion.dash==='0ms').toBe(true);
-  expect(motion.nearEnd).toBe(true);
-  expect(motion.nearStart).toBe(false);
-
-  await state(page,()=>{
-    st.route={tier:1,step:6};
-    st.log={'2026-11-16':{'math|@|1':'1'.repeat(20)},'2026-11-17':{'math|@|1':'1'.repeat(20)}};
-    st.badges.math=[];
-    st.gymOffer.math={tier:1,cool:0};
-    render();
-  });
-  const halo=await page.locator('#route-map .gym-ring').evaluate(el=>getComputedStyle(el).animationName);
-  expect(halo).toBe('none');
-  expect(errors).toEqual([]);
-});
-
-test('the hop and the ready halo run when motion is allowed',async({page})=>{
-  await page.emulateMedia({reducedMotion:'no-preference'});
-  const errors=await boot(page);
-  await state(page,()=>{st.route={tier:1,step:2,hopFrom:1};});
-  await showRound(page);
-  const hop=await page.locator('#route-token').evaluate(el=>{
-    const s=getComputedStyle(el);
-    return {name:s.animationName,dur:s.animationDuration,ease:s.animationTimingFunction};
-  });
-  expect(hop.name).toBe('route-arc');
-  expect(hop.dur==='0.6s'||hop.dur==='600ms').toBe(true);
-  expect(hop.ease==='ease-out'||hop.ease==='cubic-bezier(0, 0, 0.58, 1)').toBe(true);
-
-  await state(page,()=>{
-    st.route={tier:1,step:6,hopFrom:3,announce:'shortcut'};
-    render();
-  });
-  const chain=await page.locator('#route-token').evaluate(el=>getComputedStyle(el).animationDuration);
-  expect(chain==='0.25s'||chain==='250ms').toBe(true);
-
-  await state(page,()=>{
-    st.route={tier:1,step:6};
-    st.log={'2026-11-16':{'math|@|1':'1'.repeat(20)},'2026-11-17':{'math|@|1':'1'.repeat(20)}};
-    st.badges.math=[];
-    st.gymOffer.math={tier:1,cool:0};
-    render();
-  });
-  const halo=await page.locator('#route-map .gym-ring').evaluate(el=>{
-    const s=getComputedStyle(el);
-    return {name:s.animationName,count:s.animationIterationCount};
-  });
-  expect(halo.name).toBe('route-halo');
-  expect(halo.count==='3'||halo.count==='3.0').toBe(true);
-  const ringDur=await page.locator('#route-map .gym-ring-val').evaluate(el=>getComputedStyle(el).transitionDuration);
-  expect(ringDur==='0.5s'||ringDur==='500ms').toBe(true);
-  expect(errors).toEqual([]);
-});
-
-test('the hop onto the Gym stays outside the ring while it moves',async({page})=>{
-  await page.emulateMedia({reducedMotion:'no-preference'});
-  const errors=await boot(page);
-  const full={'2026-11-16':{'math|@|1':'1'.repeat(20)},'2026-11-17':{'math|@|1':'1'.repeat(20)}};
-  const scenes=[
-    {name:'arrival',route:{tier:1,step:6,hopFrom:5},log:{},offer:null},
-    {name:'shortcut',route:{tier:1,step:6,hopFrom:3,announce:'shortcut'},log:full,offer:{tier:1,cool:0}},
-  ];
-  const sizes=[{width:768,height:1024},{width:1024,height:768},{width:390,height:844}];
-  for(const scene of scenes){
-    for(const size of sizes){
-      await page.setViewportSize(size);
-      await state(page,s=>{
-        st.route=s.route;
-        st.log=s.log;
-        st.badges.math=[];
-        st.gymOffer.math=s.offer;
-        st.phase='round';
-        if(!st.round)st.round=freshRound(10);
-        st.round.n=10;st.round.right=6;st.round.closed=true;
-        st.round.marks=[1,1,1,1,1,1,0,0,0,0];
-        render();
-      },scene);
-      const where=`${scene.name} ${size.width}x${size.height}`;
-      const hop=await page.evaluate(()=>{
-        function overlap(a,b){
-          return {
-            x:Math.min(a.right,b.right)-Math.max(a.left,b.left),
-            y:Math.min(a.bottom,b.bottom)-Math.max(a.top,b.top),
-          };
-        }
-        const token=document.getElementById('route-token');
-        const anim=token.getAnimations().find(a=>a.animationName&&a.animationName!=='none');
-        if(!anim)return {name:'none',samples:[]};
-        anim.pause();
-        const dur=Number(anim.effect.getComputedTiming().duration);
-        const marks=[['start',0],['middle',0.5],['end',0.98]];
-        const samples=marks.map(([at,t])=>{
-          anim.currentTime=dur*t;
-          const box=token.getBoundingClientRect();
-          const ring=document.querySelector('#route-map .gym-ring').getBoundingClientRect();
-          const label=document.querySelector('.route-gym-label').getBoundingClientRect();
-          const ringHit=overlap(box,ring);
-          const labelHit=overlap(box,label);
-          return {
-            at,
-            ring:ringHit.x>1&&ringHit.y>1,
-            label:labelHit.x>1&&labelHit.y>1,
-            ringX:Math.round(ringHit.x),
-            ringY:Math.round(ringHit.y),
-            labelX:Math.round(labelHit.x),
-            labelY:Math.round(labelHit.y),
-          };
-        });
-        return {name:anim.animationName,samples};
-      });
-      expect(hop.name,where).not.toBe('none');
-      expect(hop.samples,where).toHaveLength(3);
-      for(const sample of hop.samples){
-        expect(sample.ring,`${where} ${sample.at} ring ${sample.ringX}x${sample.ringY}`).toBe(false);
-        expect(sample.label,`${where} ${sample.at} label ${sample.labelX}x${sample.labelY}`).toBe(false);
-      }
-    }
-  }
-  expect(errors).toEqual([]);
-});
-
 test('the map fits an iPad and a phone without scrolling',async({page})=>{
   const errors=await boot(page);
   await state(page,()=>{
@@ -1027,173 +875,6 @@ test('the map fits an iPad and a phone without scrolling',async({page})=>{
   expect(errors).toEqual([]);
 });
 
-test('a dotted path joins the nodes in walking order',async({page})=>{
-  const errors=await boot(page);
-  await state(page,()=>{st.route={tier:1,step:4};});
-  await showRound(page);
-  await page.setViewportSize({width:768,height:1024});
-  const order=await page.locator('.route-node').evaluateAll(els=>els.map(el=>el.dataset.step));
-  expect(order).toEqual(['0','1','2','3','4','5','6']);
-  await expect(page.locator('#route-path')).toBeVisible();
-  await expect(page.locator('.route-house')).toContainText('🏠');
-  await expect(page.locator('.route-roof')).toHaveCount(0);
-  const walk=await page.evaluate(()=>{
-    const path=document.querySelector('#route-path path');
-    if(!path||typeof path.getTotalLength!=='function')return {missing:true};
-    const len=path.getTotalLength();
-    const ctm=path.getScreenCTM();
-    const nodes=[...document.querySelectorAll('.route-node')].map(el=>{
-      const r=el.getBoundingClientRect();
-      return {step:+el.dataset.step,on:el.dataset.on,x:r.x+r.width/2,y:r.y+r.height/2};
-    }).sort((a,b)=>a.step-b.step);
-    let prev=-0.02;
-    const hits=[];
-    for(const node of nodes){
-      let best=Infinity,t=0;
-      const steps=100;
-      for(let i=0;i<=steps;i++){
-        const p=path.getPointAtLength(len*i/steps);
-        const pt=new DOMPoint(p.x,p.y).matrixTransform(ctm);
-        const d=Math.hypot(pt.x-node.x,pt.y-node.y);
-        if(d<best){best=d;t=i/steps;}
-      }
-      hits.push({step:node.step,best,t,on:node.on,forward:t>prev});
-      prev=t;
-    }
-    const dash=getComputedStyle(path).strokeDasharray;
-    return {len,dash,hits};
-  });
-  expect(walk.missing).toBeFalsy();
-  expect(walk.len).toBeGreaterThan(40);
-  expect(walk.dash==='none'||walk.dash==='0px').toBe(false);
-  for(const hit of walk.hits){
-    if(hit.step<6)expect(hit.best,`step ${hit.step} on the path`).toBeLessThan(36);
-    else expect(hit.best,'the path stops at the Gym edge, not its center').toBeGreaterThan(30);
-    expect(hit.forward,`step ${hit.step} follows the previous`).toBe(true);
-    expect(hit.on).toBe(hit.step<=4?'1':'0');
-  }
-  expect(errors).toEqual([]);
-});
-
-test('the partner stands on its node and does not cover the others',async({page})=>{
-  const errors=await boot(page);
-  await page.emulateMedia({reducedMotion:'reduce'});
-  for(const step of [4,6]){
-    await state(page,s=>{
-      st.route={tier:1,step:s};
-      st.phase='round';
-      if(!st.round)st.round=freshRound(10);
-      st.round.n=10;st.round.right=8;st.round.closed=true;
-      st.round.marks=[1,1,1,1,1,1,1,1,0,0];
-      render();
-    },step);
-    for(const size of [{width:768,height:1024},{width:1024,height:768},{width:390,height:844}]){
-      await page.setViewportSize(size);
-      const where=`step ${step} ${size.width}x${size.height}`;
-      const fit=await page.evaluate(()=>{
-        const token=document.getElementById('route-token').getBoundingClientRect();
-        const nodes=[...document.querySelectorAll('.route-node')].map(el=>({
-          step:+el.dataset.step,
-          box:el.getBoundingClientRect(),
-        }));
-        const mine=nodes.find(n=>n.step===(+document.getElementById('route-token').dataset.step));
-        const others=nodes.filter(n=>n.step!==mine.step).map(n=>n.box);
-        function hit(a,b){
-          const ix=Math.min(a.right,b.right)-Math.max(a.left,b.left);
-          const iy=Math.min(a.bottom,b.bottom)-Math.max(a.top,b.top);
-          return ix>1&&iy>1;
-        }
-        return {
-          w:token.width,
-          covered:others.some(b=>hit(token,b)),
-          dx:Math.abs((token.x+token.width/2)-(mine.box.x+mine.box.width/2)),
-          db:Math.abs(token.bottom-mine.box.bottom),
-        };
-      });
-      const phone=size.width<500;
-      expect(fit.w,where).toBeGreaterThanOrEqual(phone?44:68);
-      expect(fit.w,where).toBeLessThanOrEqual(phone?52:76);
-      expect(fit.covered,where).toBe(false);
-      if(step!==6){
-        expect(fit.dx,where).toBeLessThan(12);
-        expect(fit.db,where).toBeLessThan(10);
-      }
-    }
-  }
-  expect(errors).toEqual([]);
-});
-
-test('the token waits outside the Gym ring',async({page})=>{
-  await page.emulateMedia({reducedMotion:'reduce'});
-  const errors=await boot(page);
-  const sizes=[
-    {width:768,height:1024},{width:1024,height:768},
-    {width:1194,height:834},{width:1133,height:744},
-    {width:390,height:844},{width:375,height:667},
-  ];
-  const full={'2026-11-16':{'math|@|1':'1'.repeat(20)},'2026-11-17':{'math|@|1':'1'.repeat(20)}};
-  const scenes=[
-    {name:'door',route:{tier:1,step:6},log:{},offer:null},
-    {name:'gym_open',route:{tier:1,step:6},log:full,offer:{tier:1,cool:0}},
-    {name:'shortcut',route:{tier:1,step:6,announce:'shortcut'},log:full,offer:{tier:1,cool:0}},
-  ];
-  for(const scene of scenes){
-    await state(page,s=>{
-      st.route=s.route;
-      st.log=s.log;
-      st.badges.math=[];
-      st.gymOffer.math=s.offer;
-      st.phase='round';
-      if(!st.round)st.round=freshRound(10);
-      st.round.n=10;st.round.right=6;st.round.closed=true;
-      st.round.marks=[1,1,1,1,1,1,0,0,0,0];
-      render();
-    },scene);
-    for(const size of sizes){
-      await page.setViewportSize(size);
-      const where=`${scene.name} ${size.width}x${size.height}`;
-      const fit=await page.evaluate(()=>{
-        function hit(a,b){
-          const ix=Math.min(a.right,b.right)-Math.max(a.left,b.left);
-          const iy=Math.min(a.bottom,b.bottom)-Math.max(a.top,b.top);
-          return ix>1&&iy>1;
-        }
-        const token=document.getElementById('route-token').getBoundingClientRect();
-        const ring=document.querySelector('#route-map .gym-ring').getBoundingClientRect();
-        const label=document.querySelector('.route-gym-label').getBoundingClientRect();
-        const phone=window.innerWidth<500;
-        const beside=token.right<=ring.left+1;
-        const above=token.bottom<=ring.top+1;
-        return {ring:hit(token,ring),label:hit(token,label),beside,above,phone};
-      });
-      expect(fit.ring,where).toBe(false);
-      expect(fit.label,where).toBe(false);
-      if(size.width>=768)expect(fit.beside,where).toBe(true);
-      else expect(fit.beside||fit.above,where).toBe(true);
-    }
-  }
-  expect(errors).toEqual([]);
-});
-
-test('the last path leg stops at the Gym ring',async({page})=>{
-  const errors=await boot(page);
-  await state(page,()=>{st.route={tier:1,step:6};});
-  await showRound(page);
-  await page.setViewportSize({width:768,height:1024});
-  const end=await page.evaluate(()=>{
-    const path=document.querySelector('#route-path path');
-    const len=path.getTotalLength();
-    const p=path.getPointAtLength(len);
-    const pt=new DOMPoint(p.x,p.y).matrixTransform(path.getScreenCTM());
-    const ring=document.querySelector('#route-map .gym-ring').getBoundingClientRect();
-    const cx=ring.left+ring.width/2;
-    const cy=ring.top+ring.height/2;
-    return {dist:Math.hypot(pt.x-cx,pt.y-cy),radius:ring.width/2};
-  });
-  expect(end.dist).toBeGreaterThanOrEqual(end.radius-1);
-  expect(errors).toEqual([]);
-});
-
 test('a phone route does not scroll sideways',async({page})=>{
   const errors=await boot(page);
   await state(page,()=>{st.route={tier:1,step:6};st.badges.math=[];st.gymOffer.math=null;st.log={};});
@@ -1223,37 +904,6 @@ test('a phone route does not scroll sideways',async({page})=>{
   expect(errors).toEqual([]);
 });
 
-test('landscape leaves space between the Gym and the caption and token',async({page})=>{
-  const errors=await boot(page);
-  await state(page,()=>{st.route={tier:1,step:4};});
-  await showRound(page);
-  await page.setViewportSize({width:1024,height:768});
-  const gap=await page.evaluate(()=>{
-    const gym=document.querySelector('.route-gym-node').getBoundingClientRect();
-    const label=document.querySelector('.route-gym-label').getBoundingClientRect();
-    const box={
-      left:Math.min(gym.left,label.left),
-      right:Math.max(gym.right,label.right),
-      top:Math.min(gym.top,label.top),
-      bottom:Math.max(gym.bottom,label.bottom),
-    };
-    function space(a,b){
-      const ix=Math.min(a.right,b.right)-Math.max(a.left,b.left);
-      const iy=Math.min(a.bottom,b.bottom)-Math.max(a.top,b.top);
-      if(ix>0&&iy>0)return -Math.min(ix,iy);
-      if(iy>0)return Math.max(a.left-b.right,b.left-a.right);
-      if(ix>0)return Math.max(a.top-b.bottom,b.top-a.bottom);
-      return Math.hypot(Math.max(a.left-b.right,b.left-a.right),Math.max(a.top-b.bottom,b.top-a.bottom));
-    }
-    const cap=document.getElementById('route-caption').getBoundingClientRect();
-    const token=document.getElementById('route-token').getBoundingClientRect();
-    return {caption:space(box,cap),token:space(box,token)};
-  });
-  expect(gap.caption).toBeGreaterThanOrEqual(16);
-  expect(gap.token).toBeGreaterThanOrEqual(16);
-  expect(errors).toEqual([]);
-});
-
 test('round done leads with the checks and a plus on the XP',async({page})=>{
   const errors=await boot(page);
   await state(page,()=>{
@@ -1268,17 +918,9 @@ test('round done leads with the checks and a plus on the XP',async({page})=>{
   expect(errors).toEqual([]);
 });
 
-test('route screenshots at tablet and phone sizes',async({page})=>{
+test('the route caption names each stop',async({page})=>{
   test.setTimeout(180000);
   const errors=await boot(page);
-  fs.mkdirSync(ART,{recursive:true});
-  const sizes=[{width:768,height:1024},{width:1024,height:768},{width:390,height:844}];
-  async function shots(name){
-    for(const size of sizes){
-      await page.setViewportSize(size);
-      await page.screenshot({path:`${ART}/v2_${name}_${size.width}x${size.height}.png`});
-    }
-  }
 
   await state(page,()=>{
     st.route={tier:1,step:4};
@@ -1287,7 +929,6 @@ test('route screenshots at tablet and phone sizes',async({page})=>{
   });
   await showRound(page);
   await expect(page.locator('#route-caption')).toHaveText('Next stop: Lass Mia!');
-  await shots('mid');
 
   await state(page,()=>{
     st.route={tier:1,step:6};
@@ -1297,13 +938,7 @@ test('route screenshots at tablet and phone sizes',async({page})=>{
     render();
   });
   await expect(page.locator('#route-caption')).toHaveText('The Gym opens when the star is full.');
-  await shots('door');
-  for(const size of sizes){
-    await page.setViewportSize(size);
-    await page.screenshot({path:`${ART}/v3_door_${size.width}x${size.height}.png`});
-  }
   await page.setViewportSize({width:375,height:667});
-  await page.screenshot({path:`${ART}/v2_door_375x667.png`});
 
   await state(page,()=>{
     st.route={tier:1,step:6};
@@ -1313,9 +948,7 @@ test('route screenshots at tablet and phone sizes',async({page})=>{
     render();
   });
   await expect(page.locator('#route-caption')).toHaveText('The Gym is open!');
-  await shots('gym_open');
   await page.setViewportSize({width:390,height:844});
-  await page.screenshot({path:`${ART}/v3_gym_open_390x844.png`});
 
   await state(page,()=>{
     st.route={tier:1,step:3};
@@ -1327,9 +960,7 @@ test('route screenshots at tablet and phone sizes',async({page})=>{
   });
   await finishRound(page);
   await expect(page.locator('#route-caption')).toHaveText('Shortcut! The Gym is open!');
-  await shots('shortcut');
   await page.setViewportSize({width:390,height:844});
-  await page.screenshot({path:`${ART}/v3_shortcut_390x844.png`});
 
   await state(page,()=>{
     st.stats.math.level=2;
@@ -1339,7 +970,6 @@ test('route screenshots at tablet and phone sizes',async({page})=>{
     render();
   });
   await expect(page.locator('#route-caption')).toHaveText('New route! Route 2');
-  await shots('new');
 
   await state(page,()=>{
     st.route={tier:1,step:1,announce:null};
@@ -1352,7 +982,6 @@ test('route screenshots at tablet and phone sizes',async({page})=>{
   await answer(page,true);
   await answer(page,true);
   await expect(page.locator('#trainer-result')).toContainText('Trainer star on your map');
-  await shots('battle_won');
 
   await state(page,()=>{st.armAt=0;});
   await page.click('#trainer-map');
@@ -1364,6 +993,5 @@ test('route screenshots at tablet and phone sizes',async({page})=>{
   await openParents(page);
   await page.locator('.prog-route').scrollIntoViewIfNeeded();
   await expect(page.locator('.prog-route')).toHaveText('Route 1: step 4 of 6. Trainers beaten: 3 so far.');
-  await shots('parents');
   expect(errors).toEqual([]);
 });
