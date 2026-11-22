@@ -168,6 +168,7 @@ test('reset still opens that chooser, and both taps call the same reveal',async(
   expect(addCard).toBe(resetCard);
   await state(page,()=>{window.__calls=[];});
   await page.click('#pick-1');
+  await page.click('#welcome-go');
   await expect(page.locator('.qtext')).toBeVisible();
   const addCalls=await state(page,()=>window.__calls.filter(n=>n!=='render'));
   expect(addCalls).toEqual(['choosePickedStarter','playStarterReveal']);
@@ -190,6 +191,7 @@ test('a tap plays the reveal, then the first question, with the typed name',asyn
   expect(offered).toBe(0);
   await expect(page.locator('.shiny-fanfare')).toBeVisible({timeout:12000});
   await expect(page.locator('#pick-label')).toContainText('is your Pokémon');
+  await page.click('#welcome-go');
   await expect(page.locator('.qtext')).toBeVisible({timeout:15000});
   await expect(page.locator('#who-btn')).toContainText('Maya');
   const got=await state(page,()=>({
@@ -329,6 +331,7 @@ test('two kids can share a starter, including Surprise me',async({page})=>{
     orig;
   });
   await page.click('#pick-random');
+  await page.click('#welcome-go');
   await expect(page.locator('.qtext')).toBeVisible();
   expect(await state(page,()=>window.__line)).toBe(0);
   expect(await state(page,()=>PKM[st.team[0].pi].n)).toBe('Bulbasaur');
