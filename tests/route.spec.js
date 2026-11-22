@@ -358,7 +358,7 @@ test('a got-away screen also offers See your map',async({page})=>{
   expect(errors).toEqual([]);
 });
 
-test('the Gym node uses the same ring fill as the question',async({page})=>{
+test('the Gym node shows partial progress toward mastery',async({page})=>{
   const errors=await boot(page);
   await state(page,()=>{
     st.stats.math.level=1;
@@ -367,12 +367,10 @@ test('the Gym node uses the same ring fill as the question',async({page})=>{
     st.route={tier:1,step:3};
     loadQuestion();
   });
-  await expect(page.locator('.mon-strip .gym-ring')).toBeVisible();
-  const fill=await page.locator('.mon-strip .gym-ring').getAttribute('data-fill');
-  expect(fill).not.toBe('0.000');
-  expect(fill).not.toBe('1.000');
+  await expect(page.locator('.mon-strip .gym-ring')).toHaveCount(0);
   await showRound(page);
-  await expect(page.locator('#route-map .gym-ring')).toHaveAttribute('data-fill',fill);
+  await expect(page.locator('#route-map .gym-ring')).toHaveAttribute('data-fill','0.500');
+  await expect(page.locator('#route-map .gym-ring')).toHaveAttribute('data-state','partial');
   expect(errors).toEqual([]);
 });
 
@@ -1222,53 +1220,6 @@ test('a phone route does not scroll sideways',async({page})=>{
     expect(fit.capR,where).toBeLessThanOrEqual(fit.inner+1);
     expect(fit.vscroll,where).toBeLessThanOrEqual(4);
   }
-  expect(errors).toEqual([]);
-});
-
-test('a partly filled Gym ring matches the ring in the question',async({page})=>{
-  const errors=await boot(page);
-  await state(page,()=>{
-    st.stats.math.level=1;
-    st.badges.math=[];
-    st.log={'2026-11-17':{'math|@|1':'1'.repeat(15)}};
-    st.route={tier:1,step:4};
-    loadQuestion();
-  });
-  const live=await page.locator('.mon-strip .gym-ring').evaluate(el=>{
-    const val=el.querySelector('.gym-ring-val');
-    const s=getComputedStyle(val);
-    return {
-      fill:el.getAttribute('data-fill'),
-      state:el.getAttribute('data-state'),
-      stroke:s.stroke,
-      display:s.display,
-      dash:s.strokeDasharray,
-    };
-  });
-  expect(live.fill).toBe('0.500');
-  expect(live.state).toBe('partial');
-  await showRound(page);
-  const map=await page.locator('#route-map .gym-ring').evaluate(el=>{
-    const val=el.querySelector('.gym-ring-val');
-    const s=getComputedStyle(val);
-    const node=el.closest('.route-node');
-    return {
-      fill:el.getAttribute('data-fill'),
-      state:el.getAttribute('data-state'),
-      stroke:s.stroke,
-      display:s.display,
-      dash:s.strokeDasharray,
-      opacity:getComputedStyle(node).opacity,
-    };
-  });
-  expect(map).toEqual({
-    fill:live.fill,
-    state:'partial',
-    stroke:live.stroke,
-    display:live.display,
-    dash:live.dash,
-    opacity:'1',
-  });
   expect(errors).toEqual([]);
 });
 

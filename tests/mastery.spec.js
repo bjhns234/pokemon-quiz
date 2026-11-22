@@ -523,81 +523,6 @@ function screenAudit(){
   };
 }
 
-test('the ring sits by the level, and the question screen still fits',async({page})=>{
-  const errors=await boot(page);
-  await state(page,()=>{st.stats.math.level=1;st.badges.math=[];st.gymOffer.math=null;});
-  await drill(page,{n:15,lv:1});
-  await nextQuestion(page);
-  const ring=page.locator('.gym-ring');
-  await expect(ring).toBeVisible();
-  const box=await ring.evaluate(el=>{
-    const r=el.getBoundingClientRect();
-    const s=getComputedStyle(el);
-    el.focus();
-    return {
-      tag:el.tagName,tab:el.tabIndex,pe:s.pointerEvents,w:r.width,h:r.height,
-      label:el.getAttribute('aria-label'),focused:document.activeElement===el,
-    };
-  });
-  expect(box.tag).toBe('SPAN');
-  expect(box.tab).toBeLessThan(0);
-  expect(box.focused).toBe(false);
-  expect(box.pe).toBe('none');
-  expect(box.label).toBe('Gym badge: getting closer.');
-  expect(box.w).toBeGreaterThan(31);
-  expect(box.w).toBeLessThan(33);
-  expect(box.h).toBeGreaterThan(31);
-  expect(box.h).toBeLessThan(33);
-  await expect(page.getByRole('img',{name:'Gym badge: getting closer.'})).toBeVisible();
-  const fill=Number(await ring.getAttribute('data-fill'));
-  expect(fill).toBeGreaterThan(0.45);
-  expect(fill).toBeLessThan(0.55);
-
-  fs.mkdirSync(ART,{recursive:true});
-  const shots=[
-    {width:768,height:1024,name:'question_ring_768x1024.png',hero:true},
-    {width:1024,height:768,name:'question_ring_1024x768.png',hero:false},
-    {width:390,height:844,name:'question_ring_390x844.png',hero:false},
-  ];
-  for(const size of shots){
-    await page.setViewportSize({width:size.width,height:size.height});
-    await state(page,()=>{render();document.getElementById('app-main').scrollTop=0;window.scrollTo(0,0);});
-    const audit=await state(page,screenAudit);
-    expect(audit.scroll,`${size.width}x${size.height} scrolls`).toBeLessThanOrEqual(1);
-    expect(audit.short,`${size.width} tap targets`).toEqual([]);
-    expect(audit.small,`${size.width} text`).toEqual([]);
-    expect(audit.label).toBe('Gym badge: getting closer.');
-    if(size.hero){
-      expect(audit.hero,'tablet hero').toBeGreaterThan(198);
-      expect(audit.hero,'tablet hero').toBeLessThan(202);
-    }
-    await page.screenshot({path:ART+'/'+size.name});
-  }
-
-  await state(page,()=>{st.stats.math.level=4;render();});
-  await expect(page.locator('.gym-ring')).toHaveCount(0);
-  expect(errors).toEqual([]);
-});
-
-test('the ring glows once when the invite appears, and Reduce Motion stays still',async({page})=>{
-  await page.emulateMedia({reducedMotion:'reduce'});
-  const errors=await boot(page);
-  await state(page,()=>{st.stats.math.level=1;st.badges.math=[];st.gymOffer.math=null;});
-  await drill(page,{n:25,lv:1});
-  await page.clock.setSystemTime(DAY2);
-  await drill(page,{n:5,lv:1,start:25});
-  await expect(page.locator('.gym-invite')).toBeVisible();
-  const glow=page.locator('.gym-ring.glow');
-  await expect(glow).toHaveCount(1);
-  const anim=await glow.evaluate(el=>getComputedStyle(el).animationName);
-  expect(anim).toBe('none');
-  await state(page,()=>render());
-  await expect(page.locator('.gym-ring.glow')).toHaveCount(0);
-  await expect(page.locator('.gym-ring')).toBeVisible();
-  await expect(page.locator('.gym-invite')).toBeVisible();
-  expect(errors).toEqual([]);
-});
-
 test('results inside the last 40 survive a 14-day prune and still open the gate',async({page})=>{
   const errors=await boot(page);
   const snap=await state(page,()=>{
@@ -707,17 +632,6 @@ test('a Rematch miss does not count toward a warm-up',async({page})=>{
   expect(errors).toEqual([]);
 });
 
-test('the Switch button name includes the Gym ring',async({page})=>{
-  const errors=await boot(page);
-  await state(page,()=>{
-    st.team.push({pi:LINES[1][0],level:5,xp:0,shiny:false});
-    st.stats.math.level=1;
-    render();
-  });
-  await expect(page.locator('#mon-switch')).toHaveAttribute('aria-label','Switch Pokémon. Gym badge: getting closer.');
-  expect(errors).toEqual([]);
-});
-
 test('a pending evolution or level-up holds the Gym invite until the event is gone',async({page})=>{
   const errors=await boot(page);
   await state(page,()=>{
@@ -775,7 +689,6 @@ test('a held Gym invite returns on the next question and the offer survives a re
   await page.reload();
   expect(await state(page,()=>st.gymOffer)).toEqual(before);
   expect(await state(page,()=>Object.keys(st.gymOffer).filter(k=>st.gymOffer[k]).length)).toBe(1);
-  await expect(page.locator('.gym-ring')).toHaveAttribute('data-state','full');
 
   await state(page,()=>{
     st.cor=true;
@@ -787,8 +700,6 @@ test('a held Gym invite returns on the next question and the offer survives a re
   });
   await expect(page.locator('.gym-invite')).toHaveCount(0);
   await expect(page.locator('#nxt')).toContainText("What's happening");
-  await expect(page.locator('.gym-ring')).toHaveAttribute('data-state','full');
-  await expect(page.locator('.gym-ring-solid')).toBeVisible();
   fs.mkdirSync(ART,{recursive:true});
   await page.screenshot({path:ART+'/invite_evolution_pending_768x1024.png'});
   await state(page,()=>{Math.random=()=>0.99;});
@@ -796,88 +707,9 @@ test('a held Gym invite returns on the next question and the offer survives a re
   await page.locator('#evo-overlay.active').waitFor({state:'visible',timeout:5000});
   await page.locator('#evo-overlay.active').waitFor({state:'hidden',timeout:25000});
   await expect(page.locator('.gym-invite')).toBeVisible();
-  await expect(page.locator('.gym-ring')).toHaveAttribute('data-state','full');
-  await expect(page.locator('.gym-ring-solid')).toBeVisible();
   await expect(page.getByRole('button',{name:/What's happening/})).toHaveCount(0);
   await page.screenshot({path:ART+'/invite_after_evolution_768x1024.png'});
   expect(await state(page,()=>st.gymOffer.math)).toEqual({tier:1,cool:0});
-  expect(errors).toEqual([]);
-});
-
-test('the ring is 32px on a tablet, 24px on a phone, and full is not just a longer arc',async({page})=>{
-  const errors=await boot(page);
-  await page.setViewportSize({width:768,height:1024});
-  await state(page,()=>{st.stats.math.level=1;st.log={};st.gymOffer.math=null;render();});
-  const empty=page.locator('.gym-ring');
-  await expect(empty).toHaveAttribute('data-state','empty');
-  fs.mkdirSync(ART,{recursive:true});
-  await empty.screenshot({path:ART+'/ring_empty_768x1024.png'});
-  const emptyBox=await empty.boundingBox();
-  expect(emptyBox.width).toBeGreaterThan(31);
-  expect(emptyBox.width).toBeLessThan(33);
-  expect(emptyBox.height).toBeGreaterThan(31);
-  expect(emptyBox.height).toBeLessThan(33);
-
-  await state(page,()=>{
-    st.log={'2026-11-17':{'math|@|1':'1'.repeat(15)}};
-    render();
-  });
-  await expect(page.locator('.gym-ring')).toHaveAttribute('data-state','partial');
-  await expect(page.locator('.gym-ring-solid')).toBeHidden();
-  await page.locator('.gym-ring').screenshot({path:ART+'/ring_partial_768x1024.png'});
-
-  await state(page,()=>{
-    st.log['2026-11-16']={'math|@|1':'1'.repeat(15)};
-    render();
-  });
-  const full=page.locator('.gym-ring');
-  await expect(full).toHaveAttribute('data-state','full');
-  await expect(page.locator('.gym-ring-solid')).toBeVisible();
-  await expect(page.locator('.gym-ring-val')).toBeHidden();
-  await expect(page.locator('.gym-ring-mark')).toBeVisible();
-  await expect(page.locator('.gym-ring-badge')).toHaveCount(0);
-  await full.screenshot({path:ART+'/ring_full_768x1024.png'});
-  const focus=await full.evaluate(el=>{
-    el.focus();
-    return {tab:el.tabIndex,focused:document.activeElement===el,label:el.getAttribute('aria-label')};
-  });
-  expect(focus.tab).toBeLessThan(0);
-  expect(focus.focused).toBe(false);
-  expect(focus.label).toBe('Gym badge: getting closer.');
-
-  await page.setViewportSize({width:1024,height:768});
-  const land=await page.locator('.gym-ring').boundingBox();
-  await page.locator('.gym-ring').screenshot({path:ART+'/ring_1024x768.png'});
-  expect(land.width).toBeGreaterThan(31);
-  expect(land.width).toBeLessThan(33);
-
-  await page.setViewportSize({width:390,height:844});
-  const phone=await page.locator('.gym-ring').boundingBox();
-  await page.locator('.gym-ring').screenshot({path:ART+'/ring_390x844.png'});
-  expect(phone.width).toBeGreaterThan(23.5);
-  expect(phone.width).toBeLessThan(24.5);
-  expect(phone.height).toBeGreaterThan(23.5);
-  expect(phone.height).toBeLessThan(24.5);
-
-  await page.setViewportSize({width:768,height:1024});
-  const hero=await page.locator('#game .mon-strip img').evaluate(el=>el.getBoundingClientRect().height);
-  expect(hero).toBeGreaterThan(198);
-  expect(hero).toBeLessThan(202);
-  await state(page,()=>{st.anim='bk';render();});
-  const clear=await state(page,()=>{
-    const pic=document.querySelector('#game .mon-strip .psvg').getBoundingClientRect();
-    const name=document.querySelector('#game .mon-strip .pname').getBoundingClientRect();
-    const pill=document.querySelector('.lvl-badge').getBoundingClientRect();
-    const ring=document.querySelector('.gym-ring').getBoundingClientRect();
-    const overlap=!(ring.right<pill.left||ring.left>pill.right||ring.bottom<pill.top||ring.top>pill.bottom);
-    return {nameTop:name.top,picBottom:pic.bottom,overlap,overflow:getComputedStyle(document.querySelector('#game .mon-strip .psvg')).overflow};
-  });
-  expect(clear.nameTop).toBeGreaterThanOrEqual(clear.picBottom-1);
-  expect(clear.overlap).toBe(false);
-  expect(clear.overflow).toBe('hidden');
-  await page.emulateMedia({reducedMotion:'reduce'});
-  await state(page,()=>{st.anim='bk';render();});
-  await page.locator('#game .mon-strip').screenshot({path:ART+'/ring_reduce_motion_768x1024.png'});
   expect(errors).toEqual([]);
 });
 
@@ -889,7 +721,6 @@ test('the Gym invite is on screen at iPad size when mastery is met',async({page}
   await drill(page,{n:5,lv:1,start:25});
   await page.setViewportSize({width:768,height:1024});
   await expect(page.locator('.gym-invite')).toBeVisible();
-  await expect(page.locator('.gym-ring')).toBeVisible();
   const audit=await state(page,screenAudit);
   expect(audit.scroll).toBeLessThanOrEqual(1);
   fs.mkdirSync(ART,{recursive:true});

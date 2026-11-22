@@ -82,11 +82,13 @@ test('three current-tier misses start a warm-up and the level stays',async({page
   await expect(page.locator('.warmup-say')).toContainText(name);
   await expect(page.locator('.warmup-tag')).toHaveText('Warm-up');
   await expect(page.locator('.streak-pill')).toHaveCount(0);
+  // Easier questions, same grade: the pill does not drop with the warm-up.
+  await expect(page.locator('#grade-pill')).toHaveText(/1st grade/);
   const card=await page.locator('.qcard').innerText();
   expect(card).not.toMatch(/level down|dropped|too hard/i);
   const dealt=await state(page,()=>({lv:st.q.tmpl.lv,warm:!!st.q.warmup,level:st.stats.math.level}));
   expect(dealt).toEqual({lv:1,warm:true,level:2});
-  const fill=await page.locator('.gym-ring').getAttribute('data-fill');
+  const fill=await state(page,()=>ringFill(mathGate()).toFixed(3));
   expect(fill).toBe(before.fill===null?fill:before.fill);
   expect(errors).toEqual([]);
 });
@@ -95,7 +97,7 @@ test('the warm-up returns to the same level after 3 questions',async({page})=>{
   const errors=await boot(page);
   for(let i=0;i<3;i++)await missTier(page,2,i);
   const logBefore=await state(page,()=>JSON.stringify(st.log));
-  const fillBefore=await (async()=>{await nextQuestion(page);return page.locator('.gym-ring').getAttribute('data-fill');})();
+  const fillBefore=await (async()=>{await nextQuestion(page);return state(page,()=>ringFill(mathGate()).toFixed(3));})();
   await state(page,()=>{Math.random=()=>0.99;});
   for(let i=0;i<3;i++){
     expect(await state(page,()=>!!st.q.warmup)).toBe(true);
@@ -111,7 +113,7 @@ test('the warm-up returns to the same level after 3 questions',async({page})=>{
     lv:st.q.tmpl.lv,
     warm:!!st.q.warmup,
     pending:st.warmup||null,
-    fill:document.querySelector('.gym-ring').getAttribute('data-fill'),
+    fill:ringFill(mathGate()).toFixed(3),
   }));
   expect(back.level).toBe(2);
   expect(back.lv).toBe(2);
@@ -431,7 +433,7 @@ test('the next correct answer refills the lower ring and does not open a second 
     level:st.stats.math.level,
     offer:st.gymOffer.math,
     badges:[...st.badges.math],
-    fill:document.querySelector('.gym-ring').getAttribute('data-fill'),
+    fill:ringFill(mathGate()).toFixed(3),
   }));
   expect(stayed.level).toBe(1);
   expect(stayed.offer).toBeNull();
