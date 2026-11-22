@@ -1249,6 +1249,8 @@ button.mon-strip:focus{outline:3px solid #1D4ED8;outline-offset:2px}
   .hdr-tight>#starter-back{flex:0 1 auto;width:auto;max-width:40%;min-height:48px;padding-left:12px;padding-right:12px}
   .starter-opt-type .type-emoji{display:none}
 }
+/* At 320 the name button needs the cap's width back. */
+@media (max-width:360px){.grade-pill-ico{display:none}}
 @media (min-width:768px) and (min-height:700px){
   .starter-opt-name{font-size:18px}
   .starter-opt-type{font-size:14px}
@@ -5033,7 +5035,7 @@ function gradePillHTML(){
   if(!tier)return '';
   const name=practiceGradeName(tier);
   const label=multiSubject()?`${SNAME[sub]}: ${name}`:name;
-  return `<span class="grade-pill" id="grade-pill" aria-label="Playing at ${label}">&#127891; ${name}</span>`;
+  return `<span class="grade-pill" id="grade-pill" aria-label="Playing at ${label}"><span class="grade-pill-ico" aria-hidden="true">&#127891;</span>${name}</span>`;
 }
 // The Parents Gym line uses the same tally as the gate.
 const MASTERY_GYM=true;
