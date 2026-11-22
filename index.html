@@ -226,6 +226,7 @@ button.mon-strip:focus{outline:3px solid #1D4ED8;outline-offset:2px}
 .optx:hover{border-color:#6D28D9;background:#F5F3FF}
 .hdr-right{display:flex;align-items:center;gap:8px;flex:0 0 auto;flex-wrap:nowrap}
 .subj-btn{border:1px solid #E5E7EB;background:#fff;color:#374151;font-size:14px;font-weight:700;padding:8px 12px;min-height:44px;border-radius:8px;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+.grade-pill{display:inline-flex;align-items:center;gap:5px;border:1px solid #E5E7EB;background:#fff;color:#374151;font-size:14px;font-weight:700;padding:4px 10px;min-height:36px;border-radius:8px;white-space:nowrap}
 .subj-btn:hover{border-color:#1A1A2E;color:#1A1A2E}
 .subj-btn-car{color:#374151;font-size:14px}
 .fire-type{background:#FEE2E2;color:#DC2626}
@@ -1187,9 +1188,6 @@ button.mon-strip:focus{outline:3px solid #1D4ED8;outline-offset:2px}
   #game .mon-strip .psvg.sk img{animation:shake 0.45s ease forwards}
   #game .mon-strip .mon-meta{grid-row:2;width:100%;display:flex;flex-direction:column;align-items:center}
   #game .mon-strip .pname{text-align:center;line-height:28px}
-  /* 32px tall, inside a 28px line. The extra 4px stays in the line's margin
-     so the picture and the gap under the XP bar do not shrink. */
-  #game .mon-strip .gym-ring{margin-top:-2px;margin-bottom:-5px}
   #game .mon-strip .lvl-badge,#game .mon-strip .shiny-badge{line-height:18px;padding-top:1px;padding-bottom:1px}
   #game .mon-strip .xp-track{width:min(220px,70%);height:8px;margin:4px auto 0}
   #game .mon-strip .psvg img{position:absolute;inset:0;width:100%;height:100%;max-width:none;object-fit:contain;image-rendering:auto}
@@ -1235,6 +1233,7 @@ button.mon-strip:focus{outline:3px solid #1D4ED8;outline-offset:2px}
   .who-btn img{width:22px;height:22px}
   .subj-btn{padding-left:4px;padding-right:4px;gap:3px}
   .mute-btn{padding-left:2px;padding-right:2px}
+  .grade-pill{padding-left:5px;padding-right:5px;gap:3px}
   /* Trainer, Pokédex, Reset, and sound stay on one line.
      The long reset sentence becomes "Hold to reset" so every word is visible.
      A long trainer name gives up space before that row wraps. */
@@ -1250,6 +1249,8 @@ button.mon-strip:focus{outline:3px solid #1D4ED8;outline-offset:2px}
   .hdr-tight>#starter-back{flex:0 1 auto;width:auto;max-width:40%;min-height:48px;padding-left:12px;padding-right:12px}
   .starter-opt-type .type-emoji{display:none}
 }
+/* At 320 the name button needs the cap's width back. */
+@media (max-width:360px){.grade-pill-ico{display:none}}
 @media (min-width:768px) and (min-height:700px){
   .starter-opt-name{font-size:18px}
   .starter-opt-type{font-size:14px}
@@ -5060,14 +5061,25 @@ function ringMarkup(snap, extra){
   const mark='<path class="gym-ring-mark" d="M16 9.2l1.35 2.9 3.15.35-2.35 2.15.7 3.05L16 16.15l-2.85 1.5.7-3.05-2.35-2.15 3.15-.35z"/>';
   return `<span class="gym-ring${extra||''}" role="img" aria-label="Gym badge: getting closer." data-state="${state}" data-fill="${fill.toFixed(3)}"><svg viewBox="0 0 32 32" aria-hidden="true" focusable="false"><circle class="gym-ring-track" cx="16" cy="16" r="12"/><circle class="gym-ring-solid" cx="16" cy="16" r="12"/><circle class="gym-ring-val" cx="16" cy="16" r="12" stroke-dasharray="${dash} ${circ.toFixed(2)}" transform="rotate(-90 16 16)"/>${mark}</svg></span>`;
 }
-function masteryRingHTML(){
-  const sub=(st.q&&subjectOn(st.q.subject))?st.q.subject:(enabledSubjects()[0]||'math');
-  if(!st.stats[sub]||st.stats[sub].level>=maxLevel(sub))return '';
-  const redo=st.redo&&st.redo[sub];
-  const snap=masterySnapshot(st.log,sub,st.stats[sub].level,redo&&redo.tier===(st.stats[sub].level|0)?redo:null);
-  const glow=st.masteryGlow===sub;
-  if(glow)st.masteryGlow='';
-  return ringMarkup(snap, glow?' glow':'');
+// Which grade he is playing at, shown in the header while he plays. It is the
+// tier of the subject in front of him: the Gym's own tier during a Gym, the
+// question's subject otherwise. A warm-up borrows easier questions but does not
+// move him, so the pill keeps his real tier through it.
+function gradePillSubject(){
+  if(st.phase==='gym'&&st.gym&&st.stats[st.gym.sub])return st.gym.sub;
+  if(st.q&&subjectOn(st.q.subject))return st.q.subject;
+  if(st.subject&&st.subject!==SUBJ_MIX&&subjectOn(st.subject))return st.subject;
+  return enabledSubjects()[0]||'math';
+}
+function gradePillHTML(){
+  const shown=['play','wild','trainer','gym','round'];
+  if(shown.indexOf(st.phase)<0||!activeTM())return '';
+  const sub=gradePillSubject();
+  const tier=st.phase==='gym'&&st.gym?(st.gym.tier|0):((st.stats[sub]&&st.stats[sub].level)|0);
+  if(!tier)return '';
+  const name=practiceGradeName(tier);
+  const label=multiSubject()?`${SNAME[sub]}: ${name}`:name;
+  return `<span class="grade-pill" id="grade-pill" aria-label="Playing at ${label}"><span class="grade-pill-ico" aria-hidden="true">&#127891;</span>${name}</span>`;
 }
 // The Parents Gym line uses the same tally as the gate.
 const MASTERY_GYM=true;
@@ -5811,7 +5823,6 @@ function maybeMasteryAdvance(sub){
   }
   s.cs=0;
   st.gymOffer[sub]={tier:s.level,cool:0};
-  st.masteryGlow=sub;
 }
 function updStats(sub,ok,skipStreak){
   const s=st.stats[sub];
@@ -7212,11 +7223,12 @@ function render(){
     if((st.phase==='play'||st.phase==='wild')&&!st.q){loadQuestion();return;}
   }
   const showSubj=multiSubject()&&(st.phase==='play'||st.phase==='wild');
+  const gradePill=gradePillHTML();
   // The streak lives beside the subject pill on the question card now, not here.
   const hdrRight=showSubj
     ?`<button class="subj-btn" id="subj-btn">${SUBJ_ICON[st.subject]} ${subjShort(st.subject)}<span class="subj-btn-car">&#9662;</span></button>`
     :'';
-  const hdr=`<div class="hdr hdr-tight">${whoButtonHTML('who-btn')}<span class="hdr-right">${hdrRight}</span></div>`;
+  const hdr=`<div class="hdr hdr-tight">${whoButtonHTML('who-btn')}<span class="hdr-right">${gradePill}${hdrRight}</span></div>`;
   let h=hdr;
 
   if(st.phase==='round'&&activeTM()){
@@ -7310,11 +7322,8 @@ function render(){
     // Pokémon, no evolution waiting, and a practice question. The strip is the
     // button then. Otherwise it is just the picture and the name.
     const offerSwitch=canOfferSwitch();
-    const ring=masteryRingHTML();
-    // The button's own name replaces everything inside it, so the ring's
-    // label has to be part of that sentence or a screen reader never hears it.
-    const switchLabel=ring?'Switch Pokémon. Gym badge: getting closer.':'Switch Pokémon';
-    const strip=`<div class="psvg ${st.anim}">${offerSwitch?'<span class="switch-mark" aria-hidden="true">&#128260;</span>':''}${pkSprite(tm.pi,96,tm.shiny)}</div><div class="mon-meta"><div class="pname">${p.n}${tm.shiny?` <span class="shiny-badge">${SHINY_STAR} Shiny</span>`:''} <span class="lvl-badge${st.lvlUpMsg?' lvl-up':''}">Lv ${tm.level}</span>${ring}</div><div class="xp-track" aria-hidden="true"><div class="xp-fill" style="width:${pct}%"></div></div></div>`;
+    const switchLabel='Switch Pokémon';
+    const strip=`<div class="psvg ${st.anim}">${offerSwitch?'<span class="switch-mark" aria-hidden="true">&#128260;</span>':''}${pkSprite(tm.pi,96,tm.shiny)}</div><div class="mon-meta"><div class="pname">${p.n}${tm.shiny?` <span class="shiny-badge">${SHINY_STAR} Shiny</span>`:''} <span class="lvl-badge${st.lvlUpMsg?' lvl-up':''}">Lv ${tm.level}</span></div><div class="xp-track" aria-hidden="true"><div class="xp-fill" style="width:${pct}%"></div></div></div>`;
     h+=offerSwitch
       ?`<button type="button" class="card pcard mon-strip" id="mon-switch" aria-label="${switchLabel}">${strip}</button>`
       :`<div class="card pcard mon-strip">${strip}</div>`;

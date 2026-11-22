@@ -232,7 +232,7 @@ test('tapping the Pokémon on the Game tab opens the picker',async({page})=>{
   });
   const strip=page.locator('#mon-switch');
   await expect(strip).toBeVisible();
-  await expect(strip).toHaveAttribute('aria-label','Switch Pokémon. Gym badge: getting closer.');
+  await expect(strip).toHaveAttribute('aria-label','Switch Pokémon');
   await expect(strip.locator('.switch-mark')).toBeVisible();
   const mark=await strip.locator('.switch-mark').evaluate(el=>parseFloat(getComputedStyle(el).fontSize));
   expect(mark).toBeGreaterThanOrEqual(14);
@@ -267,7 +267,7 @@ test('tapping the Pokémon on the Game tab opens the picker',async({page})=>{
   await page.click('#switch-cancel');
   await answer(page,true);
   await expect(page.locator('#mon-switch')).toBeVisible();
-  await expect(page.locator('#mon-switch')).toHaveAttribute('aria-label','Switch Pokémon. Gym badge: getting closer.');
+  await expect(page.locator('#mon-switch')).toHaveAttribute('aria-label','Switch Pokémon');
 });
 
 test('one Pokémon does not turn the strip into a button',async({page})=>{
