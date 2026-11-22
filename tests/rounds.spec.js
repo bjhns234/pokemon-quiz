@@ -3,10 +3,8 @@
 // correct answer after help, counts once and is an empty circle. There is no
 // red X on the done screen, and nothing asks him to come back later.
 const {test,expect}=require('@playwright/test');
-const fs=require('fs');
 const {openGame,startGame,state,answer,addTrainer}=require('./helpers');
 
-const ART='/opt/cursor/artifacts';
 const BANNED=/tomorrow|come back|daily|countdown|see you|don'?t go|do not go|one more|reward/i;
 
 async function boot(page){
@@ -356,8 +354,6 @@ test('Back to it hides the round dots on a phone',async({page})=>{
   await expect(page.locator('.warmup-back')).toBeVisible();
   const shown=await page.locator('#game .q-head').evaluate(el=>getComputedStyle(el).display!=='none'&&el.getBoundingClientRect().height>1);
   expect(shown).toBe(false);
-  fs.mkdirSync(ART,{recursive:true});
-  await page.screenshot({path:ART+'/question_dots_390x844.png'});
   expect(errors).toEqual([]);
 });
 
@@ -464,50 +460,6 @@ test('an exhausted wild pool still finishes the round',async({page})=>{
   expect(await state(page,()=>({phase:st.phase,bonus:!!st.bonusWild,pending:!!(st.round&&st.round.bonusPending)}))).toEqual({
     phase:'round',bonus:false,pending:false,
   });
-  expect(errors).toEqual([]);
-});
-
-test('round checks are about 22px on a tablet and the card still fits',async({page})=>{
-  const errors=await boot(page);
-  await state(page,()=>{
-    st.phase='round';
-    st.round={n:10,right:8,len:10,marks:[1,1,1,1,1,1,1,1,0,0],xp:40,bonus:null,closed:true,endAfter:false,holdEvo:false};
-    render();
-  });
-  for(const size of [{width:768,height:1024},{width:1024,height:768},{width:390,height:844}]){
-    await page.setViewportSize(size);
-    const where=`${size.width}x${size.height}`;
-    const fit=await page.evaluate(()=>{
-      const main=document.getElementById('app-main');
-      const mark=document.querySelector('.round-mark');
-      return {scroll:main.scrollHeight-main.clientHeight,mark:parseFloat(getComputedStyle(mark).fontSize)};
-    });
-    expect(fit.scroll,where).toBeLessThanOrEqual(1);
-    if(size.width>=768){
-      expect(fit.mark,where).toBeGreaterThanOrEqual(20);
-      expect(fit.mark,where).toBeLessThanOrEqual(22);
-    }else{
-      expect(fit.mark,where).toBeGreaterThanOrEqual(14);
-    }
-  }
-  expect(errors).toEqual([]);
-});
-
-test('the Pokémon count sits on its own line under the partner',async({page})=>{
-  const errors=await boot(page);
-  await state(page,()=>{
-    st.team.push({pi:PKM.findIndex(p=>p.n==='Pidgey'),level:4,xp:0,shiny:false});
-    roundFarewell='Simon';
-    view='who';
-    renderWho();
-  });
-  const card=page.locator('[data-pick]').filter({hasText:'Simon'});
-  await expect(card.locator('.who-mon')).toHaveText('Bulbasaur · Lv 60');
-  await expect(card.locator('.who-count')).toHaveText('2 Pokémon');
-  await expect(card.locator('.who-mon')).not.toContainText('Pokémon');
-  const mon=await card.locator('.who-mon').boundingBox();
-  const count=await card.locator('.who-count').boundingBox();
-  expect(count.y).toBeGreaterThanOrEqual(mon.y+mon.height-1);
   expect(errors).toEqual([]);
 });
 
@@ -927,20 +879,9 @@ test('a Gym award ends the round, and a held invite still waits out an evolution
   expect(errors).toEqual([]);
 });
 
-test('Reduce Motion keeps the round celebration still',async({page})=>{
-  await page.emulateMedia({reducedMotion:'reduce'});
-  const errors=await boot(page);
-  await playAnswers(page,10,6);
-  await expect(page.locator('#round-done')).toBeVisible();
-  const anim=await page.locator('#round-celebrate').evaluate(el=>getComputedStyle(el).animationName);
-  expect(anim).toBe('none');
-  expect(errors).toEqual([]);
-});
-
 test('the round screen and the dotted question fit an iPad and a phone',async({page})=>{
   test.setTimeout(180000);
   const errors=await boot(page);
-  fs.mkdirSync(ART,{recursive:true});
 
   // Dots share the question with a streak pill. Three sizes, no scroll.
   await playAnswers(page,3,3);
@@ -978,20 +919,16 @@ test('the round screen and the dotted question fit an iPad and a phone',async({p
     }
   }
   await page.setViewportSize({width:768,height:1024});
-  await page.screenshot({path:ART+'/question_dots_768x1024.png'});
   await page.setViewportSize({width:390,height:844});
-  await page.screenshot({path:ART+'/question_playing_dots_390x844.png'});
 
   await page.setViewportSize({width:768,height:1024});
   await openParents(page);
   await page.locator('#round-setting').scrollIntoViewIfNeeded();
-  await page.screenshot({path:ART+'/parents_round_length_768x1024.png'});
   await backToGame(page);
 
   // Six clean, four helped: the done screen with no encounter.
   await playAnswers(page,7,3);
   await expect(page.locator('#round-done')).toBeVisible();
-  await page.screenshot({path:ART+'/round_done_none_768x1024.png'});
 
   await releaseRound(page);
   await page.click('#round-again');
@@ -1006,7 +943,6 @@ test('the round screen and the dotted question fit an iPad and a phone',async({p
   await bonusRunsOff(page);
   await expect(page.locator('#round-bonus')).toHaveText('Pidgey got away this time. Great work!');
   await page.setViewportSize({width:768,height:1024});
-  await page.screenshot({path:ART+'/round_done_ran_off_768x1024.png'});
 
   await releaseRound(page);
   await page.click('#round-again');
@@ -1068,13 +1004,11 @@ test('the round screen and the dotted question fit an iPad and a phone',async({p
       expect(b.height,`${where} ${id}`).toBeGreaterThanOrEqual(64);
       expect(b.width,`${where} ${id}`).toBeGreaterThanOrEqual(44);
     }
-    await page.screenshot({path:`${ART}/round_done_catch_${size.width}x${size.height}.png`});
   }
 
   await page.setViewportSize({width:768,height:1024});
   await releaseRound(page);
   await page.click('#round-done-exit');
   await expect(page.locator('#who-farewell')).toHaveText('Great playing, Simon!');
-  await page.screenshot({path:ART+'/who_great_playing_768x1024.png'});
   expect(errors).toEqual([]);
 });

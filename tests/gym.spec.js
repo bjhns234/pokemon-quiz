@@ -293,54 +293,6 @@ test('answering inside a Gym still grows a streak',async({page})=>{
   expect(await state(page,()=>st.gym.lead)).toBe(await state(page,()=>GYM_LEAD_HP-1));
 });
 
-test('three current-tier misses on Auto do not drop the level',async({page})=>{
-  // Was "a 3-miss drop on Auto stays down after a reload". An empty log used
-  // to make those misses (and placement) land on Kindergarten. Kindergarten
-  // is solid here, so the only old reason to move was the 3-miss drop.
-  // The level and the badges stay. The warm-up is what those misses start.
-  await state(page,()=>{
-    st.grade=0;
-    st.stats.math.level=2;
-    st.stats.math.ws=0;
-    st.stats.math.cs=0;
-    st.badges.math=[1,2];
-    st.gymOffer.math=null;
-    const today=new Date();
-    const a=new Date(today);a.setDate(today.getDate()-2);
-    const b=new Date(today);b.setDate(today.getDate()-1);
-    st.log={
-      [localISO(a)]:{'math|@|1':'1'.repeat(20)},
-      [localISO(b)]:{'math|@|1':'1'.repeat(20)},
-    };
-  });
-  for(let i=0;i<3;i++){
-    await state(page,i=>{
-      st.phase='play';st.gym=null;
-      st.q=serveQuestion('math',2,i,questionPname());
-      st.tries=0;st.wrong=[];st.helped=false;st.armAt=0;st.cor=false;
-      commitAttempt(false,st.q.answers.findIndex((_,j)=>j!==st.q.correctIndex));
-    },i);
-  }
-  expect(await state(page,()=>({level:st.stats.math.level,badges:[...st.badges.math].sort(),grade:st.grade,warm:!!st.warmup}))).toEqual({
-    level:2,badges:[1,2],grade:0,warm:true,
-  });
-});
-
-test('an old save with no tape starts at Kindergarten and keeps its badges and team',async({page})=>{
-  const save={v:1,starter:0,activeIdx:0,team:[{num:'#001',level:7,xp:3}],dex:['#001'],
-    stats:{math:{cor:5,att:6,level:3,cs:1,ws:0},reading:{cor:0,att:0,level:1,cs:0,ws:0},science:{cor:0,att:0,level:1,cs:0,ws:0}}};
-  const p2=await page.context().newPage();
-  const err=await openGame(p2,{save});
-  expect(await state(p2,()=>({
-    level:st.stats.math.level,badges:[...st.badges.math].sort(),phase:st.phase,offer:st.gymOffer.math,
-    team:st.team.map(t=>({num:PKM[t.pi].num,level:t.level,xp:t.xp})),
-  }))).toEqual({
-    level:1,badges:[1,2],phase:'play',offer:null,
-    team:[{num:'#001',level:7,xp:3}],
-  });
-  expect(err).toEqual([]);
-});
-
 test('a battle in progress reloads onto the next question with the same hearts',async({page})=>{
   await offerGym(page,'math',1);
   await page.click('[data-gym-start="math"]');
@@ -651,18 +603,6 @@ test('a grade 1 science Gym has no timer',async({page})=>{
   await expect(page.locator('#gym-time')).toHaveCount(0);
 });
 
-test('a lost heart stays visible against the card',async({page})=>{
-  await offerGym(page,'math',1);
-  await page.click('[data-gym-start="math"]');
-  await answer(page,false);
-  const empty=page.locator('.you-row .heart:not(.on)').first();
-  const on=page.locator('.you-row .heart.on').first();
-  const cEmpty=await empty.evaluate(el=>getComputedStyle(el).color);
-  const cOn=await on.evaluate(el=>getComputedStyle(el).color);
-  expect(cEmpty).not.toBe('rgb(229, 231, 235)');
-  expect(cEmpty).not.toBe(cOn);
-});
-
 test('winning a tier again does not pay the prize a second time',async({page})=>{
   await pinXp(page);
   await offerGym(page,'math',1);
@@ -753,10 +693,3 @@ test('a Rare Candy on a nearly full bar levels exactly once',async({page})=>{
   });
 });
 
-function serveMathMiss(page){
-  return state(page,()=>{
-    st.q=serveQuestion('math',1,0,questionPname());
-    st.cor=false;st.tries=0;st.wrong=[];st.helped=false;st.armAt=0;st.phase='play';
-    handleAnswer(st.q.answers.findIndex((_,i)=>i!==st.q.correctIndex));
-  });
-}

@@ -1,10 +1,8 @@
 // Trainer battles replace the 7+ bonus catch on finished rounds 2, 5, 8, …
 // The foe cannot be caught. A miss does not ask the question again.
 const {test,expect}=require('@playwright/test');
-const fs=require('fs');
 const {openGame,startGame,state,answer}=require('./helpers');
 
-const ART='/opt/cursor/artifacts';
 
 async function boot(page){
   const errors=await openGame(page);
@@ -776,7 +774,6 @@ test('a hit keeps Hit! beside the partner on a short landscape screen',async({pa
 test('trainer battle screens fit an iPad and a phone',async({page})=>{
   test.setTimeout(180000);
   const errors=await boot(page);
-  fs.mkdirSync(ART,{recursive:true});
   const sizes=[{width:768,height:1024},{width:1024,height:768},{width:390,height:844}];
 
   async function shot(name){
@@ -818,7 +815,6 @@ test('trainer battle screens fit an iPad and a phone',async({page})=>{
         expect(fit.scroll,where).toBeLessThanOrEqual(1);
         expect(fit.next,where).toBe(true);
       }
-      await page.screenshot({path:`${ART}/${name}_${size.width}x${size.height}.png`});
     }
     await page.setViewportSize({width:768,height:1024});
   }

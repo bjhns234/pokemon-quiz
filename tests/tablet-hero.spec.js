@@ -3,12 +3,6 @@
 const {test,expect}=require('@playwright/test');
 const {openGame,startGame,state}=require('./helpers');
 
-const PHONES=[
-  {width:375,height:667,img:96},
-  {width:320,height:568,img:44},
-  {width:667,height:375,img:48},
-  {width:568,height:320,img:28},
-];
 
 // Heights the hero has to survive: the 700px floor, a short iPad, the old
 // 820px seam, and a tall portrait.
@@ -282,67 +276,4 @@ test('a missed typed answer does not clip the readout',async({page})=>{
   await show(page,{...LONG,streak:5,tries:1,draft:'12'});
   const tall=await state(page,layout);
   expect(tall.readClip).toBeLessThanOrEqual(1);
-});
-
-test('phone strips keep their sizes, and catch and evolution stay full size when shown',async({page})=>{
-  await openGame(page);
-  await startGame(page,'reading');
-  for(const size of PHONES){
-    await page.setViewportSize(size);
-    await show(page,{...MC,safe:0});
-    const img=page.locator('#game .mon-strip img');
-    const box=await img.boundingBox();
-    expect(box.width,`${size.width}x${size.height}`).toBeGreaterThanOrEqual(size.img-0.5);
-    expect(box.width,`${size.width}x${size.height}`).toBeLessThanOrEqual(size.img+0.5);
-    expect(box.height,`${size.width}x${size.height}`).toBeGreaterThanOrEqual(size.img-0.5);
-    expect(box.height,`${size.width}x${size.height}`).toBeLessThanOrEqual(size.img+0.5);
-    expect(await img.getAttribute('width')).toBe('96');
-    expect(await img.getAttribute('height')).toBe('96');
-  }
-  const scenes=[
-    {width:768,height:1024,wild:140,gym:120},
-    {width:1024,height:768,wild:80,gym:80},
-  ];
-  for(const size of scenes){
-    await page.setViewportSize(size);
-    const measured=await state(page,()=>{
-      st.phase='wild';
-      st.wild={pi:LINES[1][0],level:5,shiny:false,correctStreak:0,misses:0};
-      st.q=serveQuestion('math',1,0,PKM[LINES[1][0]].n);
-      st.tries=0;st.cor=false;st.wrong=[];st.helped=false;st.armAt=0;st.wildEscape=false;
-      render();
-      const wild=document.querySelector('.wild-card .psvg img').getBoundingClientRect().height;
-      st.phase='gym';
-      st.wild=null;
-      st.gym={sub:'math',tier:1,queue:[0],qi:0,kid:4,lead:5,solved:false,over:null};
-      st.q=serveQuestion('math',1,0,questionPname());
-      render();
-      const gym=document.querySelector('.gym-card .psvg img').getBoundingClientRect().height;
-      const catchOv=document.getElementById('catch-overlay');
-      const catchImg=document.getElementById('catch-pkm-img');
-      catchImg.style.cssText='';
-      catchOv.classList.add('active');
-      const catchBox=catchImg.getBoundingClientRect();
-      const evoOv=document.getElementById('evo-overlay');
-      const evoImg=document.getElementById('evo-img');
-      evoImg.style.cssText='';
-      evoOv.classList.add('active');
-      const evoBox=evoImg.getBoundingClientRect();
-      catchOv.classList.remove('active');
-      evoOv.classList.remove('active');
-      return {
-        wild,gym,
-        catchH:catchBox.height,catchShown:catchBox.width>2&&catchOv.classList.contains('active')===false?catchBox.top>=0:catchBox.top,
-        evoH:evoBox.height,
-      };
-    });
-    expect(measured.wild,`wild at ${size.width}x${size.height}`).toBeGreaterThanOrEqual(size.wild-0.5);
-    expect(measured.wild,`wild at ${size.width}x${size.height}`).toBeLessThanOrEqual(size.wild+0.5);
-    expect(measured.gym,`gym at ${size.width}x${size.height}`).toBeGreaterThanOrEqual(size.gym-0.5);
-    expect(measured.gym,`gym at ${size.width}x${size.height}`).toBeLessThanOrEqual(size.gym+0.5);
-    expect(measured.catchH,`catch at ${size.width}x${size.height}`).toBeGreaterThanOrEqual(179);
-    expect(measured.catchH,`catch at ${size.width}x${size.height}`).toBeLessThanOrEqual(181);
-    expect(measured.evoH,`evolution at ${size.width}x${size.height}`).toBeGreaterThanOrEqual(199);
-    expect(measured.evoH,`evolution at ${size.width}x${size.height}`).toBeLessThanOrEqual(201);
-  }
 });

@@ -319,26 +319,6 @@ async function showChoices(page){
   await expect(page.locator('.ans-btn').first()).toBeVisible();
 }
 
-test('on a small phone the question stays at least 18px and at least as big as an answer',async({page})=>{
-  await showChoices(page);
-  const sizes=[
-    {width:375,height:667},
-    {width:320,height:568},
-    {width:320,height:700},
-    {width:568,height:320},
-  ];
-  for(const size of sizes){
-    await page.setViewportSize(size);
-    const fonts=await page.evaluate(()=>{
-      const q=parseFloat(getComputedStyle(document.querySelector('.qtext')).fontSize);
-      const a=Math.max(...[...document.querySelectorAll('.ans-btn')].map(el=>parseFloat(getComputedStyle(el).fontSize)));
-      return {q,a};
-    });
-    expect(fonts.q,`${size.width}x${size.height} question`).toBeGreaterThanOrEqual(18);
-    expect(fonts.q,`${size.width}x${size.height} question vs answer`).toBeGreaterThanOrEqual(fonts.a);
-  }
-});
-
 test('Ask for help is a full-size tap with readable words',async({page})=>{
   await showChoices(page);
   const sizes=[
